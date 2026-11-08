@@ -10,11 +10,27 @@ on:
 permissions:
   contents: read
 
+env:
+  STAGING_TAG: ci-staging-${{ github.run_id }}-${{ github.run_attempt }}
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  staging:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - if: github.event_name != 'pull_request'
+        name: Reserve temporary draft for cross-job files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$STAGING_TAG" --target "$GITHUB_SHA" --draft --prerelease --title "Temporary CI build $GITHUB_RUN_ID" --notes "Temporary encrypted test fixtures and build files. Removed when this workflow finishes."
+
   quality:
     runs-on: ubuntu-22.04
     steps:
@@ -30,6 +46,9 @@ jobs:
           cargo +1.88.0 check --workspace --locked
 
   native:
+    needs: staging
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -64,19 +83,22 @@ jobs:
         run: |
           docker run --rm -v "$PWD/dist:/packages:ro" fedora:43 bash -c 'dnf install -y /packages/*.rpm && repo-stealer --version'
           docker run --rm -v "$PWD/dist:/packages:ro" opensuse/leap:16.0 sh -c 'zypper --non-interactive --no-gpg-checks install /packages/*.rpm && repo-stealer --version'
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: fixture-${{ matrix.platform }}
-          path: fixture/portable.rsbackup
-          retention-days: 3
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: packages-${{ matrix.platform }}
-          path: dist/*
-          if-no-files-found: error
+      - if: github.event_name != 'pull_request'
+        name: Transfer files through temporary draft assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          cp fixture/portable.rsbackup "fixture/fixture-$PLATFORM.rsbackup"
+          gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup"
 
   interoperability:
-    needs: native
+    if: github.event_name != 'pull_request'
+    needs: [staging, native]
+    permissions:
+      contents: write # draft assets are restricted to repository writers
     strategy:
       matrix:
         include:
@@ -89,20 +111,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: packages-${{ matrix.platform }}
-          path: packages
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: fixture-${{ matrix.other }}
-          path: fixture
+      - name: Download native executable and other OS fixture
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PLATFORM: ${{ matrix.platform }}
+          OTHER: ${{ matrix.other }}
+        run: |
+          if [ "$PLATFORM" = linux ]; then
+            gh release download "$STAGING_TAG" --pattern '*linux*.tar.gz' --dir packages
+          else
+            gh release download "$STAGING_TAG" --pattern '*.exe' --dir packages
+          fi
+          gh release download "$STAGING_TAG" --pattern "fixture-$OTHER.rsbackup" --dir fixture
       - if: runner.os == 'Linux'
         run: |
           tar -xzf packages/*linux*.tar.gz
-          python scripts/test_cli.py repo-stealer-*/repo-stealer --restore-fixture fixture/portable.rsbackup
+          python scripts/test_cli.py repo-stealer-*/repo-stealer --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
       - if: runner.os == 'Windows'
-        run: python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/portable.rsbackup
+        run: python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -114,11 +142,11 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          pattern: packages-*
-          merge-multiple: true
-          path: dist
+      - name: Download verified packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "$STAGING_TAG" --pattern 'repo-stealer*' --dir dist
       - name: Validate version and write checksums
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -131,3 +159,16 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           gh release create "$RELEASE_TAG" dist/* --verify-tag --prerelease --generate-notes --title "Repo Stealer $RELEASE_TAG (experimental CLI)" --notes-file .github/release-notes.md
+
+  cleanup:
+    if: always() && github.event_name != 'pull_request' && needs.staging.result == 'success'
+    needs: [staging, quality, native, interoperability, release]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Remove this run's temporary draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete "$STAGING_TAG" --yes

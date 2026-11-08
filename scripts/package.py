@@ -100,8 +100,10 @@ install -D -m 0755 %{{SOURCE0}} %{{buildroot}}/usr/bin/repo-stealer
             '<g fill="#59dfc2"><circle cx="40" cy="32" r="12"/><circle cx="40" cy="96" r="12"/>'
             '<circle cx="88" cy="32" r="12"/></g></svg>')
         tool = stage / "appimagetool.AppImage"
-        urllib.request.urlretrieve(
-            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage", tool)
+        with urllib.request.urlopen(
+                "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage",
+                timeout=60) as response, tool.open("wb") as stream:
+            shutil.copyfileobj(response, stream)
         assert hashlib.sha256(tool.read_bytes()).hexdigest() == "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0", "appimagetool checksum mismatch"
         tool.chmod(0o755)
         image = OUT / f"repo-stealer-{VERSION}-x86_64.AppImage"
