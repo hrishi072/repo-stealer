@@ -1,9 +1,13 @@
 import hashlib
+import json
 import os
 import pathlib
-import tomllib
+import subprocess
 
-version = tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"]
+metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--no-deps", "--format-version", "1"]))
+versions = {package["version"] for package in metadata["packages"]}
+assert len(versions) == 1, "workspace package versions differ"
+version = versions.pop()
 assert os.environ["RELEASE_TAG"] == "v" + version, "tag and Cargo version differ"
 paths = sorted(pathlib.Path("dist").iterdir())
 assert any(p.suffix == ".exe" for p in paths)

@@ -1,6 +1,6 @@
 # Git and automated releases
 
-Repository: <https://github.com/hrishi072/repo-stealer> (private at creation). Local identity follows Clash of Bots: `hrishi072 <parundekarrushi@gmail.com>`, SSH commit/tag signing via the existing personal public key, remote alias `github.com-personal`. Settings are repository-local; global work identity is unchanged. The allowed-signers file lives inside `.git`, not in tracked source. Private signing key bytes are never committed or uploaded to CI.
+Repository: <https://github.com/hrishi072/repo-stealer> (private at creation). Local identity follows Clash of Bots: `hrishi072 <parundekarrushi@gmail.com>`, SSH commit/tag signing via the existing personal public key, remote alias `github.com-personal`. Settings are repository-local; global work identity is unchanged. The local allowed-signers file lives inside `.git`; a separate tracked `.github/allowed_signers` contains only the already-public maintainer key for release-tag verification. Private signing key bytes are never committed or uploaded to CI.
 
 `.github/workflows/build-release.yml` runs on main pushes, pull requests and manual dispatch. It checks formatting, Clippy and Rust 1.88 minimum support; runs release-mode core/storage tests and real CLI tests natively on Ubuntu 22.04 and Windows Server 2022; packages executable assets; checks the DEB installation, RPM installation in Fedora/openSUSE containers and AppImage launch; and exchanges OS-generated encrypted fixtures to prove cross-platform recovery.
 

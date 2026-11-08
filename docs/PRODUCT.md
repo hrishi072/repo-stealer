@@ -35,4 +35,3 @@ Navigation: Overview, Instances, Repositories, Migrations, Backups, Activity, Se
 ## Later sync
 
 Deliver one-way update detection before automatic synchronization. Save the last verified source/destination baseline and compare both sides to it. Classify unchanged, source-only change, destination-only change, concurrent change and deletion candidate. Only ancestry checks can distinguish fast-forward from divergence. Tags are immutable by default. Missing source refs/entities do not authorize deletions. Start with notifications and user-reviewed one-way plans; bidirectional metadata sync needs per-field conflict policy, identity maps, loop prevention and tombstones. Never implement it as periodic `push --mirror`.
-

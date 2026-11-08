@@ -1,17 +1,20 @@
 """Package the CLI (not a desktop UI) using native OS tools."""
 import hashlib
+import json
 import os
 import pathlib
 import shutil
 import subprocess
 import tarfile
 import tempfile
-import tomllib
 import urllib.request
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-VERSION = tomllib.loads((ROOT / "Cargo.toml").read_text())["workspace"]["package"]["version"]
+METADATA = json.loads(subprocess.check_output(["cargo", "metadata", "--no-deps", "--format-version", "1"], cwd=ROOT))
+VERSIONS = {package["version"] for package in METADATA["packages"]}
+assert len(VERSIONS) == 1, "workspace package versions differ"
+VERSION = VERSIONS.pop()
 OUT = ROOT / "dist"
 OUT.mkdir(exist_ok=True)
 WINDOWS = os.name == "nt"

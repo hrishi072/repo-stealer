@@ -18,7 +18,7 @@ jobs:
   quality:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt, clippy
@@ -43,7 +43,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - run: cargo test --workspace --release --locked -- --test-threads=1
       - run: cargo build --release --locked -p repo-stealer-cli
@@ -64,12 +64,12 @@ jobs:
         run: |
           docker run --rm -v "$PWD/dist:/packages:ro" fedora:43 bash -c 'dnf install -y /packages/*.rpm && repo-stealer --version'
           docker run --rm -v "$PWD/dist:/packages:ro" opensuse/leap:16.0 sh -c 'zypper --non-interactive --no-gpg-checks install /packages/*.rpm && repo-stealer --version'
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: fixture-${{ matrix.platform }}
           path: fixture/portable.rsbackup
           retention-days: 3
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: packages-${{ matrix.platform }}
           path: dist/*
@@ -88,12 +88,12 @@ jobs:
             other: linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: packages-${{ matrix.platform }}
           path: packages
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: fixture-${{ matrix.other }}
           path: fixture
@@ -111,8 +111,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: packages-*
           merge-multiple: true
@@ -120,7 +122,9 @@ jobs:
       - name: Validate version and write checksums
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: python scripts/release_checksums.py
+        run: |
+          git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag "$RELEASE_TAG"
+          python scripts/release_checksums.py
       - name: Publish experimental CLI release
         env:
           GH_TOKEN: ${{ github.token }}

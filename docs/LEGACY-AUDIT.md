@@ -38,4 +38,3 @@ pyproject.toml b07cc124687b3959e8d0a4627cf170532484cdd2397c4d4bfe67447a7e210df6
 ```
 
 REA skill version 42 was read because the user explicitly requested REA. No REA MCP tools were advertised in this session. A cached REA 6.5.0 public CLI launcher successfully ran `doctor --client codex --json`; the diagnostic returned exit 1 and reported missing Codex registration, an unsupported openSUSE host classification for its readiness checks, and no native analysis engines. This is readiness evidence only, not script-analysis evidence. No configuration was changed, no engine was installed, and no REA Evidence ID exists for the scripts. REA's JavaScript fallback would not establish Python behavior. Direct source inspection supplies the findings above; runtime outcomes and performance remain unverified.
-

@@ -14,8 +14,6 @@ Expected: all tests pass; output preserves `destination-work`, marks `main` as c
 
 Observed 2026-11-08 on openSUSE, Rust/Cargo 1.99.0: 4 core tests passed, 0 failed; formatting and Clippy passed; release build succeeded; example CLI output matched the expected four classifications; malformed-input subprocess returned exit 1. Local documentation links resolved. No real Git transport, hosting API, encryption, Windows build or installer was tested. The manifest's Rust 1.85 minimum still needs CI verification.
 
-## Required before migration release
-
 ## Encrypted storage increment
 
 ```sh
@@ -58,4 +56,3 @@ Current prototype makes no repository or application data changes; deleting its 
 Future local schema migrations require a verified encrypted snapshot and compatibility plan before mutation; restore into a new vault rather than overwriting the only copy. Keep old backup readers or migration tooling for historical formats.
 
 Remote operations cannot be rolled back as one transaction. Record created resource IDs and prior ref values; pause on partial failures. Restoring remote refs requires a fresh review and leases so intervening user work is preserved. Do not auto-delete recreated issues/PRs to simulate rollback. A migration remains a copy until a separate user-authorized source decommissioning step.
-

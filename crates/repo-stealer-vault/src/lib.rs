@@ -378,13 +378,13 @@ fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 fn private_dir(path: &Path) -> Result<()> {
-    let mut builder = fs::DirBuilder::new();
     #[cfg(unix)]
     {
         use std::os::unix::fs::DirBuilderExt;
-        builder.mode(0o700);
+        fs::DirBuilder::new().mode(0o700).create(path)?;
     }
-    builder.create(path)?;
+    #[cfg(not(unix))]
+    fs::create_dir(path)?;
     Ok(())
 }
 fn new_private_file(path: &Path) -> Result<File> {

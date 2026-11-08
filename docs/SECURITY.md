@@ -22,7 +22,7 @@ File synchronization is used before publication; directories are also synchroniz
 
 Inputs supplied to `put` already exist as plaintext and are left unchanged. Only explicit `export --plaintext` writes plaintext output, with no overwrite. Export first verifies the object, then streams it to the user-selected final path; a kill can leave that intentionally selected plaintext file partial. Library `read` callers can receive plaintext before final authentication and must not publish it until success. `list` displays decrypted names in the terminal; the application creates no plaintext log file.
 
-Encryption at rest cannot stop malware reading unlocked memory or data the user exports. OS swap, hibernation, terminal capture, crash dumps and external source files require host policy. The app does not automatically collect credentials; any bytes deliberately imported are archive content and are included in backups. There is no field-aware credential filtering in this generic-object slice.
+Authentication does not prevent an attacker from rolling the complete vault back to an older valid snapshot; no external monotonic checkpoint exists in this local-only design. Encryption at rest cannot stop malware reading unlocked memory or data the user exports. OS swap, hibernation, terminal capture, crash dumps and external source files require host policy. The app does not automatically collect credentials; any bytes deliberately imported are archive content and are included in backups. There is no field-aware credential filtering in this generic-object slice.
 
 ## `.rsbackup` format v1
 
@@ -58,4 +58,3 @@ This milestone stores supplied bytes; it never runs Git. Native Git writes plain
 | Compromised webview/dependency | Invoke privileged operations / steal keys | Narrow typed IPC capabilities, CSP, no remote application content, signed releases, dependency review. |
 
 No source deletion or destructive mirror push is a default action. Remote writes are not globally transactional: capture destination recovery evidence first and keep a resumable action ledger.
-

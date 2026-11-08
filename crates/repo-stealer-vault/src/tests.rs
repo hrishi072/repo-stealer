@@ -155,6 +155,12 @@ fn ciphertext_does_not_expose_names_or_content_and_lock_is_exclusive() {
             if path.is_dir() {
                 scan(&path, markers);
             } else {
+                // Windows byte-range locks prohibit even reading this empty
+                // coordination file while the vault is open.
+                if path.file_name().is_some_and(|n| n == "lock") {
+                    assert_eq!(fs::metadata(path).unwrap().len(), 0);
+                    continue;
+                }
                 let bytes = fs::read(path).unwrap();
                 for marker in markers {
                     assert!(!bytes.windows(marker.len()).any(|w| w == *marker));
