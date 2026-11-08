@@ -2,7 +2,7 @@ use anyhow::{ensure, Context, Result};
 use process_wrap::std::{ChildWrapper, CommandWrap};
 use std::{
     ffi::{OsStr, OsString},
-    fs::{self, File, OpenOptions},
+    fs::{self, File},
     io::{self, Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -127,13 +127,23 @@ impl Runner {
                 // of ordinary terminal/log output; the error identifies phase.
                 ensure!(
                     status.success(),
-                    "Git command failed ({status}); capture/restore not published"
+                    "Git {} failed ({status}); capture/restore not published",
+                    args.first()
+                        .map_or("command".into(), |arg| arg.to_string_lossy())
                 );
                 break;
             }
             std::thread::sleep(Duration::from_millis(25));
         }
-        Ok(Some(fs::read(stdout.path())?))
+        let mut bytes = Vec::new();
+        File::open(stdout.path())?
+            .take(8 * 1024 * 1024 + 1)
+            .read_to_end(&mut bytes)?;
+        ensure!(
+            bytes.len() <= 8 * 1024 * 1024 && stderr.as_file().metadata()?.len() <= 1024 * 1024,
+            "Git command output exceeds limit"
+        );
+        Ok(Some(bytes))
     }
 
     fn command(&self) -> Command {
@@ -147,16 +157,25 @@ impl Runner {
             }
         }
         command
-            .current_dir(&self.root)
-            .env("HOME", self.root.join("home"))
-            .env("USERPROFILE", self.root.join("home"))
-            .env("XDG_CONFIG_HOME", self.root.join("home"))
-            .env("TMPDIR", &self.root)
-            .env("TMP", &self.root)
-            .env("TEMP", &self.root)
+            .current_dir(git_arg(self.root.as_os_str()))
+            .env("HOME", git_arg(self.root.join("home").as_os_str()))
+            .env("USERPROFILE", git_arg(self.root.join("home").as_os_str()))
+            .env(
+                "XDG_CONFIG_HOME",
+                git_arg(self.root.join("home").as_os_str()),
+            )
+            .env("TMPDIR", git_arg(self.root.as_os_str()))
+            .env("TMP", git_arg(self.root.as_os_str()))
+            .env("TEMP", git_arg(self.root.as_os_str()))
             .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env("GIT_CONFIG_SYSTEM", self.root.join("empty-config"))
-            .env("GIT_CONFIG_GLOBAL", self.root.join("empty-config"))
+            .env(
+                "GIT_CONFIG_SYSTEM",
+                git_arg(self.root.join("empty-config").as_os_str()),
+            )
+            .env(
+                "GIT_CONFIG_GLOBAL",
+                git_arg(self.root.join("empty-config").as_os_str()),
+            )
             .env("GIT_OPTIONAL_LOCKS", "0")
             .env("GIT_NO_REPLACE_OBJECTS", "1")
             .env("GIT_NO_LAZY_FETCH", "1")
@@ -282,11 +301,7 @@ pub(crate) fn sync_tree(path: &Path) -> Result<()> {
         if meta.is_dir() {
             sync_tree(&child)?;
         } else {
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&child)?
-                .sync_all()?;
+            sync_file(&child).context("cannot flush verified Git file")?;
         }
     }
     #[cfg(unix)]
@@ -294,9 +309,53 @@ pub(crate) fn sync_tree(path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
+fn sync_file(path: &Path) -> Result<()> {
+    File::open(path)?.sync_all()?;
+    Ok(())
+}
+
+#[cfg(windows)]
+fn sync_file(path: &Path) -> Result<()> {
+    // FlushFileBuffers requires a writable handle on Windows. Git deliberately
+    // marks immutable pack files read-only; clear only that attribute while
+    // flushing our own staged file and restore it even when flushing fails.
+    let original = fs::metadata(path)?.permissions();
+    if original.readonly() {
+        let mut writable = original.clone();
+        writable.set_readonly(false);
+        fs::set_permissions(path, writable)?;
+    }
+    let result = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .and_then(|file| file.sync_all());
+    if original.readonly() {
+        fs::set_permissions(path, original)?;
+    }
+    Ok(result?)
+}
+
+#[cfg(not(any(unix, windows)))]
+fn sync_file(_: &Path) -> Result<()> {
+    anyhow::bail!("unsupported OS")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn flushes_readonly_git_files_without_changing_their_protection() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("immutable.pack");
+        fs::write(&path, b"synthetic pack content").unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&path, permissions).unwrap();
+        sync_tree(directory.path()).unwrap();
+        assert!(fs::metadata(&path).unwrap().permissions().readonly());
+    }
     #[test]
     fn version_gate_and_cancellation() {
         assert!(supported_version("git version 2.48.0.windows.1\n"));
