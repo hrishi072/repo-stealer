@@ -39,3 +39,5 @@ Use Linux and Windows runners for native builds; do not claim a Linux-built CLI 
 ## 2026-11-08 storage increment
 
 Milestone 2 core backup/restore behavior and ciphertext-only object storage are implemented using age. Milestone 1 remains partial: native package/portability CI is provided, but encrypted Git working volumes, indexed metadata and a Tauri shell are not implemented. CLI packages must not be described as desktop installers.
+
+Published storage/backup alpha: https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.1 . Native Linux/Windows tests, both cross-OS restore directions and all requested CLI package formats passed the tagged release run. Next implementation remains encrypted Git working storage and local Git capture/restore.

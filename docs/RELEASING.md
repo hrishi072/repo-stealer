@@ -23,3 +23,7 @@ Current assets are terminal applications, not a Tauri desktop GUI or Windows MSI
 If publication fails after artifacts build, inspect the run and rerun the failed job after resolving the cause. Do not bypass failed storage/authentication tests or publish a release manually from an unverified partial matrix.
 
 Public release assets are independently downloadable without Actions artifact storage. Linux AppImages may require `chmod +x` after download; the portable tar archive preserves executable mode. Temporary CI draft tags are not maintainer release tags and are never published. If a workflow is forcibly interrupted before cleanup, remove only its named `ci-staging-<run>-<attempt>` draft after confirming the run has ended.
+
+## Verified first release
+
+`v0.1.0-alpha.1` is published as a prerelease with six executable/package assets and SHA256SUMS. The signed tag resolves to `3eacf7fea3a40bca2cc9aa1cd2c21d95eb94dcd7`; GitHub reports the implementation commits as verified. [Release](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.1), [successful tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42484519465). The workflow removed its own temporary draft after publication.
