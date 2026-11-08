@@ -56,6 +56,9 @@ install -D -m 0644 %{{SOURCE2}} %{{buildroot}}/usr/share/applications/com.hrishi
         count += 1
 for path in bundle.rglob("*"):
     if path.is_file() and path.suffix in (".deb", ".rpm", ".AppImage", ".exe", ".msi"):
+        if path.suffix == ".deb":
+            package_name = subprocess.check_output(["dpkg-deb", "--field", str(path), "Package"], text=True).strip()
+            assert package_name == "repo-stealer-desktop", "desktop package must coexist with the CLI"
         suffix = "-setup.exe" if path.suffix == ".exe" else path.suffix
         target = out / f"repo-stealer-desktop-{version}-{platform}-x86_64{suffix}"
         assert not target.exists(), "duplicate desktop package type"
