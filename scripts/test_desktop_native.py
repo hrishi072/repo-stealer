@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from test_git import fixture, inventory
+from test_git import encrypted_files, fixture, inventory
 
 
 class Options(ArgOptions):
@@ -87,6 +87,10 @@ def main():
             button("Create new").click()
             fill("Vault location", vault); fill("Vault passphrase", password); fill("Confirm passphrase", password)
             button("Create vault").click(); completed()
+            button("Lock vault").click(); wait.until(lambda _: status()["vault"] is None)
+            button("Unlock vault").click(); fill("Vault location", vault); fill("Vault passphrase", password)
+            # The overview also has an Unlock vault action outside the dialog.
+            driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
             button("Set up workspace").click(); button("Create workspace").click()
             fill("Encrypted workspace", work); button("Verify workspace").click(); completed()
             button("Capture repository").click(); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
@@ -99,6 +103,7 @@ def main():
             destination = work / "restored.git"
             fill("New bare repository", destination); button("Restore repository").click(); completed()
             assert inventory(source) == inventory(destination)
+            encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
                 driver.save_screenshot(str(args.screenshot))
@@ -107,6 +112,8 @@ def main():
             fill("Backup destination", backup)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
             completed(); assert backup.is_file()
+            button("Verify backup").click(); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
+            driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
             button("Lock vault").click(); wait.until(lambda _: status()["vault"] is None)
             button("Restore backup").click(); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
             button("Restore vault").click(); completed()

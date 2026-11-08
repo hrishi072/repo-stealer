@@ -106,7 +106,13 @@ impl Runner {
         #[cfg(unix)]
         wrapped.wrap(process_wrap::std::ProcessGroup::leader());
         #[cfg(windows)]
-        wrapped.wrap(process_wrap::std::JobObject);
+        {
+            // Preserve job-object process-tree cancellation without flashing
+            // a console for each Git subprocess in the desktop application.
+            let mut flags = process_wrap::std::CreationFlags(Default::default());
+            flags.0 .0 = 0x08000000; // Windows CREATE_NO_WINDOW
+            wrapped.wrap(flags).wrap(process_wrap::std::JobObject);
+        }
         let mut child = ManagedChild(
             wrapped
                 .spawn()

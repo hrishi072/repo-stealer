@@ -12,16 +12,30 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+/// Zeroize owned passphrase input even when readiness validation rejects a job.
+/// No Debug or Serialize implementation: inputs must never become status data.
+pub struct Passphrase(zeroize::Zeroizing<String>);
+impl From<&str> for Passphrase {
+    fn from(value: &str) -> Self {
+        Self(zeroize::Zeroizing::new(value.to_owned()))
+    }
+}
+impl<'de> Deserialize<'de> for Passphrase {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer).map(|value| Self(zeroize::Zeroizing::new(value)))
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
     CreateVault {
         path: String,
-        passphrase: String,
+        passphrase: Passphrase,
     },
     UnlockVault {
         path: String,
-        passphrase: String,
+        passphrase: Passphrase,
     },
     CheckWorkspace {
         path: String,
@@ -40,12 +54,12 @@ pub enum Action {
     },
     VerifyBackup {
         path: String,
-        passphrase: String,
+        passphrase: Passphrase,
     },
     RestoreBackup {
         path: String,
         destination: String,
-        passphrase: String,
+        passphrase: Passphrase,
     },
 }
 
@@ -438,8 +452,8 @@ fn perform(
     result().map_err(|e| e.to_string())
 }
 
-fn secret(value: String) -> Result<SecretString, String> {
-    let mut value = zeroize::Zeroizing::new(value);
+fn secret(value: Passphrase) -> Result<SecretString, String> {
+    let mut value = value.0;
     if value.is_empty() || value.len() > 4096 {
         return Err("Enter a passphrase of at most 4096 bytes.".into());
     }
