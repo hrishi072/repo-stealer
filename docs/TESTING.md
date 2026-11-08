@@ -56,3 +56,13 @@ Current prototype makes no repository or application data changes; deleting its 
 Future local schema migrations require a verified encrypted snapshot and compatibility plan before mutation; restore into a new vault rather than overwriting the only copy. Keep old backup readers or migration tooling for historical formats.
 
 Remote operations cannot be rolled back as one transaction. Record created resource IDs and prior ref values; pause on partial failures. Restoring remote refs requires a fresh review and leases so intervening user work is preserved. Do not auto-delete recreated issues/PRs to simulate rollback. A migration remains a copy until a separate user-authorized source decommissioning step.
+
+## Encrypted Git increment
+
+Local checks: `cargo test --workspace --release --locked -- --test-threads=1` (17 tests), formatting, Clippy and release compilation. Pure policy tests do not claim a real encrypted end-to-end run on an unsupported developer filesystem.
+
+The native matrix runs `python scripts/test_git.py <native-binary> --fixture-out fixture/git-portable.rsbackup` on a verified LUKS ext4 mount (Linux) or newly initialized EFS directory (Windows), then exchanges these Git-containing backups in the interoperability jobs. No encryption-check bypass exists. `ci_workspace.py` is restricted to Linux GitHub runners and exclusively creates/formats a disposable regular-file image. A retained uncompressed marker provides a positive raw-storage encryption check after unmount.
+
+Coverage: refs/symbolic refs/HEAD and complete reachable object-ID inventory; merge history, annotated/lightweight tags, notes/remotes, detached/unborn HEAD, empty and SHA-256 repositories; existing/unencrypted destination rejection; shallow/promisor rejection; source ref changes during capture; kill during vault encryption after Git finishes; ciphertext marker scans and Windows EFS inheritance on crash remnants. An immutable read-only pack regression verifies platform-specific synchronization preserves protection.
+
+Initial Linux native capture passed but restore exposed reopening read-only Git packs for writing. The fix uses read-only fsync handles on Unix and temporarily clears/restores the read-only attribute around Windows FlushFileBuffers. Windows EFS initialization passed; the initial Git invocation failure triggered normalization of Windows Git environment paths and phase-specific errors. Final native run passed on Linux (17 unit tests) and Windows (15 unit tests, excluding Unix-only cases), including both full Git integration suites and reciprocal cross-OS Git restores: https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 .

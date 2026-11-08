@@ -16,9 +16,9 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: verified encrypted Git working storage, then local Git capture/restore.** Encrypted object/catalog storage and portable backups are implemented; native CI and release results are recorded in HANDOVER.md. A fast migration UI on top of plaintext scratch files would require a later redesign. The current bounded encrypted catalog avoids a database dependency. Evaluate the working-volume boundary with a Git fixture before enabling transfers; do not start by writing every provider endpoint.
+**Next: remote acquisition into verified encrypted workspaces, with explicit LFS/wiki/submodule policy.** Encrypted vault/backups and local full-history Git capture/restore passed native Linux/Windows and reciprocal restore tests. Keep the current encryption gate and begin with one read-only remote capture before adding destination writes or hosting metadata adapters.
 
-Follow that with one complete local Git fixture migration. Use the same fixture for the first GitHub -> GitLab test, then expand metadata one entity type at a time. This is the shortest path to evidence that the difficult parts work together.
+Use the verified local Git fixture as the baseline for the first remote capture, then a GitHub -> GitLab test; expand metadata one entity type at a time. This is the shortest path to evidence that the difficult parts work together.
 
 ## Compatibility and release matrix
 
@@ -41,3 +41,9 @@ Use Linux and Windows runners for native builds; do not claim a Linux-built CLI 
 Milestone 2 core backup/restore behavior and ciphertext-only object storage are implemented using age. Milestone 1 remains partial: native package/portability CI is provided, but encrypted Git working volumes, indexed metadata and a Tauri shell are not implemented. CLI packages must not be described as desktop installers.
 
 Published storage/backup alpha: https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.1 . Native Linux/Windows tests, both cross-OS restore directions and all requested CLI package formats passed the tagged release run. Next implementation remains encrypted Git working storage and local Git capture/restore.
+
+## Local Git snapshot increment
+
+Verified encrypted workspaces and local full-history snapshot capture/restore are implemented; native Linux/Windows acceptance and both cross-OS restores passed in https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 . This covers reachable Git object history/refs and safe new bare restore, including empty/detached/SHA-256 repositories. LFS payloads, submodule repositories, wiki orchestration and remote provider transport remain separate work. Initial supported workspaces are Linux ext4/XFS on LUKS and Windows EFS; other storage configurations fail closed. See GIT-SNAPSHOTS.md.
+
+After native acceptance, the next task is remote acquisition into verified encrypted workspaces plus explicit LFS/wiki/submodule inventory and transfer policy, before hosting metadata adapters.

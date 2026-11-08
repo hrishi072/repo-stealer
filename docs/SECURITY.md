@@ -1,6 +1,6 @@
 # Encrypted storage and backup security
 
-Implemented in `repo-stealer-vault`, format version 1, experimental storage format; local Git snapshot increment targets `0.1.0-alpha.2`. This describes actual behavior; Auto-lock UI, password changes, recovery codes and indexed metadata remain future work. The application has not had an independent security review.
+Implemented in `repo-stealer-vault`, format version 1, experimental storage format; local Git snapshot increment targets `0.1.0-alpha.2`. This describes actual behavior; auto-lock UI, password changes, recovery codes and indexed metadata remain future work. The application has not had an independent security review.
 
 ## Keys and encryption
 

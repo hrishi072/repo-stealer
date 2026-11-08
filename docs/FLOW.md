@@ -24,3 +24,13 @@ Backup: freeze logical snapshot -> stream authenticated manifest and objects -> 
 `Vault::backup -> verify all objects -> write bounded public envelope + encrypted archive -> finish age -> verify on-disk archive and nested objects in ciphertext-only staging -> persist without overwrite`. `verify_backup` and `restore` use the same strict parser; restore reserves a new root only after verification, renames staged encrypted `data` into it, and publishes the lock file.
 
 Explicit plaintext export verifies the object first, creates the requested final output exclusively and streams a second verified read. It intentionally writes plaintext and can leave a partial plaintext export after process termination; storage/backup operations never use plaintext staging.
+
+## Implemented local Git path
+
+`main -> git::run -> Workspace::open -> vault unlock -> capture/restore`. Workspace verification is OS-backed and runs before Git or plaintext staging. CLI cancellation shares an atomic flag with command polling and vault stream adapters.
+
+Capture: source layout/config/ref/HEAD inventory -> isolated reftable source view with read-only object alternate -> full bundle -> independent materialization/fsck/ref comparison -> source inventory recheck -> versioned snapshot stream -> vault catalog commit.
+
+Restore: authenticate vault entry into encrypted session -> bounded manifest parser -> bundle prerequisite check -> new reftable database -> transactional direct/symbolic refs and HEAD -> full fsck and inventory equality -> encryption tree check -> platform-aware immutable-file flush -> no-replace directory publication inside workspace.
+
+Git stdout/stderr and all temp/HOME/config paths stay in that session; ordinary errors do not print raw Git diagnostics. Existing source, vault snapshot names and destination directories are never overwritten. See GIT-SNAPSHOTS.md for fidelity, OS encryption and crash boundaries.

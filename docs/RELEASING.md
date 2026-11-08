@@ -27,3 +27,7 @@ Public release assets are independently downloadable without Actions artifact st
 ## Verified first release
 
 `v0.1.0-alpha.1` is published as a prerelease with six executable/package assets and SHA256SUMS. The signed tag resolves to `3eacf7fea3a40bca2cc9aa1cd2c21d95eb94dcd7`; GitHub reports the implementation commits as verified. [Release](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.1), [successful tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42484519465). The workflow removed its own temporary draft after publication.
+
+## Git snapshot increment
+
+The alpha.2 source adds verified encrypted workspaces and local full-history Git capture/restore. Native tests provision real disposable LUKS storage on Linux and initialize EFS on Windows; jobs exchange Git-containing backups in addition to the original storage fixture. Both native and reciprocal Git restore checks passed before tagging: https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 . Installed Git 2.48+ is a runtime prerequisite for Git commands; packages do not bundle Git or provision user LUKS volumes. See GIT-SNAPSHOTS.md for supported filesystems and scope.
