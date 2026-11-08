@@ -31,3 +31,5 @@ Public release assets are independently downloadable without Actions artifact st
 ## Git snapshot increment
 
 The alpha.2 source adds verified encrypted workspaces and local full-history Git capture/restore. Native tests provision real disposable LUKS storage on Linux and initialize EFS on Windows; jobs exchange Git-containing backups in addition to the original storage fixture. Both native and reciprocal Git restore checks passed before tagging: https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 . Installed Git 2.48+ is a runtime prerequisite for Git commands; packages do not bundle Git or provision user LUKS volumes. See GIT-SNAPSHOTS.md for supported filesystems and scope.
+
+Published [v0.1.0-alpha.2](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.2) after the [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42488695094) passed quality, native LUKS/EFS tests, reciprocal Git restores, all CLI packages, signature verification, publication and cleanup. Tag resolves to `b190f12`; implementation commits and the tag are signed with the existing personal SSH key.
