@@ -25,7 +25,7 @@ class Options(ArgOptions):
 def native_driver():
     if os.name != "nt":
         return shutil.which("WebKitWebDriver")
-    for path in [shutil.which("msedgedriver"),
+    for path in [os.environ.get("RS_EDGE_DRIVER"), shutil.which("msedgedriver"),
                  str(pathlib.Path(os.environ.get("EDGEWEBDRIVER", "C:/SeleniumWebDrivers/EdgeDriver")) / "msedgedriver.exe"),
                  "C:/WebDrivers/Edge/msedgedriver.exe"]:
         if path and pathlib.Path(path).is_file():

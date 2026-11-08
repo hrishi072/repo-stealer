@@ -32,7 +32,7 @@ def copy_contents(path):
     shutil.copytree(ROOT / "docs", path / "docs")
     (path / "BUILD-INFO.txt").write_text(
         f"Repo Stealer CLI {VERSION}\nCommit: {os.environ.get('GITHUB_SHA', 'local')}\n"
-        "Experimental encrypted storage/backup and local Git snapshot CLI. Git 2.48+ and a verified encrypted workspace are required for Git commands. No provider migration or desktop UI yet.\n"
+        "Experimental encrypted storage/backup and local Git snapshot CLI. Git 2.48+ and a verified encrypted workspace are required for Git commands. No provider migration yet. This asset is the CLI; desktop installers are separate.\n"
         "Source license: LicenseRef-Proprietary. No open-source grant.\n", encoding="utf-8")
 
 

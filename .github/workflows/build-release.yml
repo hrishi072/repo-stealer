@@ -117,7 +117,7 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             application: apps/desktop/src-tauri/target/release/repo-stealer-desktop
-            bundles: deb,rpm,appimage
+            bundles: deb,appimage
           - os: windows-2022
             platform: windows
             application: apps/desktop/src-tauri/target/release/repo-stealer-desktop.exe
@@ -133,21 +133,39 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
+      - name: Identify desktop compiler cache
+        id: compiler
+        shell: bash
+        run: echo "version=$(rustc -V | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+            !apps/desktop/src-tauri/target/release/bundle/**
+          key: desktop-${{ runner.os }}-${{ steps.compiler.outputs.version }}-${{ hashFiles('Cargo.lock', 'apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: desktop-${{ runner.os }}-${{ steps.compiler.outputs.version }}-
       - if: runner.os == 'Linux'
         name: Install desktop build and native automation dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 cryptsetup
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 cryptsetup rpm desktop-file-utils
       - run: npm --prefix apps/desktop ci --no-audit --no-fund
       - run: npm --prefix apps/desktop run build
       - run: npm --prefix apps/desktop test
-      - name: Build native desktop and installers
+      - name: Build native desktop
         working-directory: apps/desktop
         env:
           CARGO_BUILD_JOBS: '2'
-        run: npm run tauri build -- --bundles ${{ matrix.bundles }} -- --locked
+        run: npm run tauri build -- --no-bundle -- --locked
       - run: cargo install tauri-driver --version 2.0.6 --locked
+        env:
+          CARGO_TARGET_DIR: apps/desktop/src-tauri/target/driver
       - run: python -m pip install selenium==4.52.0
+      - if: runner.os == 'Windows'
+        name: Match automation driver to installed WebView2 runtime
+        run: python scripts/prepare_webview_driver.py
       - if: runner.os == 'Linux'
         run: python scripts/ci_workspace.py create
       - if: runner.os == 'Linux'
@@ -158,6 +176,9 @@ jobs:
         run: python scripts/test_desktop_native.py ${{ matrix.application }}
       - if: always() && runner.os == 'Linux'
         run: python scripts/ci_workspace.py destroy
+      - name: Bundle native desktop installers
+        working-directory: apps/desktop
+        run: npm run tauri bundle -- --bundles ${{ matrix.bundles }}
       - run: python scripts/package_desktop.py
       - if: github.event_name != 'pull_request'
         name: Transfer desktop installers through temporary draft
