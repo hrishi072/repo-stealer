@@ -1,5 +1,6 @@
 use repo_stealer_core::{compare, RefChange, RefSnapshot};
 use std::{env, fs::File, io::Read, process::ExitCode};
+mod git;
 mod vault;
 
 // Bound input allocation. This prototype handles fixture snapshots, not bulk imports.
@@ -19,6 +20,12 @@ fn read_snapshot(path: &std::ffi::OsStr) -> Result<RefSnapshot, String> {
 
 fn run() -> Result<(), String> {
     let args: Vec<_> = env::args_os().skip(1).collect();
+    if args.first().is_some_and(|a| a == "workspace") {
+        return git::run_workspace(&args[1..]);
+    }
+    if args.first().is_some_and(|a| a == "git") {
+        return git::run(&args[1..]);
+    }
     if args.len() == 1 && args[0] == "--version" {
         println!("repo-stealer {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
@@ -27,7 +34,7 @@ fn run() -> Result<(), String> {
         return vault::run(&args[1..]);
     }
     if args.len() == 1 && (args[0] == "--help" || args[0] == "-h") {
-        println!("{}", vault::HELP);
+        println!("{}\n\n{}", vault::HELP, git::HELP);
         return Ok(());
     }
     if args.len() != 3 || args[0] != "plan" {

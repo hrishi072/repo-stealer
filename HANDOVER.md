@@ -1,5 +1,18 @@
 # Handover
 
+## 2026-11-08 — encrypted Git working storage and local snapshots
+
+**Done:** Added verified workspaces (Linux ext4/XFS on LUKS, Windows EFS), local full-history Git capture/restore, independent bundle/object verification, exact refs/symbolic refs/HEAD, reftable output and no-replace publication. Git environment/temp/config/hooks are isolated. Added cancellation/timeouts, source-change checks and native encrypted-filesystem/cross-OS tests. Git 2.48+ required; no source/provider credentials or production repositories touched.
+
+**Validation:** Local unit/build/Clippy checks in progress. Real LUKS/EFS integration and cross-OS Git restoration will be recorded after native CI. Developer workstation does not provide a verified supported working volume; no bypass was used to claim a local encrypted end-to-end run.
+
+**Risks:** Linux initially accepts only ext4/XFS LUKS; Windows requires EFS (not BitLocker-only/Home editions without EFS). OS filesystem keys are separate from portable vault keys. External LFS payloads, submodule repositories, worktree files, reflogs/unreachable history and hosting metadata are outside snapshot scope. Source must be quiescent; captured snapshots are full, not incremental/resumable Git transfers. EFS leaves some filesystem metadata visible; reftable keeps branch names in encrypted files.
+
+**Next:** Finish native encrypted-workspace tests, push signed commits and record results. Then add remote acquisition/LFS/wiki/provider capabilities without weakening workspace verification.
+
+Read first: docs/GIT-SNAPSHOTS.md, docs/SECURITY.md, docs/DECISIONS.md. Preserve signed tags, source repositories and existing destination paths.
+
+
 ## 2026-11-08 — encrypted storage and release increment
 
 **Done:** Implemented age-encrypted immutable objects and bounded encrypted catalog, exclusive locking, same-identity portable backup/verify/restore, explicit plaintext export, typed passphrase input and a committed synthetic compatibility fixture. Added Linux/Windows native CI, reciprocal fixture restores, CLI packaging and tag-triggered prereleases. Created private GitHub repo hrishi072/repo-stealer and local personal SSH signing configuration following Clash of Bots.

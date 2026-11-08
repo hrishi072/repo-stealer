@@ -71,6 +71,16 @@ jobs:
       - name: Read the committed format fixture
         run: python scripts/test_cli.py ${{ matrix.binary }} --restore-fixture tests/fixtures/portable-v1.rsbackup
       - if: runner.os == 'Linux'
+        name: Provision isolated CI LUKS image
+        run: |
+          sudo apt-get update && sudo apt-get install -y cryptsetup
+          python scripts/ci_workspace.py create
+      - name: Full-history Git on verified encrypted storage
+        run: python scripts/test_git.py ${{ matrix.binary }} --fixture-out fixture/git-portable.rsbackup
+      - if: always() && runner.os == 'Linux'
+        name: Unmount and inspect raw encrypted image
+        run: python scripts/ci_workspace.py destroy
+      - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm desktop-file-utils
       - run: python scripts/package.py
       - if: runner.os == 'Linux'
@@ -92,7 +102,8 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: |
           cp fixture/portable.rsbackup "fixture/fixture-$PLATFORM.rsbackup"
-          gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup"
+          cp fixture/git-portable.rsbackup "fixture/git-$PLATFORM.rsbackup"
+          gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup" "fixture/git-$PLATFORM.rsbackup"
 
   interoperability:
     if: github.event_name != 'pull_request'
@@ -125,12 +136,24 @@ jobs:
             gh release download "$STAGING_TAG" --pattern '*.exe' --dir packages
           fi
           gh release download "$STAGING_TAG" --pattern "fixture-$OTHER.rsbackup" --dir fixture
+          gh release download "$STAGING_TAG" --pattern "git-$OTHER.rsbackup" --dir fixture
+      - if: runner.os == 'Linux'
+        name: Provision encrypted cross-OS restore storage
+        run: |
+          sudo apt-get update && sudo apt-get install -y cryptsetup
+          python scripts/ci_workspace.py create
       - if: runner.os == 'Linux'
         run: |
           tar -xzf packages/*linux*.tar.gz
           python scripts/test_cli.py repo-stealer-*/repo-stealer --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
+          python scripts/test_git.py repo-stealer-*/repo-stealer --restore-fixture fixture/git-${{ matrix.other }}.rsbackup
       - if: runner.os == 'Windows'
-        run: python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
+        run: |
+          python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
+          python scripts/test_git.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/git-${{ matrix.other }}.rsbackup
+      - if: always() && runner.os == 'Linux'
+        name: Inspect raw encrypted cross-OS storage
+        run: python scripts/ci_workspace.py destroy
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -32,7 +32,7 @@ def copy_contents(path):
     shutil.copytree(ROOT / "docs", path / "docs")
     (path / "BUILD-INFO.txt").write_text(
         f"Repo Stealer CLI {VERSION}\nCommit: {os.environ.get('GITHUB_SHA', 'local')}\n"
-        "Experimental encrypted storage/backup CLI. No Git transfers or desktop UI yet.\n"
+        "Experimental encrypted storage/backup and local Git snapshot CLI. Git 2.48+ and a verified encrypted workspace are required for Git commands. No provider migration or desktop UI yet.\n"
         "Source license: LicenseRef-Proprietary. No open-source grant.\n", encoding="utf-8")
 
 
@@ -75,7 +75,7 @@ BuildArch: x86_64
 Source0: repo-stealer
 %global debug_package %{{nil}}
 %description
-Encrypted local objects and same-key backups. No Git transport or desktop UI yet.
+Encrypted local objects, same-key backups and verified local Git snapshots.
 %install
 install -D -m 0755 %{{SOURCE0}} %{{buildroot}}/usr/bin/repo-stealer
 %files

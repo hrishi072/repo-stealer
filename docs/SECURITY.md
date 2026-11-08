@@ -1,6 +1,6 @@
 # Encrypted storage and backup security
 
-Implemented in `repo-stealer-vault`, format version 1, experimental release `0.1.0-alpha.1`. This describes actual behavior; Git working-volume management, auto-lock UI, password changes, recovery codes and indexed metadata remain future work. The application has not had an independent security review.
+Implemented in `repo-stealer-vault`, format version 1, experimental storage format; local Git snapshot increment targets `0.1.0-alpha.2`. This describes actual behavior; Auto-lock UI, password changes, recovery codes and indexed metadata remain future work. The application has not had an independent security review.
 
 ## Keys and encryption
 
@@ -40,9 +40,11 @@ Backup holds the vault lock, verifies objects, writes a random restrictive tempo
 
 The committed synthetic fixture in `tests/fixtures` is a compatibility vector, not a production backup. Native CI exchanges Linux- and Windows-produced archives. Historical formats need compatibility readers before any future version is removed. External security review and recovery testing remain requirements before recommending this for irreplaceable sole copies.
 
-## Git working-storage boundary (not implemented)
+## Git working-storage boundary
 
-This milestone stores supplied bytes; it never runs Git. Native Git writes plaintext packs/indexes/config and LFS caches while working, so enabling future Git transfers requires verified encrypted working storage or another reviewed encrypted object integration. Do not silently stage repositories in ordinary temporary folders and delete them afterwards. Linux LUKS/fscrypt and Windows BitLocker/EFS feasibility, custom CA/SSH credential files and crash leftovers still need platform-specific tests before transfers are enabled.
+Local Git capture/restore now requires OS-verified encrypted staging: Linux ext4/XFS on LUKS or Windows EFS. All app-created Git objects, bundles, manifests, subprocess stdout/stderr, HOME/config and temporary files stay within that workspace. The app rejects arbitrary temp directories and provides no trust/bypass option. Git 2.48+ is required for reftable and transactional symbolic refs; source configuration/hooks are not imported into app-created repositories. The sanitized view borrows object bytes read-only, then an independent object database verifies bundle completeness before vault publication.
+
+Windows EFS does not hide every filesystem metadata field; reftable keeps ref names inside encrypted files. Native source Git paths/objects are already user-provided data and are not automatically encrypted or deleted by capture. Restores publish only within the verified workspace, with no overwrite and no working-tree checkout. LUKS provisioning/keys and EFS recovery keys are OS/user responsibilities, separate from the portable age key. Full platform requirements and failure/recovery behavior: [Git snapshots](GIT-SNAPSHOTS.md).
 
 ## Threats and controls
 

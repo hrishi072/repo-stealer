@@ -1,6 +1,4 @@
-Experimental CLI milestone: encrypted local object storage, encrypted catalog,
-same-identity portable backups, offline verification and restore. Git transfers
-and a desktop interface are not implemented in this release.
+Experimental CLI milestone: encrypted storage, same-identity backups and full-history local Git capture/restore. Git commands require installed Git 2.48+ and verified encrypted working storage: ext4/XFS on LUKS for Linux, EFS for Windows. Restores create verified new bare repositories. Provider migrations and a desktop interface remain future work. LFS payloads, submodule repositories and hosting metadata are outside Git snapshot scope.
 
 Assets include Linux x86_64 DEB, RPM, AppImage and portable archive, plus Windows
 x86_64 EXE and ZIP. AppImage is a terminal application. Windows binaries are not

@@ -12,5 +12,7 @@ path = "src/main.rs"
 [dependencies]
 repo-stealer-core = { path = "../repo-stealer-core" }
 repo-stealer-vault = { path = "../repo-stealer-vault" }
+repo-stealer-git = { path = "../repo-stealer-git" }
 rpassword = "7.3"
 zeroize = "1.8"
+ctrlc = "3.4"

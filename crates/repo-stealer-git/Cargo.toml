@@ -1,0 +1,20 @@
+[package]
+name = "repo-stealer-git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+process-wrap = { version = "=10.0.1", default-features = false, features = ["std", "process-group", "job-object"] }
+repo-stealer-vault = { path = "../repo-stealer-vault" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3.15"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

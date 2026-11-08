@@ -2,7 +2,7 @@
 
 A local-first project for a desktop application for migrating, archiving, and eventually synchronizing repositories across GitHub and GitLab, including enterprise/self-hosted instances.
 
-**Status: experimental encrypted storage/backup CLI + read-only Git planning core.** Vaults and portable backups are encrypted with the same underlying key. No desktop UI, provider connections, Git transfer engine, or encrypted Git working-volume management exists yet. The storage format has not had an independent security review.
+**Status: experimental encrypted storage/backup CLI + read-only Git planning core.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. Desktop UI, provider connections, remote migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
 
 ## Start here
 
@@ -10,6 +10,7 @@ A local-first project for a desktop application for migrating, archiving, and ev
 - [Implementation sequence and acceptance gates](docs/ROADMAP.md)
 - [Existing script audit](docs/LEGACY-AUDIT.md)
 - [Encryption and backup design](docs/SECURITY.md)
+- [Encrypted Git snapshots and platform requirements](docs/GIT-SNAPSHOTS.md)
 - [Product workflow and migration fidelity](docs/PRODUCT.md)
 - [Decisions and alternatives](docs/DECISIONS.md)
 - [Verification and rollback](docs/TESTING.md)
@@ -53,3 +54,15 @@ repo-stealer vault export ./restored-vault repository-snapshot ./restored.bundle
 Import reads your existing source file and leaves it unchanged. Only explicit export writes plaintext. Vault operations and backup/restore use ciphertext-only temporary files. `list` deliberately displays decrypted logical names in your terminal. No hosting tokens or SSH keys are captured automatically. Treat all imported bytes as archive content; do not import credentials unless you intend to include them in backups.
 
 Automation can supply the passphrase through stdin using `--password-stdin` (one passphrase followed by EOF). Keep the pipe/secret source protected; no password environment variable or argv option exists. Lost passphrases cannot be reset by this application. There is no password-change or separate recovery-code feature yet. See [format and security boundaries](docs/SECURITY.md).
+
+## Full-history local Git snapshots
+
+Installed Git 2.48+ and verified encrypted working storage are required. Linux currently accepts ext4/XFS on an already mounted LUKS volume; Windows `workspace init` creates an EFS-encrypted directory. Unsupported or unverified storage is rejected.
+
+```sh
+repo-stealer workspace init /mnt/already-encrypted/rs-work
+repo-stealer git capture ./my-vault project-history ./source-repo --work-root /mnt/already-encrypted/rs-work
+repo-stealer git restore ./my-vault project-history /mnt/already-encrypted/rs-work/restored.git --work-root /mnt/already-encrypted/rs-work
+```
+
+Restore creates a new bare reftable repository with verified refs, HEAD and complete reachable Git object history. LFS payloads, external submodule repositories and hosting metadata need separate capture. See [platform setup, fidelity and recovery behavior](docs/GIT-SNAPSHOTS.md).

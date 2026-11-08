@@ -21,9 +21,9 @@ Usage:
 Vault commands prompt for a passphrase. Add --password-stdin for automation
 (one passphrase, followed by EOF; never put passwords in argv or environment).
 Export writes plaintext to your chosen path. Inputs remain at their source.
-Storage and backups create no plaintext temporary files. No Git transfers yet.";
+Storage and backups create no plaintext temporary files. Local Git snapshot commands are listed below.";
 
-fn password(stdin: bool, confirm: bool) -> Result<SecretString, String> {
+pub(crate) fn password(stdin: bool, confirm: bool) -> Result<SecretString, String> {
     if stdin {
         let mut value = zeroize::Zeroizing::new(String::new());
         io::stdin()
