@@ -1,0 +1,129 @@
+name: Build, verify and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Check declared minimum compiler
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          cargo +1.88.0 check --workspace --locked
+
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+            binary: target/release/repo-stealer
+          - os: windows-2022
+            platform: windows
+            binary: target/release/repo-stealer.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo test --workspace --release --locked -- --test-threads=1
+      - run: cargo build --release --locked -p repo-stealer-cli
+      - name: Native CLI, crash and portability fixture
+        run: python scripts/test_cli.py ${{ matrix.binary }} --fixture-out fixture/portable.rsbackup
+      - name: Read the committed format fixture
+        run: python scripts/test_cli.py ${{ matrix.binary }} --restore-fixture tests/fixtures/portable-v1.rsbackup
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm desktop-file-utils
+      - run: python scripts/package.py
+      - if: runner.os == 'Linux'
+        name: Install Debian package
+        run: |
+          sudo dpkg -i dist/*.deb
+          repo-stealer --version
+      - if: runner.os == 'Linux'
+        name: Install RPM on Fedora and openSUSE
+        run: |
+          docker run --rm -v "$PWD/dist:/packages:ro" fedora:43 bash -c 'dnf install -y /packages/*.rpm && repo-stealer --version'
+          docker run --rm -v "$PWD/dist:/packages:ro" opensuse/leap:16.0 sh -c 'zypper --non-interactive --no-gpg-checks install /packages/*.rpm && repo-stealer --version'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fixture-${{ matrix.platform }}
+          path: fixture/portable.rsbackup
+          retention-days: 3
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+
+  interoperability:
+    needs: native
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+            other: windows
+          - os: windows-2022
+            platform: windows
+            other: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: packages-${{ matrix.platform }}
+          path: packages
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fixture-${{ matrix.other }}
+          path: fixture
+      - if: runner.os == 'Linux'
+        run: |
+          tar -xzf packages/*linux*.tar.gz
+          python scripts/test_cli.py repo-stealer-*/repo-stealer --restore-fixture fixture/portable.rsbackup
+      - if: runner.os == 'Windows'
+        run: python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/portable.rsbackup
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [quality, interoperability]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: dist
+      - name: Validate version and write checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python scripts/release_checksums.py
+      - name: Publish experimental CLI release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --prerelease --generate-notes --title "Repo Stealer $RELEASE_TAG (experimental CLI)" --notes-file .github/release-notes.md

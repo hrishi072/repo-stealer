@@ -1,0 +1,13 @@
+/target/
+/node_modules/
+/dist/
+/tmp/
+*.rsvault
+*.rsbackup
+!/tests/fixtures/portable-v1.rsbackup
+/fixture/
+__pycache__/
+*.env
+.env*
+migration.log
+

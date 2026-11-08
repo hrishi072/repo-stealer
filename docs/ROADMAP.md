@@ -1,0 +1,41 @@
+# Delivery sequence
+
+Keep each loop reviewable: define one behavior, implement, run relevant tests, inspect results, update the handover and decisions. Milestones below are ordered by risk/dependency, not a promise of completion dates. No installer should imply unimplemented migration/encryption support.
+
+| Order | Deliverable | Done means |
+| --- | --- | --- |
+| 0 | Audit, architecture, product flow, read-only planner | Source findings documented; runnable native prototype; deterministic comparison tests. **Initial slice implemented.** |
+| 1 | Encryption and packaging feasibility | On Linux and Windows: create/unlock vault, write/read an authenticated test blob and encrypted database; demonstrate Git scratch data stays encrypted after forced termination; prove viable working-volume prerequisites; build minimal Tauri packages for each format. No real repository credentials needed. |
+| 2 | Offline backup/restore vertical slice | Create `.rsbackup` with same-master-key recovery; restore into a new location; fail correctly on wrong key, corruption, truncation and malicious entries; stable versioned golden fixtures and disk-full recovery. |
+| 3 | Single repository Git capture/restore | Local fixtures first; full non-shallow history, heads/tags, empty repos, LFS, wiki and submodule inventory; read-only preflight; ref/object verification; cancellation/restart. No destructive destination update. |
+| 4 | First connected migration | GitHub.com -> GitLab Self-Managed using disposable test projects; explicit create and push, identity/scopes preflight, verified Git/LFS transfer, encrypted report and resumable steps. Reproduce legacy direction safely before expanding. |
+| 5 | Metadata and provider matrix | Issues/comments/labels/milestones, then PR/MR evidence/reviews and releases/assets; archive + supported recreation; versioned capability tests for all four directions and enterprise endpoints. Report every gap. |
+| 6 | Complete desktop workflow and bulk queue | Vault/instances/repository picker/plan/run/report/backup screens; accessible UI, virtualized lists, bounded pools, measured responsiveness, pause/retry/reconciliation. Build alongside core after milestone 1, without hiding incomplete behavior. |
+| 7 | Release hardening | Install/uninstall and offline launch on supported distributions/Windows, signed packages, dependency/SBOM/license checks, backup review and restore drill; publish compatibility table and measured performance. |
+| 8 | Update detection and one-way sync | Compare both instances to last verified baseline, detect divergence, no deletion propagation by default, user-reviewed plans and loop-safe identity mapping. Bidirectional automatic sync is a separate design. |
+
+## Best next task
+
+**Next: verified encrypted Git working storage, then local Git capture/restore.** Encrypted object/catalog storage and portable backups are implemented; native CI and release results are recorded in HANDOVER.md. A fast migration UI on top of plaintext scratch files would require a later redesign. The current bounded encrypted catalog avoids a database dependency. Evaluate the working-volume boundary with a Git fixture before enabling transfers; do not start by writing every provider endpoint.
+
+Follow that with one complete local Git fixture migration. Use the same fixture for the first GitHub -> GitLab test, then expand metadata one entity type at a time. This is the shortest path to evidence that the difficult parts work together.
+
+## Compatibility and release matrix
+
+Initial CPU baseline proposal: x86_64; ARM64 later after explicit testing. Linux primary distributions: Debian/Ubuntu for `.deb`, Fedora/openSUSE for `.rpm`, and those same environments for AppImage. Select minimum distro/glibc/WebKitGTK and Windows versions after milestone 1, not from the developer workstation alone. Linux packages need native Git/LFS and crypto/webview dependencies resolved; Windows must account for WebView2 and Git/SSH/LFS distribution. Test SSH/custom CAs, paths with spaces and Unicode, corporate proxies, high-DPI and offline unlock/restore. AppImage is not a promise of universal Linux compatibility.
+
+Use Linux and Windows runners for native builds; do not claim a Linux-built CLI is a tested Windows executable. Release assets eventually include `.deb`, `.rpm`, `.AppImage`, `.exe`, `.msi`, checksums, signatures and a documented recovery-format version. Signing identities and any publication destination remain user-owned inputs for release time.
+
+## Assumptions still open
+
+- Desktop app + optional headless CLI is the intended product; no hosted backend or telemetry by default.
+- "All platforms" currently means the requested Linux and Windows families; macOS and CPU expansion are later targets.
+- Source access is authorized; the application migrates only what the account can read. Source repositories remain intact by default.
+- External verified encrypted working storage may be an initial prerequisite. Automatic provisioning, supported OS minimums and exact crypto bindings need evidence.
+- Commercial/open-source license and signing identity are undecided; no license grant or branding clearance has been assumed.
+- User/organization identity mapping, historical PR fidelity and server feature availability are negotiated per instance/version, never assumed universal.
+
+
+## 2026-11-08 storage increment
+
+Milestone 2 core backup/restore behavior and ciphertext-only object storage are implemented using age. Milestone 1 remains partial: native package/portability CI is provided, but encrypted Git working volumes, indexed metadata and a Tauri shell are not implemented. CLI packages must not be described as desktop installers.
