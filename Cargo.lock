@@ -951,8 +951,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-stealer-app"
+version = "0.1.0-alpha.3"
+dependencies = [
+ "repo-stealer-git",
+ "repo-stealer-vault",
+ "serde",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "repo-stealer-cli"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "ctrlc",
  "repo-stealer-core",
@@ -964,11 +975,11 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-core"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 [[package]]
 name = "repo-stealer-git"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "anyhow",
  "libc",
@@ -982,7 +993,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-vault"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "age",
  "anyhow",

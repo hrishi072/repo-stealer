@@ -1,9 +1,9 @@
 [workspace]
-members = ["crates/repo-stealer-core", "crates/repo-stealer-cli", "crates/repo-stealer-vault", "crates/repo-stealer-git"]
+members = ["crates/repo-stealer-core", "crates/repo-stealer-cli", "crates/repo-stealer-vault", "crates/repo-stealer-git", "crates/repo-stealer-app"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 edition = "2021"
 rust-version = "1.88"
 license = "LicenseRef-Proprietary"

@@ -16,9 +16,9 @@ git push origin v0.1.0-alpha.1
 gh run list --workflow build-release.yml
 ```
 
-Use a new version tag for subsequent releases; do not move signed published tags. Tags must exactly match `v` + the Cargo version. The pipeline always marks these experimental CLI releases as prereleases. Its asset checks reject missing DEB, RPM, AppImage, EXE or ZIP outputs and include SHA256SUMS. Version tags are signed locally; Windows Authenticode/package signing and binary attestations are not implemented.
+Use a new version tag for subsequent releases; do not move signed published tags. Tags must exactly match `v` + the Cargo version; the desktop npm and Tauri versions must agree. The pipeline always marks these experimental releases as prereleases. Its asset checks reject missing DEB, RPM, AppImage, EXE or ZIP outputs and include SHA256SUMS. Version tags are signed locally; Windows Authenticode/package signing and binary attestations are not implemented.
 
-Current assets are terminal applications, not a Tauri desktop GUI or Windows MSI installer. Linux builds use Ubuntu 22.04 as the glibc baseline. Windows builds use the native MSVC target on Windows Server 2022. Only x86_64 is packaged. Package checks establish the tested environments, not every Linux distribution or Windows version. No administrator access is required for the portable executable/vault itself; DEB/RPM installation uses normal package-manager permissions.
+Alpha.1/alpha.2 assets are terminal applications. Alpha.3 adds distinctly named Tauri desktop DEB/RPM/AppImage and Windows NSIS installers. Desktop native WebKitGTK/WebView2 workflow tests gate publication alongside the CLI checks; Windows MSI is not built. Linux builds use Ubuntu 22.04 as the glibc baseline. Windows builds use the native MSVC target on Windows Server 2022. Only x86_64 is packaged. Package checks establish the tested environments, not every Linux distribution or Windows version. No administrator access is required for the portable executable/vault itself; DEB/RPM installation uses normal package-manager permissions.
 
 If publication fails after artifacts build, inspect the run and rerun the failed job after resolving the cause. Do not bypass failed storage/authentication tests or publish a release manually from an unverified partial matrix.
 

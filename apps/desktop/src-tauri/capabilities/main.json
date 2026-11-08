@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Local main window. Files and operations are mediated by typed Rust commands.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

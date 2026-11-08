@@ -51,6 +51,7 @@ pub fn capture(
     workspace: &Workspace,
     options: &Options,
 ) -> Result<()> {
+    options.report("Checking encrypted workspace and source");
     let session = workspace.session()?;
     let runner = Runner::new(session.path(), options)?;
     runner.check_version()?;
@@ -76,6 +77,7 @@ pub fn capture(
     // storage through this read-only alternate, never a local clone hardlink.
     fs::write(view.join("objects/info/alternates"), format!("{objects}\n"))?;
     install_refs(&runner, &view, &manifest, session.path())?;
+    options.report("Capturing complete Git history");
     let bundle = session.path().join("history.bundle");
     if manifest.bundle {
         let mut args: Vec<&OsStr> = vec![
@@ -93,6 +95,7 @@ pub fn capture(
     }
     // Verify against an independent object database with no source alternates.
     let verified = session.path().join("verified.git");
+    options.report("Verifying independent Git objects and refs");
     materialize(&runner, &verified, &manifest, &bundle, session.path())?;
     ensure!(inspect_source(&runner, &source)? == manifest, "source refs, HEAD or repository mode changed during capture; retry from a quiescent source");
     workspace.verify_tree(session.path())?;
@@ -110,6 +113,7 @@ pub fn capture(
     } else {
         Box::new(io::Cursor::new(prefix))
     };
+    options.report("Encrypting verified snapshot into vault");
     vault.put(
         name,
         Cancellable {
@@ -127,6 +131,7 @@ pub fn restore(
     workspace: &Workspace,
     options: &Options,
 ) -> Result<()> {
+    options.report("Checking encrypted restore destination");
     // Publication is one no-replace rename on the same verified filesystem.
     // Limit output to a direct child so no unchecked ancestor/symlink can escape.
     let leaf = destination
@@ -150,6 +155,7 @@ pub fn restore(
     runner.check_version()?;
     let snapshot = session.path().join("snapshot");
     let mut file = File::create(&snapshot)?;
+    options.report("Authenticating encrypted Git snapshot");
     vault
         .read(
             name,
@@ -183,10 +189,12 @@ pub fn restore(
         );
     }
     let restored = session.path().join("repository.git");
+    options.report("Restoring and verifying Git objects and refs");
     materialize(&runner, &restored, &manifest, &bundle, session.path())?;
     workspace.verify_tree(session.path())?;
     sync_tree(&restored)?;
     options.check()?;
+    options.report("Publishing verified repository");
     publish(&restored, &destination)?;
     #[cfg(unix)]
     File::open(workspace.root())?.sync_all()?;

@@ -1,0 +1,17 @@
+[package]
+name = "repo-stealer-desktop"
+version = "0.1.0-alpha.3"
+edition = "2021"
+rust-version = "1.88"
+license = "LicenseRef-Proprietary"
+
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+repo-stealer-app = { path = "../../../crates/repo-stealer-app" }
+

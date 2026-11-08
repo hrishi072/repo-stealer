@@ -10,3 +10,12 @@ __pycache__/
 *.env
 .env*
 migration.log
+apps/desktop/node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+apps/desktop/test-results/
+apps/desktop/playwright-report/
+apps/desktop/*.tsbuildinfo
+apps/desktop/src-tauri/gen/
+
+/dist-desktop/

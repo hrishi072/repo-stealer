@@ -17,16 +17,23 @@ use std::{
 pub struct Options {
     pub timeout: Duration,
     pub cancelled: Arc<AtomicBool>,
+    pub progress: Option<Arc<dyn Fn(&'static str) + Send + Sync>>,
 }
 impl Default for Options {
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(3600),
             cancelled: Arc::new(AtomicBool::new(false)),
+            progress: None,
         }
     }
 }
 impl Options {
+    pub fn report(&self, phase: &'static str) {
+        if let Some(progress) = &self.progress {
+            progress(phase);
+        }
+    }
     pub(crate) fn check(&self) -> Result<()> {
         ensure!(
             !self.cancelled.load(Ordering::Relaxed),

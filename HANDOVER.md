@@ -1,5 +1,13 @@
 # Handover
 
+## 2026-11-08 — desktop UI in progress
+
+**Done locally:** Tauri/React desktop foundation connected to a shared Rust application service. Vault create/unlock/lock, verified workspace setup, local capture/Git restore and same-key backup/verify/restore have typed commands. Background jobs expose actual phase progress; keys stay in Rust. Paginated catalog, safe text rendering, keyboard-accessible modals and an explicit browser-preview boundary are implemented.
+
+**Validation:** 18 root Linux unit tests, Clippy and production frontend build passed; five headless browser tests passed. Native shell/installer and real WebKitGTK/WebView2 workflow tests are being added to CI and are not yet observed passing. Developer machine lacks WebKitGTK build dependencies. No alpha.3 release claimed. See docs/DESKTOP.md.
+
+**Next:** Resolve native CI, retain EFS/LUKS enforcement, then continue secure remote acquisition and external-content fidelity. Remote UI connections remain unavailable until backed by a tested transport. Sign and push commits; publish only after the full acceptance matrix passes.
+
 ## 2026-11-08 — encrypted Git working storage and local snapshots
 
 **Done:** Added verified workspaces (Linux ext4/XFS on LUKS, Windows EFS), local full-history Git capture/restore, independent bundle/object verification, exact refs/symbolic refs/HEAD, reftable output and no-replace publication. Git environment/temp/config/hooks are isolated. Added cancellation/timeouts, source-change checks and native encrypted-filesystem/cross-OS tests. Git 2.48+ required; no source/provider credentials or production repositories touched.

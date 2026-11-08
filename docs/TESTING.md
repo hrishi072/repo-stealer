@@ -68,3 +68,9 @@ Coverage: refs/symbolic refs/HEAD and complete reachable object-ID inventory; me
 Initial Linux native capture passed but restore exposed reopening read-only Git packs for writing. The fix uses read-only fsync handles on Unix and temporarily clears/restores the read-only attribute around Windows FlushFileBuffers. Windows EFS initialization passed; the initial Git invocation failure triggered normalization of Windows Git environment paths and phase-specific errors. Final native run passed on Linux (17 unit tests) and Windows (15 unit tests, excluding Unix-only cases), including both full Git integration suites and reciprocal cross-OS Git restores: https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 .
 
 Alpha.2 release acceptance repeated the complete matrix successfully, including signed-tag verification and package publication: https://github.com/hrishi072/repo-stealer/actions/runs/42488695094 .
+
+## Desktop increment
+
+`npm --prefix apps/desktop ci && npm --prefix apps/desktop run build` checks the production renderer. `npm --prefix apps/desktop test` runs five Playwright browser tests covering honest preview gating, typed IPC requests, passphrase clearing, focus preservation while polling, untrusted names rendered as text, locking and minimum-width keyboard/modal navigation. Mocked IPC is limited to browser tests and is not native execution evidence.
+
+The new desktop CI matrix builds native installers, then uses tauri-driver + Selenium to drive the real WebKitGTK/WebView2 window through create vault -> verified encrypted workspace -> capture synthetic full history -> Git restore/object equality -> same-key backup -> lock -> standalone vault recovery. Linux uses the existing disposable LUKS image and raw-image scan, Windows EFS. Native results are pending the first run.

@@ -105,6 +105,67 @@ jobs:
           cp fixture/git-portable.rsbackup "fixture/git-$PLATFORM.rsbackup"
           gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup" "fixture/git-$PLATFORM.rsbackup"
 
+  desktop:
+    needs: staging
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+            application: apps/desktop/src-tauri/target/release/repo-stealer-desktop
+            bundles: deb,rpm,appimage
+          - os: windows-2022
+            platform: windows
+            application: apps/desktop/src-tauri/target/release/repo-stealer-desktop.exe
+            bundles: nsis
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - if: runner.os == 'Linux'
+        name: Install desktop build and native automation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 cryptsetup
+      - run: npm --prefix apps/desktop ci --no-audit --no-fund
+      - run: npm --prefix apps/desktop run build
+      - run: npm --prefix apps/desktop test
+      - name: Build native desktop and installers
+        working-directory: apps/desktop
+        env:
+          CARGO_BUILD_JOBS: '2'
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
+      - run: cargo install tauri-driver --version 2.0.6 --locked
+      - run: python -m pip install selenium==4.52.0
+      - if: runner.os == 'Linux'
+        run: python scripts/ci_workspace.py create
+      - if: runner.os == 'Linux'
+        name: Native WebKit desktop workflow
+        run: dbus-run-session -- xvfb-run -a python scripts/test_desktop_native.py ${{ matrix.application }}
+      - if: runner.os == 'Windows'
+        name: Native WebView2 desktop workflow
+        run: python scripts/test_desktop_native.py ${{ matrix.application }}
+      - if: always() && runner.os == 'Linux'
+        run: python scripts/ci_workspace.py destroy
+      - run: python scripts/package_desktop.py
+      - if: github.event_name != 'pull_request'
+        name: Transfer desktop installers through temporary draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$STAGING_TAG" dist-desktop/*
+
   interoperability:
     if: github.event_name != 'pull_request'
     needs: [staging, native]
@@ -157,7 +218,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [quality, interoperability]
+    needs: [quality, interoperability, desktop]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -176,16 +237,16 @@ jobs:
         run: |
           git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag "$RELEASE_TAG"
           python scripts/release_checksums.py
-      - name: Publish experimental CLI release
+      - name: Publish experimental desktop and CLI release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" dist/* --verify-tag --prerelease --generate-notes --title "Repo Stealer $RELEASE_TAG (experimental CLI)" --notes-file .github/release-notes.md
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --prerelease --generate-notes --title "Repo Stealer $RELEASE_TAG (desktop and CLI alpha)" --notes-file .github/release-notes.md
 
   cleanup:
     if: always() && github.event_name != 'pull_request' && needs.staging.result == 'success'
-    needs: [staging, quality, native, interoperability, release]
+    needs: [staging, quality, native, desktop, interoperability, release]
     runs-on: ubuntu-22.04
     permissions:
       contents: write

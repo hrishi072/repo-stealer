@@ -2,10 +2,11 @@
 
 A local-first project for a desktop application for migrating, archiving, and eventually synchronizing repositories across GitHub and GitLab, including enterprise/self-hosted instances.
 
-**Status: experimental encrypted storage/backup CLI + read-only Git planning core.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. Desktop UI, provider connections, remote migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
+**Status: experimental encrypted storage/Git CLI and desktop UI under native validation.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The new desktop UI exposes local vault, workspace, snapshot and backup operations. Provider connections, remote migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
 
 ## Start here
 
+- [Desktop setup and UI](docs/DESKTOP.md)
 - [Architecture and stack](docs/ARCHITECTURE.md)
 - [Implementation sequence and acceptance gates](docs/ROADMAP.md)
 - [Existing script audit](docs/LEGACY-AUDIT.md)
@@ -28,7 +29,7 @@ cargo build --release --locked -p repo-stealer-cli
 
 The executable is `target/release/repo-stealer` on Linux and `target/release/repo-stealer.exe` on Windows when built there. It compares two synthetic `git ls-remote --refs` snapshots, preserving destination-only refs and marking changed refs for ancestry checks. The plan command does not execute Git or make changes. Local snapshot comparison cannot establish whether a ref is fast-forward or whether a remote is still unchanged.
 
-Automated CLI packaging targets Linux x86_64 `.deb`, `.rpm`, `.AppImage` and `.tar.gz`, and Windows x86_64 `.exe`/`.zip`. These packages contain a terminal CLI; desktop UI installers/MSI remain future work. Source licensing is undecided; no open-source license grant is made here. See [release process](docs/RELEASING.md).
+Automated CLI packaging targets Linux x86_64 `.deb`, `.rpm`, `.AppImage` and `.tar.gz`, and Windows x86_64 `.exe`/`.zip`. CLI assets remain separate from the new desktop DEB/RPM/AppImage and Windows NSIS installer build. Source licensing is undecided; no open-source license grant is made here. See [release process](docs/RELEASING.md).
 
 
 ## Encrypted storage and portable backup
