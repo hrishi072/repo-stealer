@@ -3,10 +3,10 @@ import argparse
 import os
 import pathlib
 import shutil
-import socket
 import subprocess
 import tempfile
 import time
+import urllib.request
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -39,17 +39,22 @@ def main():
     parser.add_argument("--screenshot", type=pathlib.Path)
     args = parser.parse_args()
     application = args.application.resolve()
-    server = subprocess.Popen(["tauri-driver", "--native-driver", native_driver()],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    server = subprocess.Popen(["tauri-driver", "--native-driver", native_driver()])
     driver = None
     try:
-        for _ in range(200):
+        # The intermediary listens before its native child is necessarily
+        # ready. Wait for both HTTP endpoints, not just the first TCP socket.
+        for _ in range(300):
             try:
-                with socket.create_connection(("127.0.0.1", 4444), timeout=.2):
-                    break
-            except OSError:
-                assert server.poll() is None, server.stderr.read().decode(errors="replace")
+                for port in (4445, 4444):
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/status", timeout=1) as response:
+                        assert response.status == 200
+                break
+            except (OSError, AssertionError):
+                assert server.poll() is None, "WebDriver exited; inspect its inherited diagnostics above"
                 time.sleep(.1)
+        else:
+            raise TimeoutError("Native WebDriver did not become ready")
         options = Options()
         options.set_capability("tauri:options", {"application": str(application)})
         driver = webdriver.Remote(command_executor="http://127.0.0.1:4444", options=options)

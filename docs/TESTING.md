@@ -78,3 +78,7 @@ The new desktop CI matrix builds native installers, then uses tauri-driver + Sel
 The first native desktop run compiled the Linux application and produced a DEB, but Tauri’s RPM bundler rejected `0.1.0-alpha.3` as an RPM Version. Packaging now builds a separate RPM with Version `0.1.0` / Release `0.alpha.3`, and native UI testing runs before installer bundling. Windows and subsequent native workflow results are still pending.
 
 Windows also compiled the desktop executable and NSIS installer. Its first WebDriver session failed before application interactions because Edge driver 156 did not match the installed WebView2 runtime 131. CI now selects a matching driver from Microsoft’s endpoint and checks its Authenticode signer before use. This does not alter the application’s installed runtime.
+
+### 2026-11-09: native driver startup fixes
+
+Run 42495767143 passed quality, both native CLI suites and both reciprocal recovery jobs. Desktop native compilation passed on both OSes, but UI automation did not start: Linux lost its initial WebDriver connection; Windows launched legacy PowerShell with PowerShell 7 module paths and could not load the Authenticode command. The harness now waits for both native/intermediary HTTP status endpoints and inherits driver diagnostics. Signature verification uses the runner’s PowerShell edition and still requires a valid Microsoft signer. Successful native compilation is cached even if a subsequent test fails. Installer publication remains gated on the complete matrix.

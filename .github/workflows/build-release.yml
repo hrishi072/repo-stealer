@@ -137,7 +137,8 @@ jobs:
         id: compiler
         shell: bash
         run: echo "version=$(rustc -V | tr ' ' '-')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        id: desktop_cache
         with:
           path: |
             ~/.cargo/registry
@@ -155,6 +156,7 @@ jobs:
       - run: npm --prefix apps/desktop run build
       - run: npm --prefix apps/desktop test
       - name: Build native desktop
+        id: desktop_build
         working-directory: apps/desktop
         env:
           CARGO_BUILD_JOBS: '2'
@@ -187,6 +189,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh release upload "$STAGING_TAG" dist-desktop/*
+      - if: always() && steps.desktop_build.outcome == 'success' && steps.desktop_cache.outputs.cache-hit != 'true'
+        name: Retain compiled dependencies after test diagnostics
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+            !apps/desktop/src-tauri/target/release/bundle/**
+          key: ${{ steps.desktop_cache.outputs.cache-primary-key }}
 
   interoperability:
     if: github.event_name != 'pull_request'

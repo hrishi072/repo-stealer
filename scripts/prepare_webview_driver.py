@@ -3,6 +3,7 @@ import io
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.error
@@ -43,12 +44,16 @@ with zipfile.ZipFile(io.BytesIO(archive)) as package:
     driver.write_bytes(package.read("msedgedriver.exe"))
 verify = directory / "verify.ps1"
 verify.write_text('''param([string]$Driver)
+$ErrorActionPreference = 'Stop'
+Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
 $signature = Get-AuthenticodeSignature -LiteralPath $Driver
 if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
   throw 'The downloaded WebDriver does not have a valid Microsoft signature'
 }
 ''', encoding="utf-8")
-subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(verify), str(driver)], check=True)
+# GitHub's PowerShell 7 runner exports its module paths. Launch the same
+# PowerShell edition, rather than legacy Windows PowerShell with those paths.
+subprocess.run([shutil.which("pwsh") or "powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(verify), str(driver)], check=True)
 with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
     output.write(f"RS_EDGE_DRIVER={driver}\n")
 print("Prepared Microsoft-signed Edge WebDriver for WebView2", version)
