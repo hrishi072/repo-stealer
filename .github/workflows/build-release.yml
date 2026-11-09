@@ -182,6 +182,12 @@ jobs:
         working-directory: apps/desktop
         run: npm run tauri bundle -- --bundles ${{ matrix.bundles }}
       - run: python scripts/package_desktop.py
+      - if: runner.os == 'Linux'
+        name: Install desktop DEB and launch AppImage
+        run: dbus-run-session -- xvfb-run -a python scripts/test_desktop_packages.py
+      - if: runner.os == 'Windows'
+        name: Install and launch Windows desktop
+        run: python scripts/test_desktop_packages.py
       - if: github.event_name != 'pull_request'
         name: Transfer desktop installers through temporary draft
         shell: bash

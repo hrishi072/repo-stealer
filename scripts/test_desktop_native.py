@@ -37,6 +37,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("application", type=pathlib.Path)
     parser.add_argument("--screenshot", type=pathlib.Path)
+    parser.add_argument("--smoke", action="store_true", help="Only launch and check the installed native UI")
     args = parser.parse_args()
     application = args.application.resolve()
     server = subprocess.Popen(["tauri-driver", "--native-driver", native_driver()])
@@ -82,6 +83,10 @@ def main():
 
         wait.until(lambda _: driver.find_elements(By.CSS_SELECTOR, ".page-heading h1"))
         assert "Browser preview" not in driver.find_element(By.TAG_NAME, "body").text
+        if args.smoke:
+            assert status()["vault"] is None
+            print("Installed native desktop launched with real IPC and a locked vault.")
+            return
         parent = pathlib.Path(os.environ.get("RS_ENCRYPTED_PARENT", tempfile.gettempdir()))
         with tempfile.TemporaryDirectory(prefix="rs-native-ui-") as temporary, tempfile.TemporaryDirectory(prefix="rs-native-encrypted-", dir=parent) as encrypted:
             root = pathlib.Path(temporary)
