@@ -9,6 +9,7 @@ import time
 import urllib.request
 
 from selenium import webdriver
+from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.support.ui import WebDriverWait
@@ -60,10 +61,16 @@ def main():
         options.set_capability("tauri:options", {"application": str(application)})
         driver = webdriver.Remote(command_executor="http://127.0.0.1:4444", options=options)
         driver.set_window_size(1360, 1040)
-        wait = WebDriverWait(driver, 120)
+        wait = WebDriverWait(driver, 120, ignored_exceptions=(StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException))
 
-        def button(text):
-            return wait.until(lambda d: next((element for element in d.find_elements(By.TAG_NAME, "button") if element.text.strip() == text and element.is_enabled()), False))
+        def click(text):
+            def attempt(d):
+                for element in d.find_elements(By.TAG_NAME, "button"):
+                    if element.text.strip() == text and element.is_enabled() and element.is_displayed():
+                        element.click()
+                        return True
+                return False
+            wait.until(attempt)
 
         def fill(label, value):
             element = wait.until(lambda d: d.find_element(By.CSS_SELECTOR, f'input[aria-label="{label}"]'))
@@ -94,41 +101,41 @@ def main():
             work = pathlib.Path(encrypted) / "workspace"
             source = fixture(root / "source")
             password = "synthetic desktop passphrase"
-            button("Create new").click()
+            click("Create new")
             fill("Vault location", vault); fill("Vault passphrase", password); fill("Confirm passphrase", password)
-            button("Create vault").click(); completed()
-            button("Lock vault").click(); wait.until(lambda _: status()["vault"] is None)
-            button("Unlock vault").click(); fill("Vault location", vault); fill("Vault passphrase", password)
+            click("Create vault"); completed()
+            click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
+            click("Unlock vault"); fill("Vault location", vault); fill("Vault passphrase", password)
             # The overview also has an Unlock vault action outside the dialog.
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
-            button("Set up workspace").click(); button("Create workspace").click()
-            fill("Encrypted workspace", work); button("Verify workspace").click(); completed()
-            button("Capture repository").click(); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
+            click("Set up workspace"); click("Create workspace")
+            fill("Encrypted workspace", work); click("Verify workspace"); completed()
+            click("Capture repository"); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
             # The background page action is obscured; select the dialog submit.
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
             completed()
             assert status()["vault"]["itemCount"] == 1
-            button("Repositories").click()
-            button("Restore Git").click()
+            click("Repositories")
+            click("Restore Git")
             destination = work / "restored.git"
-            fill("New bare repository", destination); button("Restore repository").click(); completed()
+            fill("New bare repository", destination); click("Restore repository"); completed()
             assert inventory(source) == inventory(destination)
             encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
                 driver.save_screenshot(str(args.screenshot))
-            button("Backups").click(); button("Create backup").click()
+            click("Backups"); click("Create backup")
             backup = root / "portable.rsbackup"
             fill("Backup destination", backup)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
             completed(); assert backup.is_file()
-            button("Verify backup").click(); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
+            click("Verify backup"); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
-            button("Lock vault").click(); wait.until(lambda _: status()["vault"] is None)
-            button("Restore backup").click(); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
-            button("Restore vault").click(); completed()
+            click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
+            click("Restore backup"); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
+            click("Restore vault"); completed()
             assert status()["vault"]["itemCount"] == 1
-            button("Lock vault").click(); wait.until(lambda _: status()["vault"] is None)
+            click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             print("Native desktop create/unlock, encrypted workspace, capture, Git restore, backup and portable vault recovery passed.")
     finally:
         if driver:

@@ -172,7 +172,7 @@ jobs:
         run: python scripts/ci_workspace.py create
       - if: runner.os == 'Linux'
         name: Native WebKit desktop workflow
-        run: dbus-run-session -- xvfb-run -a python scripts/test_desktop_native.py ${{ matrix.application }}
+        run: xvfb-run -a dbus-run-session -- python scripts/test_desktop_native.py ${{ matrix.application }}
       - if: runner.os == 'Windows'
         name: Native WebView2 desktop workflow
         run: python scripts/test_desktop_native.py ${{ matrix.application }}
@@ -184,7 +184,7 @@ jobs:
       - run: python scripts/package_desktop.py
       - if: runner.os == 'Linux'
         name: Install desktop DEB and launch AppImage
-        run: dbus-run-session -- xvfb-run -a python scripts/test_desktop_packages.py
+        run: xvfb-run -a dbus-run-session -- python scripts/test_desktop_packages.py
       - if: runner.os == 'Windows'
         name: Install and launch Windows desktop
         run: python scripts/test_desktop_packages.py
