@@ -1,5 +1,15 @@
 # Handover
 
+## 2026-11-09 — desktop acceptance and release preparation
+
+**Done:** Fixed native driver readiness/diagnostics, PowerShell edition mismatch, DOM refresh retries and Selenium’s mistaken backup-file upload. The real UI completes vault, verified LUKS/EFS workspace, full-history capture/restore and same-key backup/verify/recovery on both OSes. Produced desktop DEB/RPM/AppImage and Windows NSIS, with distinct package identity and prerelease-safe RPM version mapping. Native compiled dependencies are cached without retaining installer output.
+
+**Validation:** Complete successful run: https://github.com/hrishi072/repo-stealer/actions/runs/42626327189 . Quality, root/native/browser tests, both reciprocal recovery directions, desktop workflows, DEB/AppImage/NSIS launch checks and RPM metadata/digests passed. Windows NSIS uninstall also passed. Installer source tests use synthetic data and real encryption checks; no production repository or credentials were used.
+
+**Release:** Preparing signed v0.1.0-alpha.3; publication remains gated by a fresh full signed-tag run. No published alpha.3 claim yet.
+
+**Next:** Verify tag publication/asset checksums and record evidence, then return to remote acquisition/provider capabilities. Desktop RPM installation on Fedora/openSUSE, OS package signing, ARM64, hosting connections and resumable jobs remain future work. Preserve all existing encryption and no-overwrite gates.
+
 ## 2026-11-08 — desktop UI in progress
 
 **Done locally:** Tauri/React desktop foundation connected to a shared Rust application service. Vault create/unlock/lock, verified workspace setup, local capture/Git restore and same-key backup/verify/restore have typed commands. Background jobs expose actual phase progress; keys stay in Rust. Paginated catalog, safe text rendering, keyboard-accessible modals and an explicit browser-preview boundary are implemented.
