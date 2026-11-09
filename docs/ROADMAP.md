@@ -47,3 +47,7 @@ Published storage/backup alpha: https://github.com/hrishi072/repo-stealer/releas
 Verified encrypted workspaces and local full-history snapshot capture/restore are implemented; native Linux/Windows acceptance and both cross-OS restores passed in https://github.com/hrishi072/repo-stealer/actions/runs/42488129629 . This covers reachable Git object history/refs and safe new bare restore, including empty/detached/SHA-256 repositories. LFS payloads, submodule repositories, wiki orchestration and remote provider transport remain separate work. Initial supported workspaces are Linux ext4/XFS on LUKS and Windows EFS; other storage configurations fail closed. See GIT-SNAPSHOTS.md.
 
 After native acceptance, the next task is remote acquisition into verified encrypted workspaces plus explicit LFS/wiki/submodule inventory and transfer policy, before hosting metadata adapters.
+
+## 2026-11-09 desktop increment
+
+The first local desktop workflow is implemented: vault create/unlock/lock, verified workspace setup, local repository capture/restore, same-key backup/verification/recovery, paginated archive and real job phases. Installer/native acceptance is being completed before alpha.3 publication. This partially implements milestone 6; instance connections, remote migration, durable queueing and metadata screens remain future work. No benchmark or resumable-job claim is made.

@@ -8,8 +8,8 @@ Design proposal, 2026-11-08. Implemented components are explicitly marked below.
 | --- | --- | --- |
 | Core and CLI | Rust workspace | Shared engine, native binaries, bounded memory; more learning/build effort than extending Python. |
 | Desktop | Tauri 2 | Linux/Windows packaging and small shell using system webviews; Linux WebKitGTK and Windows WebView2 need explicit testing. |
-| UI | React + TypeScript + Vite | Productive typed UI and mature tables/forms; no SSR/server needed. TanStack Query for backend query state; virtualized repository/job lists. |
-| Concurrency | Tokio + bounded task queues | Independent Git, API, disk and crypto limits; avoid unbounded parallel work. |
+| UI | React + TypeScript + Vite | Implemented with bounded status polling and paginated catalog queries; no SSR/server. Query libraries and virtualized provider/bulk lists remain future options. |
+| Concurrency | Serialized Rust background worker now; bounded async provider queues later | Desktop operations run off the UI thread and serialize vault access; future network workers need separate limits. |
 | Git transport | Native Git + Git LFS, isolated child processes | Broad compatibility, mature pack negotiation and SSH; signed/versioned sidecars and licenses become release responsibilities. Evaluate libgit2/gix only if benchmarks justify replacing Git. |
 | Provider APIs | reqwest + serde, explicit GitHub/GitLab adapters | Versioned capability negotiation for cloud and user-entered self-hosted endpoints. |
 | Metadata | Encrypted JSON catalog now; indexed database later | 8 MiB bounded snapshot, atomically replaced under a lock; indexed queries can justify SQLCipher later. |
@@ -35,9 +35,9 @@ flowchart TD
     VAULT --> BACKUP[Encrypted .rsbackup writer / restore verifier]
 ```
 
-Core owns validation, plans, conflict rules and job state. Providers own API paging, capabilities and field translation. Git worker owns object transfer and verification. Vault owns keys and persistence. Desktop owns presentation; it never receives raw tokens or keys and cannot run arbitrary shell commands.
+Core owns validation, plans, conflict rules and job state. Providers own API paging, capabilities and field translation. Git worker owns object transfer and verification. Vault owns keys and persistence. Desktop owns presentation; vault identities stay in Rust, passphrases cross typed local IPC transiently, and the renderer cannot run arbitrary shell commands.
 
-**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. Desktop/provider/remote-transfer modules remain planned. See [actual and proposed flow](FLOW.md).
+**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. `repo-stealer-app` provides the shared desktop service, bounded catalog/status APIs and session jobs; `apps/desktop` contains the Tauri 2 shell and React renderer. Provider/remote-transfer modules remain planned. See [actual and proposed flow](FLOW.md).
 
 ## Persistence and job model
 
@@ -59,3 +59,7 @@ Performance targets to validate: UI stays interactive during transfers; no work 
 Current vault layout is `lock` plus `data/vault.key`, `data/catalog.age`, and `data/objects/<random-id>.age`. Names, sizes and hashes reside inside the encrypted catalog; object plaintext binds its random ID and is checked against catalog size/SHA-256. fs2 exclusive locks serialize operations. age handles recipient/file keys, authenticated chunk ordering and stream finalization. See SECURITY.md for exact limits and publication semantics.
 
 Local Git snapshot implementation uses installed Git 2.48+, reftable, isolated config/process groups and strict full-history bundles. Linux accepts ext4/XFS on LUKS; Windows creates/verifies EFS directories. See [Git snapshots](GIT-SNAPSHOTS.md). New dependencies are process-wrap (Unix groups/Windows jobs), ctrlc (CLI cancellation), libc (Linux filesystem/device/atomic rename APIs) and windows-sys (Windows EFS/attribute/atomic rename APIs); locked versions and crate sources are in Cargo.lock.
+
+## Desktop implementation
+
+The native shell is a standalone Cargo workspace so CLI development does not depend on WebKitGTK. The renderer receives summaries, up to 100 requested catalog entries and 20 session jobs. The application service owns the unlocked Vault and a single background operation; Git progress uses fixed phase callbacks and cancellation flags. Session history is not durable or resumable. No provider credentials or connection UI are implemented. Native source and installed-package tests are separate release gates. See [desktop usage and boundaries](DESKTOP.md).
