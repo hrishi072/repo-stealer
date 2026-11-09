@@ -12,6 +12,7 @@ from selenium import webdriver
 from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.options import ArgOptions
+from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
 
 from test_git import encrypted_files, fixture, inventory
@@ -59,11 +60,14 @@ def main():
             raise TimeoutError("Native WebDriver did not become ready")
         options = Options()
         options.set_capability("tauri:options", {"application": str(application)})
-        driver = webdriver.Remote(command_executor="http://127.0.0.1:4444", options=options)
+        # This is a local native driver, not Selenium Grid. Existing backup
+        # paths are text input, not files to upload to a remote test machine.
+        driver = webdriver.Remote(command_executor="http://127.0.0.1:4444", options=options, file_detector=UselessFileDetector())
         driver.set_window_size(1360, 1040)
         wait = WebDriverWait(driver, 120, ignored_exceptions=(StaleElementReferenceException, ElementClickInterceptedException, ElementNotInteractableException))
 
         def click(text):
+            print("Desktop control:", text, flush=True)
             def attempt(d):
                 for element in d.find_elements(By.TAG_NAME, "button"):
                     if element.text.strip() == text and element.is_enabled() and element.is_displayed():
@@ -86,6 +90,7 @@ def main():
             result = wait.until(lambda _: (state if not state["busy"] and state["jobs"][0]["id"] > last_job else False) if (state := status()).get("jobs") else False)
             assert result["jobs"][0]["state"] == "completed", result["jobs"][0]
             last_job = result["jobs"][0]["id"]
+            print("Completed desktop job:", result["jobs"][0]["label"], flush=True)
             return result
 
         wait.until(lambda _: driver.find_elements(By.CSS_SELECTOR, ".page-heading h1"))
