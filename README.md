@@ -4,6 +4,8 @@ A local-first project for a desktop application for migrating, archiving, and ev
 
 **Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Provider connections, remote migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
 
+Download the [alpha.3 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3). Choose `repo-stealer-desktop-*` for the graphical application.
+
 ## Start here
 
 - [Desktop setup and UI](docs/DESKTOP.md)

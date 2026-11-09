@@ -51,3 +51,5 @@ After native acceptance, the next task is remote acquisition into verified encry
 ## 2026-11-09 desktop increment
 
 The first local desktop workflow is implemented: vault create/unlock/lock, verified workspace setup, local repository capture/restore, same-key backup/verification/recovery, paginated archive and real job phases. Native Linux/Windows workflow, DEB/AppImage/NSIS launch and RPM packaging/digest acceptance passed in run 42626327189; signed-tag publication repeats the complete matrix. This partially implements milestone 6; instance connections, remote migration, durable queueing and metadata screens remain future work. No benchmark or resumable-job claim is made.
+
+Desktop [v0.1.0-alpha.3](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) is published. The [signed-tag acceptance and publication workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642) passed all native, portability, package and signature gates, then removed its temporary draft.

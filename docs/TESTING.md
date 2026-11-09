@@ -94,3 +94,7 @@ The same run reached Windows EFS workspace setup, full-history capture/restore w
 [Run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189) passed all jobs on 2026-11-09: quality/formatting/Clippy/Rust 1.88 core checks; 18 Linux and 16 Windows Rust tests; five browser tests on each OS; real native UI vault create/unlock/lock, LUKS/EFS workspace, capture, exact Git object/ref restore, encrypted backup, verification and standalone vault recovery. Both CLI integration/crash suites and reciprocal cross-OS backup/Git recovery passed again.
 
 Linux produced DEB/RPM/AppImage, installed and opened the DEB, and opened extracted AppImage AppRun with real IPC. Windows produced NSIS, silently installed it, opened its installed executable with real IPC, then uninstalled it. RPM identity and digest checks passed; the desktop RPM has not been installation-tested in Fedora/openSUSE (the separate CLI RPM has). Linux raw LUKS marker scans and Windows EFS inheritance checks remained enabled. No encryption bypass, fake native operations or reduced KDF policy was introduced.
+
+The [alpha.3 signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642) repeated the complete matrix successfully and published four UI packages, six CLI packages and SHA256SUMS. Signature/version verification and temporary-draft cleanup passed.
+
+Post-publication verification downloaded all four UI installers and SHA256SUMS into ignored `dist/releases/v0.1.0-alpha.3/`; every UI asset matched its published SHA-256 digest.

@@ -1,6 +1,6 @@
 # Desktop application
 
-The first desktop increment exposes the existing local encryption and Git engine through Tauri 2 and React. It captures local repositories; hosting connections and remote migration are not available yet. Native Linux and Windows workflow acceptance passed in [run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189), including installed DEB/NSIS and extracted AppImage launch checks. RPM packaging and digest checks passed; desktop RPM installation on Fedora/openSUSE has not yet been exercised. Alpha.3 assets are published by the gated signed-tag workflow.
+The first desktop increment exposes the existing local encryption and Git engine through Tauri 2 and React. It captures local repositories; hosting connections and remote migration are not available yet. Native Linux and Windows workflow acceptance passed in [run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189), including installed DEB/NSIS and extracted AppImage launch checks. RPM packaging and digest checks passed; desktop RPM installation on Fedora/openSUSE has not yet been exercised. [Alpha.3 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) are published following the [successful signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642).
 
 ![Browser preview of the desktop overview](screenshots/desktop-overview.png)
 

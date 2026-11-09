@@ -1,14 +1,14 @@
 # Handover
 
-## 2026-11-09 — desktop acceptance and release preparation
+## 2026-11-09 — published desktop alpha
 
 **Done:** Fixed native driver readiness/diagnostics, PowerShell edition mismatch, DOM refresh retries and Selenium’s mistaken backup-file upload. The real UI completes vault, verified LUKS/EFS workspace, full-history capture/restore and same-key backup/verify/recovery on both OSes. Produced desktop DEB/RPM/AppImage and Windows NSIS, with distinct package identity and prerelease-safe RPM version mapping. Native compiled dependencies are cached without retaining installer output.
 
 **Validation:** Complete successful run: https://github.com/hrishi072/repo-stealer/actions/runs/42626327189 . Quality, root/native/browser tests, both reciprocal recovery directions, desktop workflows, DEB/AppImage/NSIS launch checks and RPM metadata/digests passed. Windows NSIS uninstall also passed. Installer source tests use synthetic data and real encryption checks; no production repository or credentials were used.
 
-**Release:** Preparing signed v0.1.0-alpha.3; publication remains gated by a fresh full signed-tag run. No published alpha.3 claim yet.
+**Release:** Published signed [v0.1.0-alpha.3](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) from `10b066f`. The [tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642) passed all acceptance, signature/version, publication and cleanup jobs. Four UI installers, six CLI assets and SHA256SUMS are available. All four downloaded UI assets matched their published SHA-256 digests; local copies are in ignored `dist/releases/v0.1.0-alpha.3/`. Commits/tag use the existing personal SSH signing key; application packages are not OS code-signed.
 
-**Next:** Verify tag publication/asset checksums and record evidence, then return to remote acquisition/provider capabilities. Desktop RPM installation on Fedora/openSUSE, OS package signing, ARM64, hosting connections and resumable jobs remain future work. Preserve all existing encryption and no-overwrite gates.
+**Next:** Return to remote acquisition/provider capabilities. Desktop RPM installation on Fedora/openSUSE, OS package signing, ARM64, hosting connections and resumable jobs remain future work. Preserve all existing encryption and no-overwrite gates.
 
 ## 2026-11-08 — desktop UI in progress
 
