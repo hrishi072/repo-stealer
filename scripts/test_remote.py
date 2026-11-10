@@ -52,20 +52,47 @@ class HTTPSFixture:
         self.repository = self.export / "project.git"
         self.certificate = self.root / "ca.pem"
         self.key = self.root / "server.key"
+        owner = self
+        crl_route = "/" + os.urandom(8).hex() + ".crl"
+        self.crl_requests = 0
+        class RevocationHandler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *_):
+                pass
+            def do_GET(self):
+                assert self.headers.get("Authorization") is None, "Git credentials reached CRL endpoint"
+                if self.path != crl_route:
+                    self.send_error(404)
+                    return
+                owner.crl_requests += 1
+                data = (owner.root / "fixture.crl").read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/pkix-crl")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+        self.revocation = http.server.ThreadingHTTPServer(("127.0.0.1", 0), RevocationHandler)
+        self.revocation_thread = threading.Thread(target=self.revocation.serve_forever, daemon=True)
         ca_key = self.root / "ca.key"
         server_certificate = self.root / "server.pem"
         request = self.root / "server.csr"
         extensions = self.root / "server.ext"
-        extensions.write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:localhost,IP:127.0.0.1\n")
+        extensions.write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:localhost,IP:127.0.0.1\nauthorityKeyIdentifier=keyid,issuer\nsubjectKeyIdentifier=hash\n" + f"crlDistributionPoints=URI:http://127.0.0.1:{self.revocation.server_port}{crl_route}\n")
+        (self.root / "index.txt").write_text("")
+        (self.root / "crlnumber").write_text("01\n")
+        (self.root / "ca.conf").write_text("[ca]\ndefault_ca=fixture_ca\n[fixture_ca]\ndatabase=index.txt\nprivate_key=ca.key\ncertificate=ca.pem\ndefault_md=sha256\ndefault_crl_days=2\ncrlnumber=crlnumber\ncrl_extensions=crl_ext\n[crl_ext]\nauthorityKeyIdentifier=keyid:always\n")
         # A CA certificate is not a valid TLS end-entity certificate. Keep a
         # separate signed leaf so both Git and strict Rustls verification pass.
         commands = [
-            ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=Repo Stealer fixture CA", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,keyCertSign,cRLSign", "-keyout", str(ca_key), "-out", str(self.certificate)],
+            ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=Repo Stealer fixture CA", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,keyCertSign,cRLSign", "-addext", "subjectKeyIdentifier=hash", "-keyout", str(ca_key), "-out", str(self.certificate)],
             ["req", "-new", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=localhost", "-keyout", str(self.key), "-out", str(request)],
             ["x509", "-req", "-in", str(request), "-CA", str(self.certificate), "-CAkey", str(ca_key), "-CAcreateserial", "-days", "2", "-extfile", str(extensions), "-out", str(server_certificate)],
         ]
+        commands.extend([
+            ["ca", "-gencrl", "-config", "ca.conf", "-out", "fixture.crl.pem"],
+            ["crl", "-in", "fixture.crl.pem", "-outform", "DER", "-out", "fixture.crl"],
+        ])
         for arguments in commands:
-            subprocess.run([openssl(), *arguments], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            subprocess.run([openssl(), *arguments], cwd=self.root, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         backend = pathlib.Path(subprocess.check_output(["git", "--exec-path"], text=True).strip()) / "git-http-backend"
         self.backend = backend if backend.is_file() else backend.with_suffix(".exe")
         assert self.backend.is_file()
@@ -153,6 +180,7 @@ class HTTPSFixture:
         return Handler
 
     def __enter__(self):
+        self.revocation_thread.start()
         self.thread.start()
         return self
 
@@ -160,6 +188,9 @@ class HTTPSFixture:
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=5)
+        self.revocation.shutdown()
+        self.revocation.server_close()
+        self.revocation_thread.join(timeout=5)
 
 
 def command(binary, *args, secrets=None, ok=True):
@@ -206,6 +237,8 @@ def main():
             # This server is synthetic and anonymous: diagnostics contain no
             # application credentials, unlike production Git worker output.
             assert result.returncode==0, result.stderr.decode(errors="replace")
+            if os.name=="nt":
+                assert server.crl_requests>0, "Schannel did not check the fixture CRL"
             print("Anonymous synthetic Git HTTPS certificate-chain probe passed.")
         return
     if args.binary is None:
