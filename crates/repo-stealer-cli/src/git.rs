@@ -166,7 +166,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     Ok(())
 }
 
-fn read_secrets() -> Result<(SecretString, Option<SecretString>), String> {
+pub(crate) fn read_secrets() -> Result<(SecretString, Option<SecretString>), String> {
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Input {

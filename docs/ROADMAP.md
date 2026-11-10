@@ -16,7 +16,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: destination connection preflight and a read-only migration plan, followed by explicit safe writes.** Encrypted vault/backups and local full-history Git capture/restore passed native Linux/Windows and reciprocal restore tests. Read-only HTTPS acquisition is now implemented and accepted on both platforms. Keep encryption, source-change detection and no-overwrite gates when introducing destination operations.
+**Next: explicit, guarded destination creation/push after reviewed plans.** Alpha.5 implements destination connection preflight and read-only plans for GitHub/GitLab cloud and self-hosted instances; write scopes, ancestry, policy enforcement and freshness must be verified before any future execution. Encrypted vault/backups and local full-history Git capture/restore passed native Linux/Windows and reciprocal restore tests. Read-only HTTPS acquisition is now implemented and accepted on both platforms. Keep encryption, source-change detection and no-overwrite gates when introducing destination operations.
 
 Use the verified local Git fixture as the baseline for the first remote capture, then a GitHub -> GitLab test; expand metadata one entity type at a time. This is the shortest path to evidence that the difficult parts work together.
 

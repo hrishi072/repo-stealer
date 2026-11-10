@@ -38,3 +38,7 @@ Catalog queries are paginated and bounded; status polls return summaries and up 
 Windows uses incognito WebView2. Linux creates a new `0700` browser data/cache directory on verified `/dev/shm` tmpfs for every launch and removes it on normal exit. It refuses an ordinary disk fallback. This profile is separate from verified encrypted Git working storage; Git objects and credential stores never use it. tmpfs/process memory can be swapped or included in OS dumps, so the existing OS swap/dump policy still applies. A forced termination can leave an owner-only tmpfs profile until cleanup/reboot. CLI-only operations do not require this browser profile.
 
 Wry’s WebKitGTK incognito path replaces its automation-enabled context, preventing native WebDriver sessions. The Linux RAM-backed context preserves session privacy while allowing the actual release configuration to be tested; no CI-only privacy bypass is used.
+
+## Migration plans
+
+The Migration plans page reads existing GitHub/GitLab cloud or self-hosted destinations with transient credentials and optional private CA trust. It shows normalized identity, permission caveats, policy coverage, blockers and paginated head/tag comparisons. No Apply control or destination mutation exists. Plans stay in memory and clear on lock/new preparation; they are not vault backup contents. See [migration plans](MIGRATION-PLANS.md).

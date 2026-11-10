@@ -59,6 +59,15 @@ pub enum Action {
         token: Option<Passphrase>,
         ca_file: Option<String>,
     },
+    PreparePlan {
+        name: String,
+        provider: repo_stealer_migration::Provider,
+        instance: Option<String>,
+        repository: String,
+        token: Option<Passphrase>,
+        username: Option<String>,
+        ca_file: Option<String>,
+    },
     RestoreGit {
         name: String,
         destination: String,
@@ -85,6 +94,7 @@ impl Action {
             Self::CheckWorkspace { .. } => "Verify encrypted workspace",
             Self::CaptureLocal { .. } => "Capture repository",
             Self::CaptureRemote { .. } => "Capture HTTPS repository",
+            Self::PreparePlan { .. } => "Prepare read-only migration plan",
             Self::RestoreGit { .. } => "Restore Git repository",
             Self::CreateBackup { .. } => "Create encrypted backup",
             Self::VerifyBackup { .. } => "Verify encrypted backup",
@@ -94,7 +104,10 @@ impl Action {
     fn cancellable(&self) -> bool {
         matches!(
             self,
-            Self::CaptureLocal { .. } | Self::CaptureRemote { .. } | Self::RestoreGit { .. }
+            Self::CaptureLocal { .. }
+                | Self::CaptureRemote { .. }
+                | Self::RestoreGit { .. }
+                | Self::PreparePlan { .. }
         )
     }
     fn needs_vault(&self) -> bool {
@@ -103,6 +116,7 @@ impl Action {
             Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
                 | Self::RestoreGit { .. }
+                | Self::PreparePlan { .. }
                 | Self::CreateBackup { .. }
         )
     }
@@ -115,7 +129,10 @@ impl Action {
     fn needs_workspace(&self) -> bool {
         matches!(
             self,
-            Self::CaptureLocal { .. } | Self::CaptureRemote { .. } | Self::RestoreGit { .. }
+            Self::CaptureLocal { .. }
+                | Self::CaptureRemote { .. }
+                | Self::RestoreGit { .. }
+                | Self::PreparePlan { .. }
         )
     }
 }
@@ -169,6 +186,7 @@ pub struct Status {
     pub busy: bool,
     pub jobs: Vec<Job>,
     pub remote_capture: bool,
+    pub plan: Option<repo_stealer_migration::Summary>,
 }
 
 struct Inner {
@@ -179,6 +197,7 @@ struct Inner {
     next_id: u64,
     busy: bool,
     cancelled: Option<Arc<AtomicBool>>,
+    plan: Option<repo_stealer_migration::Plan>,
 }
 
 pub struct Engine {
@@ -200,6 +219,7 @@ impl Engine {
                 next_id: 1,
                 busy: false,
                 cancelled: None,
+                plan: None,
             }),
         }
     }
@@ -216,6 +236,7 @@ impl Engine {
             busy: inner.busy,
             jobs: inner.jobs.clone(),
             remote_capture: true,
+            plan: inner.plan.as_ref().map(|p| p.summary.clone()),
         })
     }
     pub fn lock(&self) -> Result<(), String> {
@@ -226,6 +247,7 @@ impl Engine {
         if inner.busy {
             return Err("Finish or cancel the active job before locking the vault.".into());
         }
+        inner.plan = None;
         inner.vault = None;
         inner.summary = None;
         // The generic activity trail can remain visible while locked, but
@@ -267,6 +289,37 @@ impl Engine {
                 .collect(),
         })
     }
+    pub fn plan_rows(&self, query: &str, offset: usize, limit: usize) -> Result<PlanPage, String> {
+        if query.len() > 256 || !(1..=100).contains(&limit) {
+            return Err("Invalid plan query.".into());
+        }
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| "application state unavailable")?;
+        if inner.summary.is_none() {
+            return Err("Unlock a vault first.".into());
+        }
+        let plan = inner
+            .plan
+            .as_ref()
+            .ok_or("Prepare a migration plan first.")?;
+        let query = query.to_lowercase();
+        let matches: Vec<_> = plan
+            .rows
+            .iter()
+            .filter(|row| row.name.to_lowercase().contains(&query))
+            .collect();
+        Ok(PlanPage {
+            total: matches.len(),
+            rows: matches
+                .into_iter()
+                .skip(offset)
+                .take(limit)
+                .cloned()
+                .collect(),
+        })
+    }
     pub fn cancel(&self) -> Result<(), String> {
         let mut inner = self
             .inner
@@ -298,6 +351,9 @@ impl Engine {
         }
         if action.needs_workspace() && inner.workspace.is_none() {
             return Err("Verify encrypted Git working storage first.".into());
+        }
+        if matches!(action, Action::PreparePlan { .. }) {
+            inner.plan = None;
         }
         let id = inner.next_id;
         inner.next_id += 1;
@@ -359,6 +415,14 @@ impl Engine {
                 inner.workspace = workspace;
                 inner.busy = false;
                 inner.cancelled = None;
+                let result = result.map(|outcome| match outcome {
+                    Outcome::Done => None,
+                    Outcome::Capture(report) => Some(report),
+                    Outcome::Plan(plan) => {
+                        inner.plan = Some(*plan);
+                        None
+                    }
+                });
                 if let Some(job) = inner.jobs.iter_mut().find(|job| job.id == id) {
                     job.finished_at = Some(now());
                     match result {
@@ -397,125 +461,171 @@ impl Engine {
     }
 }
 
+#[derive(Serialize)]
+pub struct PlanPage {
+    pub rows: Vec<repo_stealer_migration::Row>,
+    pub total: usize,
+}
+enum Outcome {
+    Done,
+    Capture(CaptureProvenance),
+    Plan(Box<repo_stealer_migration::Plan>),
+}
+
 fn perform(
     action: Action,
     vault: &mut Option<Vault>,
     path: &mut Option<String>,
     workspace: &mut Option<WorkspaceStatus>,
     options: &Options,
-) -> Result<Option<CaptureProvenance>, String> {
-    let result =
-        || -> Result<Option<CaptureProvenance>, Box<dyn std::error::Error + Send + Sync>> {
-            match action {
-                Action::CreateVault {
-                    path: value,
-                    passphrase,
-                } => {
-                    *vault = Some(Vault::create(&checked_path(&value)?, secret(passphrase)?)?);
-                    *path = Some(value);
-                }
-                Action::UnlockVault {
-                    path: value,
-                    passphrase,
-                } => {
-                    *vault = Some(Vault::open(&checked_path(&value)?, secret(passphrase)?)?);
-                    *path = Some(value);
-                }
-                Action::CheckWorkspace { path, create } => {
-                    let verified = if create {
-                        Workspace::init(&checked_path(&path)?)?
-                    } else {
-                        Workspace::open(&checked_path(&path)?)?
-                    };
-                    *workspace = Some(WorkspaceStatus {
-                        path: verified.root().to_string_lossy().into(),
-                        encryption: format!("{:?}", verified.encryption()),
-                    });
-                }
-                Action::CaptureLocal { name, source } => {
-                    let root = Workspace::open(Path::new(
-                        &workspace.as_ref().ok_or("workspace required")?.path,
-                    ))?;
-                    capture(
-                        vault.as_mut().ok_or("vault required")?,
-                        &name,
-                        &checked_path(&source)?,
-                        &root,
-                        options,
-                    )?;
-                }
-                Action::CaptureRemote {
-                    name,
-                    url,
-                    username,
-                    token,
-                    ca_file,
-                } => {
-                    let url = RemoteUrl::parse(&url)?;
-                    let credentials =
-                        match (username, token) {
-                            (None, None) => None,
-                            (Some(username), Some(token)) => Some(Credentials {
-                                username,
-                                token: secret(token)?,
-                            }),
-                            _ => return Err(
-                                "Supply both a username and token, or choose anonymous capture."
-                                    .into(),
-                            ),
-                        };
-                    let ca_file = ca_file.as_deref().map(checked_path).transpose()?;
-                    let root = Workspace::open(Path::new(
-                        &workspace.as_ref().ok_or("workspace required")?.path,
-                    ))?;
-                    return Ok(Some(capture_remote(
-                        vault.as_mut().ok_or("vault required")?,
-                        &name,
-                        &url,
-                        credentials,
-                        ca_file.as_deref(),
-                        &root,
-                        options,
-                    )?));
-                }
-                Action::RestoreGit { name, destination } => {
-                    let root = Workspace::open(Path::new(
-                        &workspace.as_ref().ok_or("workspace required")?.path,
-                    ))?;
-                    restore(
-                        vault.as_ref().ok_or("vault required")?,
-                        &name,
-                        &checked_path(&destination)?,
-                        &root,
-                        options,
-                    )?;
-                }
-                Action::CreateBackup { destination } => {
-                    vault
-                        .as_ref()
-                        .ok_or("vault required")?
-                        .backup(&checked_path(&destination)?)?;
-                }
-                Action::VerifyBackup { path, passphrase } => {
-                    Vault::verify_backup(&checked_path(&path)?, secret(passphrase)?)?;
-                }
-                Action::RestoreBackup {
-                    path: input,
-                    destination,
-                    passphrase,
-                } => {
-                    let password = secret(passphrase)?;
-                    Vault::restore(
-                        &checked_path(&input)?,
-                        &checked_path(&destination)?,
-                        password.clone(),
-                    )?;
-                    *vault = Some(Vault::open(&checked_path(&destination)?, password)?);
-                    *path = Some(destination);
-                }
+) -> Result<Outcome, String> {
+    let result = || -> Result<Outcome, Box<dyn std::error::Error + Send + Sync>> {
+        match action {
+            Action::CreateVault {
+                path: value,
+                passphrase,
+            } => {
+                *vault = Some(Vault::create(&checked_path(&value)?, secret(passphrase)?)?);
+                *path = Some(value);
             }
-            Ok(None)
-        };
+            Action::UnlockVault {
+                path: value,
+                passphrase,
+            } => {
+                *vault = Some(Vault::open(&checked_path(&value)?, secret(passphrase)?)?);
+                *path = Some(value);
+            }
+            Action::CheckWorkspace { path, create } => {
+                let verified = if create {
+                    Workspace::init(&checked_path(&path)?)?
+                } else {
+                    Workspace::open(&checked_path(&path)?)?
+                };
+                *workspace = Some(WorkspaceStatus {
+                    path: verified.root().to_string_lossy().into(),
+                    encryption: format!("{:?}", verified.encryption()),
+                });
+            }
+            Action::CaptureLocal { name, source } => {
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                capture(
+                    vault.as_mut().ok_or("vault required")?,
+                    &name,
+                    &checked_path(&source)?,
+                    &root,
+                    options,
+                )?;
+            }
+            Action::CaptureRemote {
+                name,
+                url,
+                username,
+                token,
+                ca_file,
+            } => {
+                let url = RemoteUrl::parse(&url)?;
+                let credentials = match (username, token) {
+                    (None, None) => None,
+                    (Some(username), Some(token)) => Some(Credentials {
+                        username,
+                        token: secret(token)?,
+                    }),
+                    _ => {
+                        return Err(
+                            "Supply both a username and token, or choose anonymous capture.".into(),
+                        )
+                    }
+                };
+                let ca_file = ca_file.as_deref().map(checked_path).transpose()?;
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                return Ok(Outcome::Capture(capture_remote(
+                    vault.as_mut().ok_or("vault required")?,
+                    &name,
+                    &url,
+                    credentials,
+                    ca_file.as_deref(),
+                    &root,
+                    options,
+                )?));
+            }
+            Action::PreparePlan {
+                name,
+                provider,
+                instance,
+                repository,
+                token,
+                username,
+                ca_file,
+            } => {
+                let destination = repo_stealer_migration::Destination::new(
+                    provider,
+                    instance.as_deref(),
+                    &repository,
+                )?;
+                let access = token
+                    .map(|token| {
+                        secret(token).map(|token| repo_stealer_migration::Access {
+                            token,
+                            git_username: username,
+                        })
+                    })
+                    .transpose()?;
+                let ca = ca_file.as_deref().map(checked_path).transpose()?;
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                return Ok(Outcome::Plan(Box::new(repo_stealer_migration::prepare(
+                    vault.as_ref().ok_or("vault required")?,
+                    &name,
+                    &destination,
+                    access,
+                    ca.as_deref(),
+                    &root,
+                    options,
+                )?)));
+            }
+            Action::RestoreGit { name, destination } => {
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                restore(
+                    vault.as_ref().ok_or("vault required")?,
+                    &name,
+                    &checked_path(&destination)?,
+                    &root,
+                    options,
+                )?;
+            }
+            Action::CreateBackup { destination } => {
+                vault
+                    .as_ref()
+                    .ok_or("vault required")?
+                    .backup(&checked_path(&destination)?)?;
+            }
+            Action::VerifyBackup { path, passphrase } => {
+                Vault::verify_backup(&checked_path(&path)?, secret(passphrase)?)?;
+            }
+            Action::RestoreBackup {
+                path: input,
+                destination,
+                passphrase,
+            } => {
+                let password = secret(passphrase)?;
+                Vault::restore(
+                    &checked_path(&input)?,
+                    &checked_path(&destination)?,
+                    password.clone(),
+                )?;
+                *vault = Some(Vault::open(&checked_path(&destination)?, password)?);
+                *path = Some(destination);
+            }
+        }
+        Ok(Outcome::Done)
+    };
     result().map_err(|e| e.to_string())
 }
 

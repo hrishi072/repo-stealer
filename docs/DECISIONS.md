@@ -69,3 +69,7 @@ Inventory external content at default HEAD with explicit bounds: gitlinks plus a
 The Linux desktop requires writable `/dev/shm` tmpfs. This is browser/session RAM storage, never Git scratch or a replacement for LUKS. tmpfs swap and OS dumps remain under the documented OS policy. Private Unix Git session directories and newly restored bare roots also use explicit `0700` permissions rather than depending on parent permissions or umask.
 
 Source evidence: [Wry WebKitGTK context selection](https://github.com/tauri-apps/wry/blob/wry-v0.57.1/src/webkitgtk/mod.rs), [Wry browser data manager](https://github.com/tauri-apps/wry/blob/wry-v0.57.1/src/webkitgtk/web_context.rs).
+
+## Alpha.5: destination preflight without write authorization
+
+A separate migration crate owns GET-only provider API normalization and conservative Git ref previews. Clone URLs are bound to the selected instance/path, not trusted from responses. The same transient token reads API/Git state. Authentication of the full source archive precedes network access; API/ref identity is rechecked, while policy listing coverage is explicitly observational and not atomic or per-ref authorization. Role reports do not prove token scope. Unavailable targets do not imply empty/createable repositories. Plans remain session-only and paginated rather than entering job status as large ref lists. Existing LUKS/EFS gates and vault formats remain intact. See [migration plans](MIGRATION-PLANS.md).

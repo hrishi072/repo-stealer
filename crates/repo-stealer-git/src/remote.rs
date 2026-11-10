@@ -273,11 +273,33 @@ fn encode_userinfo(output: &mut String, value: &str) {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Advertisement {
-    refs: BTreeMap<String, String>,
-    head: Option<String>,
-    symbolic_head: Option<String>,
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Advertisement {
+    pub refs: BTreeMap<String, String>,
+    pub head: Option<String>,
+    pub symbolic_head: Option<String>,
+}
+
+/// Read advertised refs only. Never fetches objects, pushes, or configures a
+/// persistent remote. Credentials use the same encrypted session boundary as
+/// acquisition and are destroyed with that session.
+pub fn observe_remote(
+    url: &RemoteUrl,
+    credentials: Option<Credentials>,
+    ca_file: Option<&Path>,
+    workspace: &Workspace,
+    options: &Options,
+) -> Result<Advertisement> {
+    let session = workspace.session()?;
+    let mut runner = Runner::new(session.path(), options)?;
+    runner.check_version()?;
+    configure_https(session.path(), url, credentials, ca_file)?;
+    workspace.verify_tree(session.path())?;
+    runner.enable_https();
+    let observed = advertised(&runner, url)?;
+    workspace.verify_tree(session.path())?;
+    Ok(observed)
 }
 fn advertised(runner: &Runner, url: &RemoteUrl) -> Result<Advertisement> {
     let bytes = runner.run(None, &[OsStr::new("ls-remote"), OsStr::new("--symref"), OsStr::new("--"), OsStr::new(url.as_str())])

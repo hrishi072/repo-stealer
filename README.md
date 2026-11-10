@@ -2,7 +2,7 @@
 
 A local-first project for a desktop application for migrating, archiving, and eventually synchronizing repositories across GitHub and GitLab, including enterprise/self-hosted instances.
 
-**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. Provider APIs, destination migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
+**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. Read-only GitHub/GitLab destination preflight and migration plans support cloud and self-hosted instances. Destination writes and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
 
 Download the [alpha.4 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4). Choose `repo-stealer-desktop-*` for the graphical application.
 
@@ -15,6 +15,7 @@ Download the [alpha.4 desktop installers and CLI packages](https://github.com/hr
 - [Existing script audit](docs/LEGACY-AUDIT.md)
 - [Encryption and backup design](docs/SECURITY.md)
 - [Encrypted Git snapshots and platform requirements](docs/GIT-SNAPSHOTS.md)
+- [Read-only destination plans](docs/MIGRATION-PLANS.md)
 - [Product workflow and migration fidelity](docs/PRODUCT.md)
 - [Decisions and alternatives](docs/DECISIONS.md)
 - [Verification and rollback](docs/TESTING.md)

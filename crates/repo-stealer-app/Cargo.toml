@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+repo-stealer-migration = { path = "../repo-stealer-migration" }
 repo-stealer-vault = { path = "../repo-stealer-vault" }
 repo-stealer-git = { path = "../repo-stealer-git" }
 serde = { version = "1.0", features = ["derive"] }

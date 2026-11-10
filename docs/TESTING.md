@@ -120,3 +120,7 @@ The Linux policy uses the production tmpfs profile function, not an automation-o
 [Tagged run 42792675341](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) repeated the complete matrix successfully, verified the SSH-signed version tag, published four desktop plus six CLI assets and SHA256SUMS, and removed its temporary staging draft. The immutable tag resolves to `fe15b634700dfc2087c73f20481832515e58489f`.
 
 All ten packages were downloaded into ignored `dist/releases/v0.1.0-alpha.4/` and independently matched the published SHA-256 digests. A transient CDN download failure was retried without changing the published assets.
+
+## Alpha.5 destination plans
+
+`python scripts/test_migration.py PATH_TO_CLI` runs synthetic GitHub/GitLab API and Git HTTP fixtures on real verified LUKS/EFS (`RS_ENCRYPTED_PARENT` on Linux), including failures, source authentication, stale observations and no-write assertions. Native CLI CI runs it before encrypted-image cleanup. Native desktop acceptance also prepares plans for both providers and checks credential/lock privacy. Browser tests cover page submission/pagination without needing a local native shell. Full acceptance results are recorded in HANDOVER.md; live provider accounts are not used by tests.

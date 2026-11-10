@@ -64,3 +64,7 @@ No source deletion or destructive mirror push is a default action. Remote writes
 ## Desktop session profile
 
 The alpha.4 desktop uses incognito WebView2 on Windows and a fresh owner-only profile on verified `/dev/shm` tmpfs on Linux. Linux refuses normal-disk profile fallback and removes its profile on ordinary exit. The application does not use browser localStorage/sessionStorage for credentials. Git working data and operational credential files remain in separately verified LUKS/EFS storage; browser tmpfs is never accepted as Git working storage. OS swap, dumps, mounted-volume access and forced-termination tmpfs remnants remain OS/session concerns, not guarantees supplied by age encryption. Lock clears decrypted origin/inventory reports from the session activity trail. Unix Git sessions and new restored bare roots explicitly use owner-only directory permissions.
+
+## Read-only migration plans
+
+Destination API access is HTTPS GET only with sensitive in-memory Bearer headers, bounded response bodies, fixed errors, no redirects or proxy inheritance. API clone URLs must match the selected instance/repository before Git is contacted. Git discovery retains encrypted credential scratch and existing process isolation. The complete source object is authenticated before any network request. Plans do not prove ancestry, write scopes, branch/tag policy permission or atomic freshness. CLI JSON is a deliberate plaintext display; desktop plans are memory-only and removed on lock. See [migration plans](MIGRATION-PLANS.md).

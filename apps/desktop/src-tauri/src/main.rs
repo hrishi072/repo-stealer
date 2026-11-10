@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use repo_stealer_app::{Action, Engine, ItemPage, Status};
+use repo_stealer_app::{Action, Engine, ItemPage, PlanPage, Status};
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -19,6 +19,15 @@ fn get_items(
     limit: usize,
 ) -> Result<ItemPage, String> {
     engine.items(&query, offset, limit)
+}
+#[tauri::command]
+fn get_plan_rows(
+    engine: State<'_, Arc<Engine>>,
+    query: String,
+    offset: usize,
+    limit: usize,
+) -> Result<PlanPage, String> {
+    engine.plan_rows(&query, offset, limit)
 }
 #[tauri::command]
 fn start_job(engine: State<'_, Arc<Engine>>, action: Action) -> Result<u64, String> {
@@ -90,6 +99,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_status,
             get_items,
+            get_plan_rows,
             start_job,
             lock_vault,
             cancel_job,

@@ -1,19 +1,21 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { Status } from '../src/api';
 
-async function mockDesktop(page: Page, unlocked = false, workspace = false) {
-  await page.addInitScript(({ unlocked, workspace }) => {
-    const state = { version: '0.1.0-alpha.4', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true };
+async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false) {
+  await page.addInitScript(({ unlocked, workspace, plan }) => {
+    const state:Status = { version: '0.1.0-alpha.5', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true, plan: plan ? {schema:1,observedAt:10,provider:'gitlab',deployment:'self_hosted',instance:'https://git.example/platform/',requestedRepository:'group/sub/repo',sourceName:'history',sourceSha256:'a'.repeat(64),sourceVerification:'authenticated_manifest',actor:{id:1,login:'fixture'},repository:null,policies:[{endpoint:'protected_branches',complete:false,count:0,issue:{code:'access_denied',status:403,retryAfterSeconds:null}}],blockers:[],warnings:['policy_coverage_incomplete_never_assume_unprotected'],apiIssues:[],destinationFingerprint:'b'.repeat(64),destinationHead:null,sourceExcludedRefs:2,destinationExcludedRefs:1,rows:41,counts:{create_candidate:41},executionSupported:false,writeAuthorization:'unproven'} : null };
     const calls: { command: string; args: unknown }[] = [];
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
       if (command === 'get_status') return state;
       if (command === 'get_items') return { items: [{ name: '<img src=x onerror="window.untrustedRan=true">', size: 4096, sha256: 'a'.repeat(64) }], total: 1 };
-      if (command === 'lock_vault') { state.vault = null; return; }
+      if (command === 'get_plan_rows') { const {offset,limit}=args as {offset:number;limit:number}; return {total:41,rows:Array.from({length:Math.min(limit,41-offset)},(_,n)=>({name:`refs/heads/branch-${offset+n}`,sourceOid:'c'.repeat(40),destinationOid:null,change:'create_candidate'}))}; }
+      if (command === 'lock_vault') { state.vault = null; state.plan = null; return; }
       if (command === 'start_job') return 1;
       if (command === 'choose_path') return '/synthetic/chosen';
       throw new Error('Unexpected test command: ' + command);
     } } });
-  }, { unlocked, workspace });
+  }, { unlocked, workspace, plan });
 }
 
 test('browser preview is honest and capture stays gated', async ({ page }) => {
@@ -101,4 +103,40 @@ test('private HTTPS capture submits transient credentials and a custom CA', asyn
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
   expect(await page.content()).not.toContain('synthetic-private-token');
+});
+
+
+test('migration planning sends transient scoped credentials without any apply action', async ({ page }) => {
+  await mockDesktop(page, true, true);
+  await page.goto('/');
+  await page.getByRole('button', {name:'Migration plans',exact:true}).click();
+  await page.getByLabel('Plan source snapshot').fill('history');
+  await page.getByLabel('Destination provider').selectOption('gitlab');
+  await page.getByLabel('Self-hosted instance').check();
+  await page.getByLabel('Destination instance').fill('https://git.example/platform');
+  await page.getByLabel('Destination repository', {exact:true}).fill('group/sub/repo');
+  await page.getByLabel('Destination access token').fill('synthetic-plan-secret');
+  await page.getByLabel('Destination Git username').fill('fixture');
+  await page.getByLabel('Destination CA bundle').fill('/synthetic/ca.pem');
+  await page.getByRole('button',{name:'Prepare read-only plan'}).click();
+  await expect(page.getByLabel('Destination access token')).toHaveValue('');
+  const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);
+  expect(calls.find(call=>call.command==='start_job')?.args.action).toEqual({kind:'prepare_plan',name:'history',provider:'gitlab',instance:'https://git.example/platform',repository:'group/sub/repo',token:'synthetic-plan-secret',username:'fixture',caFile:'/synthetic/ca.pem'});
+  expect(await page.evaluate(()=>localStorage.length+sessionStorage.length)).toBe(0);
+  expect(await page.content()).not.toContain('synthetic-plan-secret');
+});
+
+test('plan refs paginate, unknown policies stay visible, and locking clears metadata', async ({ page }) => {
+  await mockDesktop(page,true,true,true);
+  await page.goto('/');
+  await page.getByRole('button',{name:'Migration plans',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'refs/heads/branch-0',exact:true})).toBeVisible();
+  await expect(page.getByText('Coverage incomplete / unknown',{exact:false})).toBeVisible();
+  await expect(page.getByText('Write authorization unproven',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Next',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'refs/heads/branch-20',exact:true})).toBeVisible();
+  await expect(page.getByRole('cell',{name:'refs/heads/branch-0',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Lock vault',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Migration plan result'})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Prepare read-only plan'})).toBeDisabled();
 });

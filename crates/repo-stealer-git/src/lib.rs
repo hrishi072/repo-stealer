@@ -4,7 +4,10 @@ mod repository;
 mod runner;
 mod workspace;
 
-pub use remote::{capture_remote, CaptureProvenance, Credentials, ExternalInventory, RemoteUrl};
-pub use repository::{capture, restore};
+pub use remote::{
+    capture_remote, observe_remote, Advertisement, CaptureProvenance, Credentials,
+    ExternalInventory, RemoteUrl,
+};
+pub use repository::{capture, restore, snapshot_refs, SnapshotRefs};
 pub use runner::Options;
 pub use workspace::{Encryption, Workspace};

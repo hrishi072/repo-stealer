@@ -18,6 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from test_git import encrypted_files, fixture, inventory
 from test_remote import HTTPSFixture, TOKEN, USERNAME
+from test_migration import ProviderFixture
 
 
 class Options(ArgOptions):
@@ -149,6 +150,32 @@ def main():
                 click("Cancel"); completed("cancelled")
                 assert status()["vault"]["itemCount"] == 2
                 encrypted_files(work)
+            with ProviderFixture(root / "provider-server") as provider_server:
+                click("Migration plans")
+                for provider_name in ("github", "gitlab"):
+                    provider_server.provider=provider_name
+                    provider_server.prefix="/platform" if provider_name=="gitlab" else ""
+                    provider_server.repo_reads=0
+                    from selenium.webdriver.support.ui import Select
+                    Select(driver.find_element(By.CSS_SELECTOR, 'select[aria-label="Destination provider"]')).select_by_value(provider_name)
+                    box=driver.find_element(By.CSS_SELECTOR, '.plan-form input[type="checkbox"]')
+                    if not box.is_selected(): box.click()
+                    fill("Plan source snapshot", "synthetic-desktop-history")
+                    fill("Destination repository", provider_server.project)
+                    fill("Destination instance", provider_server.instance)
+                    fill("Destination access token", TOKEN)
+                    fill("Destination Git username", USERNAME)
+                    fill("Destination CA bundle", provider_server.certificate)
+                    click("Prepare read-only plan")
+                    result=completed()
+                    assert not result["plan"]["blockers"], result["plan"]
+                    assert result["plan"]["rows"]>0 and "rows" not in result["jobs"][0]
+                    assert result["vault"]["itemCount"]==2
+                    assert TOKEN not in json.dumps(result)
+                    wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Migration plan result"]'))
+                    assert driver.find_element(By.CSS_SELECTOR,'input[aria-label="Destination access token"]').get_attribute("value")==""
+                    assert "Write authorization unproven" in driver.find_element(By.TAG_NAME,"body").text
+                encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
                 driver.save_screenshot(str(args.screenshot))
@@ -160,6 +187,7 @@ def main():
             click("Verify backup"); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
+            assert status()["plan"] is None, "Lock retained decrypted migration plan"
             assert all(job["result"] is None for job in status()["jobs"]), "Lock retained decrypted remote provenance"
             click("Restore backup"); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
             click("Restore vault"); completed()

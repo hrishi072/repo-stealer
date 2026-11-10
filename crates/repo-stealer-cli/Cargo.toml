@@ -10,6 +10,7 @@ name = "repo-stealer"
 path = "src/main.rs"
 
 [dependencies]
+repo-stealer-migration = { path = "../repo-stealer-migration" }
 repo-stealer-core = { path = "../repo-stealer-core" }
 repo-stealer-vault = { path = "../repo-stealer-vault" }
 repo-stealer-git = { path = "../repo-stealer-git" }

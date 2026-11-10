@@ -17,6 +17,76 @@ const MAGIC: &[u8; 8] = b"RSGIT001";
 const MANIFEST_LIMIT: usize = 8 * 1024 * 1024;
 const MAX_REFS: usize = 100_000;
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotRefs {
+    pub name: String,
+    pub sha256: String,
+    pub object_format: String,
+    pub refs: BTreeMap<String, String>,
+    pub symbolic_head: Option<String>,
+    pub remote: Option<crate::CaptureProvenance>,
+}
+
+/// Authenticate the entire vault object while retaining only its bounded Git
+/// manifest in memory. No plaintext file and no Git/network operation.
+pub fn snapshot_refs(vault: &Vault, name: &str, options: &Options) -> Result<SnapshotRefs> {
+    options.report("Authenticating source snapshot manifest");
+    let entry = vault
+        .entries()
+        .iter()
+        .find(|e| e.name == name)
+        .context("Snapshot not found")?;
+    struct Prefix {
+        bytes: Vec<u8>,
+        wanted: usize,
+    }
+    impl Write for Prefix {
+        fn write(&mut self, input: &[u8]) -> io::Result<usize> {
+            let mut rest = input;
+            while self.bytes.len() < self.wanted && !rest.is_empty() {
+                let count = rest.len().min(self.wanted - self.bytes.len());
+                self.bytes.extend_from_slice(&rest[..count]);
+                rest = &rest[count..];
+                if self.bytes.len() == 12 && self.wanted == 12 {
+                    let size = u32::from_le_bytes(self.bytes[8..12].try_into().unwrap()) as usize;
+                    if &self.bytes[..8] != MAGIC || !(1..=MANIFEST_LIMIT).contains(&size) {
+                        return Err(io::Error::other("Entry is not a supported Git snapshot"));
+                    }
+                    self.wanted = 12 + size;
+                }
+            }
+            Ok(input.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut prefix = Prefix {
+        bytes: Vec::new(),
+        wanted: 12,
+    };
+    vault.read(
+        name,
+        Cancellable {
+            inner: &mut prefix,
+            options: options.clone(),
+        },
+    )?;
+    let manifest = read_manifest(&mut io::Cursor::new(prefix.bytes))?;
+    Ok(SnapshotRefs {
+        name: name.into(),
+        sha256: entry.sha256.clone(),
+        object_format: manifest.object_format,
+        refs: manifest.refs.into_iter().map(|r| (r.name, r.oid)).collect(),
+        symbolic_head: match manifest.head {
+            Head::Symbolic(name) => Some(name),
+            Head::Detached(_) => None,
+        },
+        remote: manifest.remote,
+    })
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct GitRef {
