@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function mockDesktop(page: Page, unlocked = false, workspace = false) {
   await page.addInitScript(({ unlocked, workspace }) => {
-    const state = { version: '0.1.0-alpha.3', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: false };
+    const state = { version: '0.1.0-alpha.4', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true };
     const calls: { command: string; args: unknown }[] = [];
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
@@ -81,4 +81,24 @@ test('navigation and dialogs stay usable at the minimum desktop width', async ({
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+
+test('private HTTPS capture submits transient credentials and a custom CA', async ({ page }) => {
+  await mockDesktop(page, true, true);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Capture repository', exact: true }).first().click();
+  await page.getByRole('button', { name: 'HTTPS remote', exact: true }).click();
+  await page.getByLabel('Snapshot name', { exact: true }).fill('remote-history');
+  await page.getByLabel('HTTPS clone URL', { exact: true }).fill('https://git.example.invalid/group/repo.git');
+  await page.getByRole('button', { name: 'Username & token', exact: true }).click();
+  await page.getByLabel('Repository username', { exact: true }).fill('synthetic-user');
+  await page.getByLabel('Repository access token', { exact: true }).fill('synthetic-private-token');
+  await page.getByLabel('Custom CA file (optional)', { exact: true }).fill('/synthetic/ca.pem');
+  await page.getByRole('button', { name: 'Capture repository', exact: true }).last().click();
+  const calls = await page.evaluate(() => (window as unknown as { __desktopTestCalls: { command: string; args: { action?: unknown } }[] }).__desktopTestCalls);
+  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind: 'capture_remote', name: 'remote-history', url: 'https://git.example.invalid/group/repo.git', username: 'synthetic-user', token: 'synthetic-private-token', caFile: '/synthetic/ca.pem' });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
+  expect(await page.content()).not.toContain('synthetic-private-token');
 });

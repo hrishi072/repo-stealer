@@ -1,6 +1,8 @@
 //! Platform-independent desktop service. No renderer access to vault keys,
 //! arbitrary shell execution, or implicit filesystem exports.
-use repo_stealer_git::{capture, restore, Options, Workspace};
+use repo_stealer_git::{
+    capture, capture_remote, restore, CaptureProvenance, Credentials, Options, RemoteUrl, Workspace,
+};
 use repo_stealer_vault::{SecretString, Vault};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -27,7 +29,12 @@ impl<'de> Deserialize<'de> for Passphrase {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
 pub enum Action {
     CreateVault {
         path: String,
@@ -44,6 +51,13 @@ pub enum Action {
     CaptureLocal {
         name: String,
         source: String,
+    },
+    CaptureRemote {
+        name: String,
+        url: String,
+        username: Option<String>,
+        token: Option<Passphrase>,
+        ca_file: Option<String>,
     },
     RestoreGit {
         name: String,
@@ -70,6 +84,7 @@ impl Action {
             Self::UnlockVault { .. } => "Unlock vault",
             Self::CheckWorkspace { .. } => "Verify encrypted workspace",
             Self::CaptureLocal { .. } => "Capture repository",
+            Self::CaptureRemote { .. } => "Capture HTTPS repository",
             Self::RestoreGit { .. } => "Restore Git repository",
             Self::CreateBackup { .. } => "Create encrypted backup",
             Self::VerifyBackup { .. } => "Verify encrypted backup",
@@ -77,12 +92,18 @@ impl Action {
         }
     }
     fn cancellable(&self) -> bool {
-        matches!(self, Self::CaptureLocal { .. } | Self::RestoreGit { .. })
+        matches!(
+            self,
+            Self::CaptureLocal { .. } | Self::CaptureRemote { .. } | Self::RestoreGit { .. }
+        )
     }
     fn needs_vault(&self) -> bool {
         matches!(
             self,
-            Self::CaptureLocal { .. } | Self::RestoreGit { .. } | Self::CreateBackup { .. }
+            Self::CaptureLocal { .. }
+                | Self::CaptureRemote { .. }
+                | Self::RestoreGit { .. }
+                | Self::CreateBackup { .. }
         )
     }
     fn needs_locked(&self) -> bool {
@@ -92,7 +113,10 @@ impl Action {
         )
     }
     fn needs_workspace(&self) -> bool {
-        matches!(self, Self::CaptureLocal { .. } | Self::RestoreGit { .. })
+        matches!(
+            self,
+            Self::CaptureLocal { .. } | Self::CaptureRemote { .. } | Self::RestoreGit { .. }
+        )
     }
 }
 
@@ -133,6 +157,7 @@ pub struct Job {
     pub finished_at: Option<u64>,
     pub error: Option<String>,
     pub cancellable: bool,
+    pub result: Option<CaptureProvenance>,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -190,7 +215,7 @@ impl Engine {
             workspace: inner.workspace.clone(),
             busy: inner.busy,
             jobs: inner.jobs.clone(),
-            remote_capture: false,
+            remote_capture: true,
         })
     }
     pub fn lock(&self) -> Result<(), String> {
@@ -283,6 +308,7 @@ impl Engine {
                 finished_at: None,
                 error: None,
                 cancellable: action.cancellable(),
+                result: None,
             },
         );
         inner.jobs.truncate(20);
@@ -331,7 +357,8 @@ impl Engine {
                 if let Some(job) = inner.jobs.iter_mut().find(|job| job.id == id) {
                     job.finished_at = Some(now());
                     match result {
-                        Ok(()) => {
+                        Ok(result) => {
+                            job.result = result;
                             job.state = "completed".into();
                             job.phase = "Completed".into();
                         }
@@ -371,84 +398,119 @@ fn perform(
     path: &mut Option<String>,
     workspace: &mut Option<WorkspaceStatus>,
     options: &Options,
-) -> Result<(), String> {
-    let result = || -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        match action {
-            Action::CreateVault {
-                path: value,
-                passphrase,
-            } => {
-                *vault = Some(Vault::create(&checked_path(&value)?, secret(passphrase)?)?);
-                *path = Some(value);
+) -> Result<Option<CaptureProvenance>, String> {
+    let result =
+        || -> Result<Option<CaptureProvenance>, Box<dyn std::error::Error + Send + Sync>> {
+            match action {
+                Action::CreateVault {
+                    path: value,
+                    passphrase,
+                } => {
+                    *vault = Some(Vault::create(&checked_path(&value)?, secret(passphrase)?)?);
+                    *path = Some(value);
+                }
+                Action::UnlockVault {
+                    path: value,
+                    passphrase,
+                } => {
+                    *vault = Some(Vault::open(&checked_path(&value)?, secret(passphrase)?)?);
+                    *path = Some(value);
+                }
+                Action::CheckWorkspace { path, create } => {
+                    let verified = if create {
+                        Workspace::init(&checked_path(&path)?)?
+                    } else {
+                        Workspace::open(&checked_path(&path)?)?
+                    };
+                    *workspace = Some(WorkspaceStatus {
+                        path: verified.root().to_string_lossy().into(),
+                        encryption: format!("{:?}", verified.encryption()),
+                    });
+                }
+                Action::CaptureLocal { name, source } => {
+                    let root = Workspace::open(Path::new(
+                        &workspace.as_ref().ok_or("workspace required")?.path,
+                    ))?;
+                    capture(
+                        vault.as_mut().ok_or("vault required")?,
+                        &name,
+                        &checked_path(&source)?,
+                        &root,
+                        options,
+                    )?;
+                }
+                Action::CaptureRemote {
+                    name,
+                    url,
+                    username,
+                    token,
+                    ca_file,
+                } => {
+                    let url = RemoteUrl::parse(&url)?;
+                    let credentials =
+                        match (username, token) {
+                            (None, None) => None,
+                            (Some(username), Some(token)) => Some(Credentials {
+                                username,
+                                token: secret(token)?,
+                            }),
+                            _ => return Err(
+                                "Supply both a username and token, or choose anonymous capture."
+                                    .into(),
+                            ),
+                        };
+                    let ca_file = ca_file.as_deref().map(checked_path).transpose()?;
+                    let root = Workspace::open(Path::new(
+                        &workspace.as_ref().ok_or("workspace required")?.path,
+                    ))?;
+                    return Ok(Some(capture_remote(
+                        vault.as_mut().ok_or("vault required")?,
+                        &name,
+                        &url,
+                        credentials,
+                        ca_file.as_deref(),
+                        &root,
+                        options,
+                    )?));
+                }
+                Action::RestoreGit { name, destination } => {
+                    let root = Workspace::open(Path::new(
+                        &workspace.as_ref().ok_or("workspace required")?.path,
+                    ))?;
+                    restore(
+                        vault.as_ref().ok_or("vault required")?,
+                        &name,
+                        &checked_path(&destination)?,
+                        &root,
+                        options,
+                    )?;
+                }
+                Action::CreateBackup { destination } => {
+                    vault
+                        .as_ref()
+                        .ok_or("vault required")?
+                        .backup(&checked_path(&destination)?)?;
+                }
+                Action::VerifyBackup { path, passphrase } => {
+                    Vault::verify_backup(&checked_path(&path)?, secret(passphrase)?)?;
+                }
+                Action::RestoreBackup {
+                    path: input,
+                    destination,
+                    passphrase,
+                } => {
+                    let password = secret(passphrase)?;
+                    Vault::restore(
+                        &checked_path(&input)?,
+                        &checked_path(&destination)?,
+                        password.clone(),
+                    )?;
+                    *vault = Some(Vault::open(&checked_path(&destination)?, password)?);
+                    *path = Some(destination);
+                }
             }
-            Action::UnlockVault {
-                path: value,
-                passphrase,
-            } => {
-                *vault = Some(Vault::open(&checked_path(&value)?, secret(passphrase)?)?);
-                *path = Some(value);
-            }
-            Action::CheckWorkspace { path, create } => {
-                let verified = if create {
-                    Workspace::init(&checked_path(&path)?)?
-                } else {
-                    Workspace::open(&checked_path(&path)?)?
-                };
-                *workspace = Some(WorkspaceStatus {
-                    path: verified.root().to_string_lossy().into(),
-                    encryption: format!("{:?}", verified.encryption()),
-                });
-            }
-            Action::CaptureLocal { name, source } => {
-                let root = Workspace::open(Path::new(
-                    &workspace.as_ref().ok_or("workspace required")?.path,
-                ))?;
-                capture(
-                    vault.as_mut().ok_or("vault required")?,
-                    &name,
-                    &checked_path(&source)?,
-                    &root,
-                    options,
-                )?;
-            }
-            Action::RestoreGit { name, destination } => {
-                let root = Workspace::open(Path::new(
-                    &workspace.as_ref().ok_or("workspace required")?.path,
-                ))?;
-                restore(
-                    vault.as_ref().ok_or("vault required")?,
-                    &name,
-                    &checked_path(&destination)?,
-                    &root,
-                    options,
-                )?;
-            }
-            Action::CreateBackup { destination } => {
-                vault
-                    .as_ref()
-                    .ok_or("vault required")?
-                    .backup(&checked_path(&destination)?)?;
-            }
-            Action::VerifyBackup { path, passphrase } => {
-                Vault::verify_backup(&checked_path(&path)?, secret(passphrase)?)?;
-            }
-            Action::RestoreBackup {
-                path: input,
-                destination,
-                passphrase,
-            } => {
-                let password = secret(passphrase)?;
-                Vault::restore(
-                    &checked_path(&input)?,
-                    &checked_path(&destination)?,
-                    password.clone(),
-                )?;
-                *vault = Some(Vault::open(&checked_path(&destination)?, password)?);
-                *path = Some(destination);
-            }
-        }
-        Ok(())
-    };
+            Ok(None)
+        };
     result().map_err(|e| e.to_string())
 }
 

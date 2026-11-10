@@ -1,5 +1,6 @@
 """Drive the real Tauri webview and Rust IPC on disposable synthetic data."""
 import argparse
+import json
 import os
 import pathlib
 import shutil
@@ -16,6 +17,7 @@ from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
 
 from test_git import encrypted_files, fixture, inventory
+from test_remote import HTTPSFixture, TOKEN, USERNAME
 
 
 class Options(ArgOptions):
@@ -85,10 +87,10 @@ def main():
 
         last_job = 0
 
-        def completed():
+        def completed(expected="completed"):
             nonlocal last_job
             result = wait.until(lambda _: (state if not state["busy"] and state["jobs"][0]["id"] > last_job else False) if (state := status()).get("jobs") else False)
-            assert result["jobs"][0]["state"] == "completed", result["jobs"][0]
+            assert result["jobs"][0]["state"] == expected, result["jobs"][0]
             last_job = result["jobs"][0]["id"]
             print("Completed desktop job:", result["jobs"][0]["label"], flush=True)
             return result
@@ -126,6 +128,27 @@ def main():
             fill("New bare repository", destination); click("Restore repository"); completed()
             assert inventory(source) == inventory(destination)
             encrypted_files(work)
+            with HTTPSFixture(root / "remote-server") as remote:
+                click("Capture repository"); click("HTTPS remote")
+                fill("Snapshot name", "synthetic-remote-history"); fill("HTTPS clone URL", remote.url)
+                click("Username & token"); fill("Repository username", USERNAME); fill("Repository access token", TOKEN)
+                fill("Custom CA file (optional)", remote.certificate)
+                driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click()
+                result = completed()
+                report = result["jobs"][0]["result"]
+                assert report["inventory"]["headSubmodules"] == report["inventory"]["headLfsPointers"] == 1
+                assert result["vault"]["itemCount"] == 2
+                assert TOKEN not in json.dumps(result)
+                click("Activity")
+                wait.until(lambda d: any(remote.url in element.text for element in d.find_elements(By.CSS_SELECTOR, ".capture-result")))
+                click("Repositories"); click("Capture repository"); click("HTTPS remote")
+                fill("Snapshot name", "cancelled-remote"); fill("HTTPS clone URL", remote.url.replace("/project.git", "/slow.git"))
+                fill("Custom CA file (optional)", remote.certificate)
+                driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click()
+                wait.until(lambda _: any(path.startswith("/slow.git/") for _, path in remote.requests))
+                click("Cancel"); completed("cancelled")
+                assert status()["vault"]["itemCount"] == 2
+                encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
                 driver.save_screenshot(str(args.screenshot))
@@ -139,7 +162,7 @@ def main():
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             click("Restore backup"); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
             click("Restore vault"); completed()
-            assert status()["vault"]["itemCount"] == 1
+            assert status()["vault"]["itemCount"] == 2
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             print("Native desktop create/unlock, encrypted workspace, capture, Git restore, backup and portable vault recovery passed.")
     finally:

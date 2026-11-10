@@ -19,29 +19,31 @@ const MAX_REFS: usize = 100_000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-struct GitRef {
-    name: String,
-    oid: String,
+pub(crate) struct GitRef {
+    pub(crate) name: String,
+    pub(crate) oid: String,
     symbolic: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-enum Head {
+pub(crate) enum Head {
     Symbolic(String),
     Detached(String),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-struct Manifest {
+pub(crate) struct Manifest {
     version: u32,
     object_format: String,
-    refs: Vec<GitRef>,
-    head: Head,
+    pub(crate) refs: Vec<GitRef>,
+    pub(crate) head: Head,
     bundle: bool,
     // Explicit fidelity boundary, authenticated with the snapshot.
     external_data: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    remote: Option<crate::CaptureProvenance>,
 }
 
 pub fn capture(
@@ -51,12 +53,25 @@ pub fn capture(
     workspace: &Workspace,
     options: &Options,
 ) -> Result<()> {
+    capture_impl(vault, name, source, workspace, options, None)
+}
+
+type RemoteCheck<'a> = Option<(&'a crate::CaptureProvenance, &'a dyn Fn() -> Result<()>)>;
+
+pub(crate) fn capture_impl(
+    vault: &mut Vault,
+    name: &str,
+    source: &Path,
+    workspace: &Workspace,
+    options: &Options,
+    remote: RemoteCheck<'_>,
+) -> Result<()> {
     options.report("Checking encrypted workspace and source");
     let session = workspace.session()?;
     let runner = Runner::new(session.path(), options)?;
     runner.check_version()?;
     let source = source_git_dir(source)?;
-    let manifest = inspect_source(&runner, &source)?;
+    let mut manifest = inspect_source(&runner, &source)?;
     validate(&manifest)?;
     let view = session.path().join("source-view.git");
     runner.init(&view, &manifest.object_format)?;
@@ -98,6 +113,12 @@ pub fn capture(
     options.report("Verifying independent Git objects and refs");
     materialize(&runner, &verified, &manifest, &bundle, session.path())?;
     ensure!(inspect_source(&runner, &source)? == manifest, "source refs, HEAD or repository mode changed during capture; retry from a quiescent source");
+    if let Some((provenance, recheck)) = remote {
+        recheck()?;
+        manifest.version = 2;
+        manifest.remote = Some(provenance.clone());
+        validate(&manifest)?;
+    }
     workspace.verify_tree(session.path())?;
     options.check()?;
     let json = serde_json::to_vec(&manifest)?;
@@ -237,7 +258,7 @@ fn source_git_dir(source: &Path) -> Result<PathBuf> {
     Ok(git)
 }
 
-fn inspect_source(runner: &Runner, source: &Path) -> Result<Manifest> {
+pub(crate) fn inspect_source(runner: &Runner, source: &Path) -> Result<Manifest> {
     let config = runner.run(
         None,
         &[
@@ -283,6 +304,7 @@ fn inspect_source(runner: &Runner, source: &Path) -> Result<Manifest> {
         external_data:
             "git-only: LFS payloads, submodule repositories and hosting metadata are not included"
                 .into(),
+        remote: None,
     };
     validate(&manifest)?;
     Ok(manifest)
@@ -378,7 +400,7 @@ fn read_head(runner: &Runner, repository: &Path) -> Result<Head> {
     parse_head(std::str::from_utf8(&oid)?)
 }
 
-fn valid_ref(name: &str) -> bool {
+pub(crate) fn valid_ref(name: &str) -> bool {
     name.starts_with("refs/")
         && name.len() <= 1024
         && !name.contains("..")
@@ -390,7 +412,7 @@ fn valid_ref(name: &str) -> bool {
             !p.is_empty() && !p.starts_with('.') && !p.ends_with('.') && !p.ends_with(".lock")
         })
 }
-fn valid_oid(oid: &str, len: usize) -> bool {
+pub(crate) fn valid_oid(oid: &str, len: usize) -> bool {
     oid.len() == len
         && oid
             .bytes()
@@ -400,9 +422,19 @@ fn valid_oid(oid: &str, len: usize) -> bool {
 
 fn validate(manifest: &Manifest) -> Result<()> {
     ensure!(
-        manifest.version == 1 && manifest.refs.len() <= MAX_REFS,
+        matches!(
+            (manifest.version, manifest.remote.is_some()),
+            (1, false) | (2, true)
+        ) && manifest.refs.len() <= MAX_REFS,
         "unsupported or oversized Git manifest"
     );
+    if let Some(remote) = &manifest.remote {
+        remote.validate()?;
+        ensure!(
+            remote.advertised_ref_count == manifest.refs.len(),
+            "Remote ref count differs from snapshot"
+        );
+    }
     let len = match manifest.object_format.as_str() {
         "sha1" => 40,
         "sha256" => 64,

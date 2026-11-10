@@ -46,6 +46,7 @@ impl Options {
 pub(crate) struct Runner {
     root: PathBuf,
     options: Options,
+    https: bool,
 }
 impl Runner {
     pub(crate) fn new(root: &Path, options: &Options) -> Result<Self> {
@@ -59,7 +60,12 @@ impl Runner {
         Ok(Self {
             root: root.into(),
             options: options.clone(),
+            https: false,
         })
+    }
+
+    pub(crate) fn enable_https(&mut self) {
+        self.https = true;
     }
 
     pub(crate) fn run(&self, repository: Option<&Path>, args: &[&OsStr]) -> Result<Vec<u8>> {
@@ -216,6 +222,16 @@ impl Runner {
         ] {
             command.arg("-c").arg(setting);
         }
+        if self.https {
+            command.arg("-c").arg("protocol.https.allow=always");
+            // Reset inherited helpers above, then read only our generated
+            // config. This file and its credential store live in the verified
+            // encrypted session; no secret appears in the process arguments.
+            command.arg("-c").arg(format!(
+                "include.path={}",
+                git_arg(self.root.join("https-config").as_os_str()).to_string_lossy()
+            ));
+        }
         command
     }
 
@@ -245,7 +261,7 @@ impl Runner {
     }
 }
 
-fn git_arg(arg: &OsStr) -> OsString {
+pub(crate) fn git_arg(arg: &OsStr) -> OsString {
     #[cfg(windows)]
     if let Some(text) = arg.to_str() {
         if let Some(path) = text.strip_prefix(r"\\?\") {

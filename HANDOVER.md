@@ -1,5 +1,13 @@
 # Handover
 
+## 2026-11-10 — HTTPS capture implementation
+
+**Implemented:** HTTPS-only acquisition through native Git, separate network/offline workers, private username/token authentication and optional PEM CA trust, advertised ref/HEAD comparisons before acquisition and after independent verification, remote manifest v2 provenance and bounded default-HEAD LFS/gitlink reporting. Added CLI capture-remote with secret stdin JSON, UI source/auth/CA fields, report rendering and remote cancellation. Tokens remain outside URLs/argv/env/archives/activity and use only an ephemeral store in verified encrypted working storage.
+
+**Local validation:** Formatting/Clippy and production UI compilation passed, Rust policy tests passed, and all six browser tests passed. Synthetic HTTPS server infrastructure works. Native LUKS/EFS remote acceptance and cross-OS remote snapshot recovery are pending CI; do not claim them or an alpha.4 release yet.
+
+**Next:** Resolve actual native acceptance failures, review persisted provenance/security boundaries, update docs with evidence, push signed commits and publish alpha.4 only after the full matrix passes. Current published UI release remains alpha.3. No real hosting credentials or production repositories used.
+
 ## 2026-11-09 — published desktop alpha
 
 **Done:** Fixed native driver readiness/diagnostics, PowerShell edition mismatch, DOM refresh retries and Selenium’s mistaken backup-file upload. The real UI completes vault, verified LUKS/EFS workspace, full-history capture/restore and same-key backup/verify/recovery on both OSes. Produced desktop DEB/RPM/AppImage and Windows NSIS, with distinct package identity and prerelease-safe RPM version mapping. Native compiled dependencies are cached without retaining installer output.

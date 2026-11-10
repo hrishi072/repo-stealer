@@ -9,6 +9,7 @@ Download the [alpha.3 desktop installers and CLI packages](https://github.com/hr
 ## Start here
 
 - [Desktop setup and UI](docs/DESKTOP.md)
+- [HTTPS capture under development](docs/REMOTE-CAPTURE.md)
 - [Architecture and stack](docs/ARCHITECTURE.md)
 - [Implementation sequence and acceptance gates](docs/ROADMAP.md)
 - [Existing script audit](docs/LEGACY-AUDIT.md)
@@ -69,3 +70,7 @@ repo-stealer git restore ./my-vault project-history /mnt/already-encrypted/rs-wo
 ```
 
 Restore creates a new bare reftable repository with verified refs, HEAD and complete reachable Git object history. LFS payloads, external submodule repositories and hosting metadata need separate capture. See [platform setup, fidelity and recovery behavior](docs/GIT-SNAPSHOTS.md).
+
+## HTTPS capture development
+
+Alpha.4 source adds explicit HTTPS capture, username/token authentication, self-hosted custom CA support and default-HEAD external-content reporting through the CLI and UI. Native Linux/Windows acceptance is pending; the latest published installers remain alpha.3. See [usage, security boundaries and fidelity](docs/REMOTE-CAPTURE.md).

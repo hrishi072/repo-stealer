@@ -98,3 +98,9 @@ Linux produced DEB/RPM/AppImage, installed and opened the DEB, and opened extrac
 The [alpha.3 signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642) repeated the complete matrix successfully and published four UI packages, six CLI packages and SHA256SUMS. Signature/version verification and temporary-draft cleanup passed.
 
 Post-publication verification downloaded all four UI installers and SHA256SUMS into ignored `dist/releases/v0.1.0-alpha.3/`; every UI asset matched its published SHA-256 digest.
+
+## 2026-11-10 HTTPS acquisition increment
+
+Local Rust formatting/Clippy, the existing release-mode suites plus two HTTPS policy tests, six browser UI tests and production frontend compilation passed. The synthetic TLS Git HTTP-backend fixture was independently exercised using Git ls-remote. Unit tests use only synthetic credentials and exercise Git’s actual credential helper parser with space/apostrophe paths and cross-repository refusal.
+
+Real encrypted remote capture/restore, CA/auth failures, redirect/alternate refusal, mutation, timeout, reciprocal remote snapshot recovery and desktop remote capture/cancellation are wired into native CI. These Linux/Windows acceptance results have not yet been observed. See REMOTE-CAPTURE.md.
