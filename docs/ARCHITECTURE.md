@@ -11,7 +11,7 @@ Design proposal, 2026-11-08. Implemented components are explicitly marked below.
 | UI | React + TypeScript + Vite | Implemented with bounded status polling and paginated catalog queries; no SSR/server. Query libraries and virtualized provider/bulk lists remain future options. |
 | Concurrency | Serialized Rust background worker now; bounded async provider queues later | Desktop operations run off the UI thread and serialize vault access; future network workers need separate limits. |
 | Git transport | Native Git + Git LFS, isolated child processes | Broad compatibility, mature pack negotiation and SSH; signed/versioned sidecars and licenses become release responsibilities. Evaluate libgit2/gix only if benchmarks justify replacing Git. |
-| Provider APIs | reqwest + serde, explicit GitHub/GitLab adapters | Versioned capability negotiation for cloud and user-entered self-hosted endpoints. |
+| Provider APIs | reqwest + serde, explicit GitHub/GitLab adapters | Read-only explicit cloud/self-hosted roots, identity and policy observations implemented; versioned capability negotiation remains future work. |
 | Metadata | Encrypted JSON catalog now; indexed database later | 8 MiB bounded snapshot, atomically replaced under a lock; indexed queries can justify SQLCipher later. |
 | Vault and backup crypto | age 0.11.5, X25519 identity, age scrypt key envelope | Authenticated streaming via a maintained portable library; the application format remains experimental. |
 | Diagnostics | structured events, redaction, local encrypted history | Useful support data without copying tokens or raw provider responses into logs. |

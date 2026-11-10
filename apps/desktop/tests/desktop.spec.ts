@@ -117,7 +117,7 @@ test('migration planning sends transient scoped credentials without any apply ac
   await page.getByLabel('Destination repository', {exact:true}).fill('group/sub/repo');
   await page.getByLabel('Destination access token').fill('synthetic-plan-secret');
   await page.getByLabel('Destination Git username').fill('fixture');
-  await page.getByLabel('Destination CA bundle').fill('/synthetic/ca.pem');
+  await page.getByLabel('Destination CA bundle', {exact:true}).fill('/synthetic/ca.pem');
   await page.getByRole('button',{name:'Prepare read-only plan'}).click();
   await expect(page.getByLabel('Destination access token')).toHaveValue('');
   const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);

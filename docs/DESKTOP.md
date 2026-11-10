@@ -1,6 +1,6 @@
 # Desktop application
 
-The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git capture/restore, and same-key portable backups. Provider APIs and destination migration remain future work. [Alpha.4 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) passed native Linux/Windows HTTPS, recovery, privacy/cancellation, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
+The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git capture/restore, and same-key portable backups. Alpha.5 also implements read-only GitHub/GitLab destination preflight and migration plans for cloud/self-hosted instances. Destination writes remain future work. [Alpha.4 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) passed native Linux/Windows HTTPS, recovery, privacy/cancellation, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
 ![Browser preview of the desktop overview](screenshots/desktop-overview.png)
 

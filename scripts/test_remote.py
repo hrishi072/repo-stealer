@@ -192,10 +192,24 @@ def manifest(binary, vault, name, root):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("binary", type=pathlib.Path)
+    parser.add_argument("binary", type=pathlib.Path, nargs="?")
+    parser.add_argument("--probe-https", action="store_true", help="Diagnose only synthetic anonymous Git TLS; no app/vault or credential access")
     parser.add_argument("--fixture-out", type=pathlib.Path)
     parser.add_argument("--restore-fixture", type=pathlib.Path)
     args = parser.parse_args()
+    if args.probe_https:
+        with tempfile.TemporaryDirectory(prefix="rs-tls-probe-") as tmp, HTTPSFixture(pathlib.Path(tmp) / "https") as server:
+            server.require_auth = False
+            env = {key:value for key,value in os.environ.items() if not key.startswith("GIT_")}
+            env.update(GIT_CONFIG_NOSYSTEM="1",GIT_CONFIG_GLOBAL=os.devnull)
+            result=subprocess.run(["git","-c","http.sslVerify=true","-c","http.schannelUseSSLCAInfo=true","-c","http.sslCAInfo="+str(server.certificate),"-c","protocol.version=2","ls-remote",server.url],cwd=server.root,env=env,capture_output=True,timeout=30)
+            # This server is synthetic and anonymous: diagnostics contain no
+            # application credentials, unlike production Git worker output.
+            assert result.returncode==0, result.stderr.decode(errors="replace")
+            print("Anonymous synthetic Git HTTPS certificate-chain probe passed.")
+        return
+    if args.binary is None:
+        parser.error("binary is required unless --probe-https is selected")
     binary = args.binary.resolve()
     parent = pathlib.Path(os.environ.get("RS_ENCRYPTED_PARENT", tempfile.gettempdir()))
     with tempfile.TemporaryDirectory(prefix="rs-remote-") as temporary, tempfile.TemporaryDirectory(prefix="rs-remote-encrypted-", dir=parent) as encrypted:

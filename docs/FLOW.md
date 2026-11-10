@@ -4,7 +4,7 @@
 
 `crates/repo-stealer-cli/src/main.rs::main -> run -> read_snapshot` opens each supplied fixture read-only, caps it at 16 MiB, rejects non-UTF-8 and calls `repo-stealer-core::RefSnapshot::parse`.
 
-`parse` validates rows and object IDs, rejects duplicate/unsafe heads and tags, ignores other advertised refs and stores candidates in a BTreeMap. `compare` checks compatible object formats and iterates a sorted union, returning create candidate, unchanged, needs ancestry check, or destination-only preserve. The CLI prints the result and exits nonzero on errors. The plan path has no network, subprocess or mutation behavior. Vault commands use a separate path below.
+`parse` validates rows and object IDs, rejects duplicate/unsafe heads and tags, ignores other advertised refs and stores candidates in a BTreeMap. `compare` checks compatible object formats and iterates a sorted union, returning create candidate, unchanged, needs ancestry check, or destination-only preserve. The CLI prints the result and exits nonzero on errors. The fixture `plan SOURCE.refs DESTINATION.refs` path has no network, subprocess or mutation behavior. The separate `migration plan` command observes live destinations as described below. Vault commands use a separate path below.
 
 ## Proposed migration flow
 
@@ -34,3 +34,7 @@ Capture: source layout/config/ref/HEAD inventory -> isolated reftable source vie
 Restore: authenticate vault entry into encrypted session -> bounded manifest parser -> bundle prerequisite check -> new reftable database -> transactional direct/symbolic refs and HEAD -> full fsck and inventory equality -> encryption tree check -> platform-aware immutable-file flush -> no-replace directory publication inside workspace.
 
 Git stdout/stderr and all temp/HOME/config paths stay in that session; ordinary errors do not print raw Git diagnostics. Existing source, vault snapshot names and destination directories are never overwritten. See GIT-SNAPSHOTS.md for fidelity, OS encryption and crash boundaries.
+
+## Implemented destination preview flow
+
+CLI `migration plan` or desktop `prepare_plan` -> unlock/verify working storage -> authenticate complete source object -> retain validated bounded manifest -> GET selected provider actor/repository -> bind clone origin/path -> observe Git refs/HEAD -> GET bounded policy listings -> recheck identity/roles and refs/HEAD -> suppress stale/unavailable comparisons -> produce conservative heads/tags rows and explicit unknowns. No apply/create/push/delete path exists. Desktop status carries only a summary; `get_plan_rows` returns bounded pages and lock clears the plan. CLI JSON stdout is explicit plaintext display. See [migration plans](MIGRATION-PLANS.md).
