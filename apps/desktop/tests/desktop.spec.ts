@@ -146,7 +146,10 @@ test('plan refs paginate, unknown policies stay visible, and locking clears meta
 test('new private migration preparation clears credentials and uses typed IPC',async({page})=>{
  await mockDesktop(page,true,true);await page.goto('/');
  await page.getByRole('button',{name:'New migrations',exact:true}).click();
- await page.getByLabel('New migration source',{exact:true}).fill('history');
+ await page.getByLabel('New migration source',{exact:true}).evaluate((node,value)=>{
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(node,value);
+  node.dispatchEvent(new Event('input',{bubbles:true}));node.dispatchEvent(new Event('change',{bubbles:true}));
+ },'history');
  await page.getByLabel('New migration repository',{exact:true}).fill('fixture/new-private');
  await page.getByLabel('New migration token',{exact:true}).fill('synthetic-new-token');
  await page.getByRole('button',{name:'Prepare private migration',exact:true}).click();

@@ -12,7 +12,6 @@ import urllib.request
 from selenium import webdriver
 from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
@@ -82,12 +81,17 @@ def main():
             wait.until(attempt)
 
         def fill(label, value):
-            # Native WebDriver clear() can change the DOM without a React input
-            # event, causing subsequent typing to append stale controlled state.
+            # Set through the native prototype (not React's own value tracker)
+            # and dispatch input/change, so controlled state receives the edit.
+            # This changes DOM input only; real form handlers and Rust IPC run.
             def replace(d):
                 element=d.find_element(By.CSS_SELECTOR,f'input[aria-label="{label}"]')
-                element.click()
-                element.send_keys(Keys.CONTROL,"a",Keys.NULL,str(value))
+                d.execute_script("""
+                    const input=arguments[0],value=arguments[1];
+                    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value);
+                    input.dispatchEvent(new Event('input',{bubbles:true}));
+                    input.dispatchEvent(new Event('change',{bubbles:true}));
+                """,element,str(value))
                 return element.get_attribute("value")==str(value)
             wait.until(replace, message="Native input did not retain requested value: "+label)
 
