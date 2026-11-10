@@ -64,6 +64,16 @@ impl Destination {
             web,
         })
     }
+    pub(crate) fn api_url(&self, path: &str) -> Url {
+        self.api.join(path).expect("fixed selected API path")
+    }
+    pub(crate) fn child_url(&self, path: &str) -> Url {
+        let mut url = self.repository_url();
+        for segment in path.split('/') {
+            url.path_segments_mut().unwrap().push(segment);
+        }
+        url
+    }
     pub fn actor_url(&self) -> Url {
         self.api.join("user").expect("fixed API path")
     }

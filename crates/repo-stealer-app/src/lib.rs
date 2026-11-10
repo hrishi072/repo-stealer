@@ -68,6 +68,22 @@ pub enum Action {
         username: Option<String>,
         ca_file: Option<String>,
     },
+    PrepareNewMigration {
+        name: String,
+        provider: repo_stealer_migration::Provider,
+        instance: Option<String>,
+        repository: String,
+        token: Passphrase,
+        username: Option<String>,
+        ca_file: Option<String>,
+    },
+    ExecuteNewMigration {
+        plan_id: String,
+        confirmation: String,
+        token: Passphrase,
+        username: Option<String>,
+        ca_file: Option<String>,
+    },
     RestoreGit {
         name: String,
         destination: String,
@@ -95,6 +111,8 @@ impl Action {
             Self::CaptureLocal { .. } => "Capture repository",
             Self::CaptureRemote { .. } => "Capture HTTPS repository",
             Self::PreparePlan { .. } => "Prepare read-only migration plan",
+            Self::PrepareNewMigration { .. } => "Review new private migration",
+            Self::ExecuteNewMigration { .. } => "Migrate to new private repository",
             Self::RestoreGit { .. } => "Restore Git repository",
             Self::CreateBackup { .. } => "Create encrypted backup",
             Self::VerifyBackup { .. } => "Verify encrypted backup",
@@ -108,6 +126,8 @@ impl Action {
                 | Self::CaptureRemote { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
+                | Self::PrepareNewMigration { .. }
+                | Self::ExecuteNewMigration { .. }
         )
     }
     fn needs_vault(&self) -> bool {
@@ -117,6 +137,8 @@ impl Action {
                 | Self::CaptureRemote { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
+                | Self::PrepareNewMigration { .. }
+                | Self::ExecuteNewMigration { .. }
                 | Self::CreateBackup { .. }
         )
     }
@@ -133,6 +155,8 @@ impl Action {
                 | Self::CaptureRemote { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
+                | Self::PrepareNewMigration { .. }
+                | Self::ExecuteNewMigration { .. }
         )
     }
 }
@@ -187,6 +211,8 @@ pub struct Status {
     pub jobs: Vec<Job>,
     pub remote_capture: bool,
     pub plan: Option<repo_stealer_migration::Summary>,
+    pub new_migration: Option<repo_stealer_migration::NewPlan>,
+    pub migration_result: Option<repo_stealer_migration::ExecutionReport>,
 }
 
 struct Inner {
@@ -198,6 +224,8 @@ struct Inner {
     busy: bool,
     cancelled: Option<Arc<AtomicBool>>,
     plan: Option<repo_stealer_migration::Plan>,
+    new_migration: Option<repo_stealer_migration::NewPlan>,
+    migration_result: Option<repo_stealer_migration::ExecutionReport>,
 }
 
 pub struct Engine {
@@ -220,6 +248,8 @@ impl Engine {
                 busy: false,
                 cancelled: None,
                 plan: None,
+                new_migration: None,
+                migration_result: None,
             }),
         }
     }
@@ -237,6 +267,8 @@ impl Engine {
             jobs: inner.jobs.clone(),
             remote_capture: true,
             plan: inner.plan.as_ref().map(|p| p.summary.clone()),
+            new_migration: inner.new_migration.clone(),
+            migration_result: inner.migration_result.clone(),
         })
     }
     pub fn lock(&self) -> Result<(), String> {
@@ -248,6 +280,8 @@ impl Engine {
             return Err("Finish or cancel the active job before locking the vault.".into());
         }
         inner.plan = None;
+        inner.new_migration = None;
+        inner.migration_result = None;
         inner.vault = None;
         inner.summary = None;
         // The generic activity trail can remain visible while locked, but
@@ -355,6 +389,13 @@ impl Engine {
         if matches!(action, Action::PreparePlan { .. }) {
             inner.plan = None;
         }
+        if matches!(
+            action,
+            Action::PrepareNewMigration { .. } | Action::ExecuteNewMigration { .. }
+        ) {
+            inner.new_migration = None;
+            inner.migration_result = None;
+        }
         let id = inner.next_id;
         inner.next_id += 1;
         let flag = Arc::new(AtomicBool::new(false));
@@ -414,17 +455,18 @@ impl Engine {
                 inner.vault = vault;
                 if inner.vault.is_none() {
                     inner.plan = None;
+                    inner.new_migration = None;
+                    inner.migration_result = None;
                 }
                 inner.workspace = workspace;
                 inner.busy = false;
                 inner.cancelled = None;
-                let result = result.map(|outcome| match outcome {
-                    Outcome::Done => None,
-                    Outcome::Capture(report) => Some(report),
-                    Outcome::Plan(plan) => {
-                        inner.plan = Some(*plan);
-                        None
-                    }
+                let result = result.and_then(|outcome| match outcome {
+                    Outcome::Done => Ok(None),
+                    Outcome::Capture(report) => Ok(Some(report)),
+                    Outcome::Plan(plan) => { inner.plan=Some(*plan);Ok(None) },
+                    Outcome::NewMigration(plan)=>{inner.new_migration=Some(*plan);Ok(None)},
+                    Outcome::Migration(report)=>{let verified=report.state=="verified";inner.migration_result=Some(report);if verified {Ok(None)}else{Err("Migration needs attention. Inspect the encrypted receipts; do not retry the consumed plan.".into())}}
                 });
                 if let Some(job) = inner.jobs.iter_mut().find(|job| job.id == id) {
                     job.finished_at = Some(now());
@@ -470,6 +512,8 @@ pub struct PlanPage {
     pub total: usize,
 }
 enum Outcome {
+    NewMigration(Box<repo_stealer_migration::NewPlan>),
+    Migration(repo_stealer_migration::ExecutionReport),
     Done,
     Capture(CaptureProvenance),
     Plan(Box<repo_stealer_migration::Plan>),
@@ -590,6 +634,61 @@ fn perform(
                     &root,
                     options,
                 )?)));
+            }
+            Action::PrepareNewMigration {
+                name,
+                provider,
+                instance,
+                repository,
+                token,
+                username,
+                ca_file,
+            } => {
+                let destination = repo_stealer_migration::Destination::new(
+                    provider,
+                    instance.as_deref(),
+                    &repository,
+                )?;
+                let access = repo_stealer_migration::Access {
+                    token: secret(token)?,
+                    git_username: username,
+                };
+                let ca = ca_file.as_deref().map(checked_path).transpose()?;
+                return Ok(Outcome::NewMigration(Box::new(
+                    repo_stealer_migration::prepare_new(
+                        vault.as_mut().ok_or("vault required")?,
+                        &name,
+                        &destination,
+                        access,
+                        ca.as_deref(),
+                        options,
+                    )?,
+                )));
+            }
+            Action::ExecuteNewMigration {
+                plan_id,
+                confirmation,
+                token,
+                username,
+                ca_file,
+            } => {
+                let access = repo_stealer_migration::Access {
+                    token: secret(token)?,
+                    git_username: username,
+                };
+                let ca = ca_file.as_deref().map(checked_path).transpose()?;
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                return Ok(Outcome::Migration(repo_stealer_migration::execute_new(
+                    vault.as_mut().ok_or("vault required")?,
+                    &plan_id,
+                    &confirmation,
+                    access,
+                    ca.as_deref(),
+                    &root,
+                    options,
+                )?));
             }
             Action::RestoreGit { name, destination } => {
                 let root = Workspace::open(Path::new(

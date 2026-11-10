@@ -1,6 +1,8 @@
-//! Destination observations and conservative previews. No repository creation,
-//! pushes, deletions, or write-authorization claims are implemented here.
+//! Conservative existing-destination previews and a separate one-shot workflow
+//! for explicitly confirmed new private repositories. No existing-repo adoption.
 mod http;
+mod new;
+pub use new::{execute_new, prepare_new, ExecutionReport, NewPlan};
 mod provider;
 use anyhow::{ensure, Result};
 pub use http::ApiIssue;
@@ -422,7 +424,9 @@ fn refuse_reflection(value: &impl Serialize, access: Option<&Access>) -> Result<
         match value {
             serde_json::Value::String(s) => s.contains(token),
             serde_json::Value::Array(items) => items.iter().any(|v| contains(v, token)),
-            serde_json::Value::Object(items) => items.values().any(|v| contains(v, token)),
+            serde_json::Value::Object(items) => items
+                .iter()
+                .any(|(key, v)| key.contains(token) || contains(v, token)),
             _ => false,
         }
     }

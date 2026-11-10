@@ -29,6 +29,7 @@ impl ApiIssue {
 pub struct Response {
     pub value: serde_json::Value,
     pub next: bool,
+    pub classic_write_scopes: bool,
 }
 pub struct Api<'a> {
     client: Client,
@@ -44,6 +45,7 @@ impl<'a> Api<'a> {
         let mut builder = Client::builder()
             .https_only(true)
             .no_proxy()
+            .retry(reqwest::retry::never())
             .redirect(reqwest::redirect::Policy::none())
             .user_agent(concat!("RepoStealer/", env!("CARGO_PKG_VERSION")))
             .timeout(options.timeout.min(Duration::from_secs(15)))
@@ -72,18 +74,50 @@ impl<'a> Api<'a> {
             options,
         })
     }
-    // Intentionally no arbitrary method, mutation, redirect or response-link API.
+    // Existing plans use GET only. The separate one-shot creation service owns
+    // crate-private writes; there is no renderer HTTP API or response-link follow.
     pub fn get(&self, url: Url) -> Result<Response, ApiIssue> {
+        self.request(reqwest::Method::GET, url, None, 200)
+    }
+    pub(crate) fn write(
+        &self,
+        method: reqwest::Method,
+        url: Url,
+        body: serde_json::Value,
+        status: u16,
+    ) -> Result<Response, ApiIssue> {
+        let body = if method == reqwest::Method::DELETE && body.is_null() {
+            None
+        } else {
+            Some(body)
+        };
+        self.request(method, url, body, status)
+    }
+    fn request(
+        &self,
+        method: reqwest::Method,
+        url: Url,
+        body: Option<serde_json::Value>,
+        expected: u16,
+    ) -> Result<Response, ApiIssue> {
         if check(self.options).is_err() {
             return Err(ApiIssue::new("cancelled", None));
         }
-        let mut request = self.client.get(url).header("Accept", "application/json");
+        let mut request = self
+            .client
+            .request(method, url)
+            .header("Accept", "application/json");
         if let Some(access) = self.access {
             let text = Zeroizing::new(format!("Bearer {}", access.token.expose_secret()));
             let mut value =
                 HeaderValue::from_str(&text).map_err(|_| ApiIssue::new("invalid_token", None))?;
             value.set_sensitive(true);
             request = request.header(AUTHORIZATION, value);
+        }
+        if let Some(body) = body {
+            request = request.header("Content-Type", "application/json").body(
+                serde_json::to_vec(&body).map_err(|_| ApiIssue::new("invalid_request", None))?,
+            );
         }
         let mut response = request.send().map_err(|e| {
             ApiIssue::new(
@@ -96,7 +130,7 @@ impl<'a> Api<'a> {
             )
         })?;
         let status = response.status().as_u16();
-        if status != 200 {
+        if status != expected {
             let limited = status == 429
                 || (status == 403
                     && (response
@@ -143,8 +177,20 @@ impl<'a> Api<'a> {
         }
         // Never deserialize or display provider error bodies/headers. Successful
         // JSON is also bounded and only normalized allowlisted fields survive.
-        let value = serde_json::from_slice(&bytes)
-            .map_err(|_| ApiIssue::new("invalid_json", Some(status)))?;
+        let classic_write_scopes = response
+            .headers()
+            .get("x-oauth-scopes")
+            .and_then(|h| h.to_str().ok())
+            .is_some_and(|h| {
+                let scopes: Vec<_> = h.split(',').map(str::trim).collect();
+                scopes.contains(&"repo") && scopes.contains(&"workflow")
+            });
+        let value = if bytes.is_empty() && expected == 204 {
+            serde_json::Value::Null
+        } else {
+            serde_json::from_slice(&bytes)
+                .map_err(|_| ApiIssue::new("invalid_json", Some(status)))?
+        };
         let next = response
             .headers()
             .get("x-next-page")
@@ -153,6 +199,10 @@ impl<'a> Api<'a> {
                 .headers()
                 .get("link")
                 .is_some_and(|v| v.to_str().is_ok_and(|s| s.contains("rel=\"next\"")));
-        Ok(Response { value, next })
+        Ok(Response {
+            value,
+            next,
+            classic_write_scopes,
+        })
     }
 }

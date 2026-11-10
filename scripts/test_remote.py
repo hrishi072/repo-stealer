@@ -96,6 +96,7 @@ class HTTPSFixture:
         backend = pathlib.Path(subprocess.check_output(["git", "--exec-path"], text=True).strip()) / "git-http-backend"
         self.backend = backend if backend.is_file() else backend.with_suffix(".exe")
         assert self.backend.is_file()
+        self.allow_receive = False
         self.require_auth = True
         self.mutate = False
         self.requests = []
@@ -152,7 +153,9 @@ class HTTPSFixture:
                     if path.endswith("/objects/info/http-alternates"):
                         return self.send(200, (owner.url.replace("/project.git", "/alternate.git/objects/") + "\n").encode())
                     return self.send(404)
-                if path not in ("/project.git/info/refs", "/project.git/git-upload-pack", "/project.git/HEAD"):
+                allowed=("/project.git/info/refs", "/project.git/git-upload-pack", "/project.git/HEAD")
+                if owner.allow_receive: allowed += ("/project.git/git-receive-pack",)
+                if path not in allowed:
                     return self.send(404)
                 length = int(self.headers.get("Content-Length", "0"))
                 if length > 1024 * 1024:

@@ -89,3 +89,7 @@ Read first: README.md, docs/SECURITY.md, docs/DECISIONS.md and docs/RELEASING.md
 **Do not touch:** Do not run the legacy pull/push scripts against user data, disable SSH/TLS verification, or interpret a source deletion as permission to delete destination work. Keep secrets out of code, logs and test fixtures. Proposed capabilities must not be presented as implemented.
 
 Read first: README.md, docs/ARCHITECTURE.md, docs/SECURITY.md, docs/DECISIONS.md. Update this record with actual evidence when the implementation changes.
+
+## Guarded private migration implementation — pending native acceptance
+
+Implemented encrypted expiring new plans, exact typed confirmation, supported personal scope/actor checks, exclusive private creation, disabled destination automation, creation guard and atomic exact ref leases, source-default configuration/protection, independent clone/fsck/ref verification and immutable encrypted receipts. New CLI and desktop flows are connected; existing destinations cannot be adopted or overwritten through this workflow. Added synthetic receive-pack failure/race/no-retry and native UI acceptance. Local Rust checks and 10 browser tests pass; full Linux/Windows acceptance and requested alpha.5 signed-tag publication are pending. See docs/GUARDED-MIGRATIONS.md.

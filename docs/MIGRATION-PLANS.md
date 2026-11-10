@@ -1,6 +1,6 @@
 # Read-only destination preflight and migration plans
 
-Alpha.5 adds a CLI and desktop preview for GitHub.com, GitHub Enterprise Server, GitLab.com and self-hosted GitLab. It reads existing destination repositories. There is no create, push, delete, force-update, default-branch change or apply operation.
+Alpha.5 adds a CLI and desktop preview for GitHub.com, GitHub Enterprise Server, GitLab.com and self-hosted GitLab. It reads existing destination repositories. This existing-destination planner has no create, push, delete, force-update, default-branch change or apply operation. The separate [guarded new-private workflow](GUARDED-MIGRATIONS.md) requires an encrypted new plan and exact typed confirmation.
 
 ## Usage
 

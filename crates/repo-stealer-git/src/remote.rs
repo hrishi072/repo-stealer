@@ -171,7 +171,7 @@ pub fn capture_remote(
     Ok(provenance)
 }
 
-fn configure_https(
+pub(crate) fn configure_https(
     root: &Path,
     url: &RemoteUrl,
     credentials: Option<Credentials>,
@@ -301,7 +301,7 @@ pub fn observe_remote(
     workspace.verify_tree(session.path())?;
     Ok(observed)
 }
-fn advertised(runner: &Runner, url: &RemoteUrl) -> Result<Advertisement> {
+pub(crate) fn advertised(runner: &Runner, url: &RemoteUrl) -> Result<Advertisement> {
     let bytes = runner.run(None, &[OsStr::new("ls-remote"), OsStr::new("--symref"), OsStr::new("--"), OsStr::new(url.as_str())])
         .context("Cannot read HTTPS refs; check URL, credentials and certificate trust; redirects are refused")?;
     parse_advertisement(&bytes)

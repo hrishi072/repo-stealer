@@ -38,3 +38,7 @@ Git stdout/stderr and all temp/HOME/config paths stay in that session; ordinary 
 ## Implemented destination preview flow
 
 CLI `migration plan` or desktop `prepare_plan` -> unlock/verify working storage -> authenticate complete source object -> retain validated bounded manifest -> GET selected provider actor/repository -> bind clone origin/path -> observe Git refs/HEAD -> GET bounded policy listings -> recheck identity/roles and refs/HEAD -> suppress stale/unavailable comparisons -> produce conservative heads/tags rows and explicit unknowns. No apply/create/push/delete path exists. Desktop status carries only a summary; `get_plan_rows` returns bounded pages and lock clears the plan. CLI JSON stdout is explicit plaintext display. See [migration plans](MIGRATION-PLANS.md).
+
+## Guarded new-private execution
+
+Prepare immutable encrypted review -> exact typed target confirmation -> full offline source restore/fsck -> fresh actor/scopes/namespace/source/freshness checks -> encrypted one-shot intent -> exclusive private API creation -> disable automation -> verify API identity/guard and Git advertisement -> encrypted transfer intent -> atomic source/unique-guard push with exact leases -> set/protect source default -> finalize only generated guard with exact lease -> independently clone/fsck/compare refs and HEAD -> encrypted verified receipt. Any uncertain mutation consumes the plan and records needs-attention; no adoption, retry, repo deletion or rollback is performed. See [guarded migrations](GUARDED-MIGRATIONS.md).

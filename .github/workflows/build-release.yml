@@ -84,6 +84,8 @@ jobs:
         run: python scripts/test_remote.py ${{ matrix.binary }} --fixture-out fixture/remote-portable.rsbackup
       - name: Read-only GitHub and GitLab destination plans
         run: python scripts/test_migration.py ${{ matrix.binary }}
+      - name: Guarded new private GitHub and GitLab migrations
+        run: python scripts/test_new_migration.py ${{ matrix.binary }}
       - if: always() && runner.os == 'Linux'
         name: Unmount and inspect raw encrypted image
         run: python scripts/ci_workspace.py destroy

@@ -126,3 +126,7 @@ All ten packages were downloaded into ignored `dist/releases/v0.1.0-alpha.4/` an
 `python scripts/test_migration.py PATH_TO_CLI` runs synthetic GitHub/GitLab API and Git HTTP fixtures on real verified LUKS/EFS (`RS_ENCRYPTED_PARENT` on Linux), including failures, source authentication, stale observations and no-write assertions. Native CLI CI runs it before encrypted-image cleanup. Native desktop acceptance also prepares plans for both providers and checks credential/lock privacy. Browser tests cover page submission/pagination without needing a local native shell. Full acceptance results are recorded in HANDOVER.md; live provider accounts are not used by tests.
 
 Final alpha.5 acceptance: [run 42806187044](https://github.com/hrishi072/repo-stealer/actions/runs/42806187044) passed all applicable jobs, including native CLI and desktop on both OSes, eight browser tests per OS, both reciprocal recovery directions, installed version verification and private-draft cleanup. The release job is intentionally skipped for a main-branch build; no alpha.5 publication is claimed.
+
+## Guarded private creation
+
+`python scripts/test_new_migration.py CLI` uses synthetic personal-provider TLS APIs and real smart-HTTP receive-pack on verified LUKS/EFS. Native desktop acceptance also creates and verifies two private fixture repositories through real IPC. Existing archive/read-only checks and reciprocal recovery remain enabled. New acceptance/publication results will be recorded after CI.

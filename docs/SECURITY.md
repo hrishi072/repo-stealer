@@ -68,3 +68,7 @@ The alpha.4 desktop uses incognito WebView2 on Windows and a fresh owner-only pr
 ## Read-only migration plans
 
 Destination API access is HTTPS GET only with sensitive in-memory Bearer headers, bounded response bodies, fixed errors, no redirects or proxy inheritance. API clone URLs must match the selected instance/repository before Git is contacted. Git discovery retains encrypted credential scratch and existing process isolation. The complete source object is authenticated before any network request. Plans do not prove ancestry, write scopes, branch/tag policy permission or atomic freshness. CLI JSON is a deliberate plaintext display; desktop plans are memory-only and removed on lock. See [migration plans](MIGRATION-PLANS.md).
+
+## Guarded new-repository writes
+
+Read-only preflight is separate from the one-shot private migration adapter. The latter authenticates/restores/fscks source data before exclusive creation, persists encrypted intents before writes, proves supported personal token scopes, disables destination CI, and gates atomic ref changes with creation guard and exact leases. It never adopts an existing destination or retries an uncertain mutation. API/Git/admin boundaries are not a distributed transaction. See [guarded migrations](GUARDED-MIGRATIONS.md).

@@ -19,6 +19,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from test_git import encrypted_files, fixture, inventory
 from test_remote import HTTPSFixture, TOKEN, USERNAME
 from test_migration import ProviderFixture
+from test_new_migration import CreationFixture
 
 
 class Options(ArgOptions):
@@ -207,7 +208,27 @@ def main():
             click("Restore vault"); completed()
             assert status()["vault"]["itemCount"] == 2
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
-            print("Native desktop create/unlock, encrypted workspace, capture, Git restore, backup and portable vault recovery passed.")
+            click("Unlock vault");fill("Vault location",root / "restored-vault");fill("Vault passphrase",password)
+            driver.find_element(By.CSS_SELECTOR,'.modal-footer button:not([type])').click();completed()
+            click("New migrations")
+            from selenium.webdriver.support.ui import Select
+            for provider_name in ("github","gitlab"):
+                with CreationFixture(root/("creation-"+provider_name),provider_name) as target:
+                    Select(driver.find_element(By.CSS_SELECTOR,'select[aria-label="New migration provider"]')).select_by_value(provider_name)
+                    fill("New migration source","synthetic-desktop-history");fill("New migration instance",target.instance)
+                    fill("New migration repository",target.project);fill("New migration token",TOKEN)
+                    fill("New migration username",USERNAME);fill("New migration CA",target.certificate)
+                    click("Prepare private migration");review=completed()
+                    assert review["newMigration"]["repository"]==target.project
+                    assert TOKEN not in json.dumps(review)
+                    fill("Execute migration token",TOKEN);fill("Confirm new repository",target.project)
+                    click("Create private repository and migrate");done=completed()
+                    assert done["migrationResult"]["state"]=="verified",done["migrationResult"]
+                    wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Private migration result"]'))
+                    assert len(target.pushes)==2
+            click("Lock vault");wait.until(lambda _:status()["vault"] is None)
+            assert status()["newMigration"] is None and status()["migrationResult"] is None
+            print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")
     finally:
         if driver:
             driver.quit()

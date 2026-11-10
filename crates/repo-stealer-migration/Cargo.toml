@@ -17,3 +17,5 @@ secrecy = "0.10"
 sha2 = "0.10"
 url = "2.5"
 zeroize = "1.8"
+
+getrandom = "0.2"

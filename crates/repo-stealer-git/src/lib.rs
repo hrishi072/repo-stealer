@@ -1,4 +1,4 @@
-//! Local Git capture/restore with OS-verified encrypted scratch storage.
+//! Git capture/restore and guarded new-repository transfer in OS-verified encrypted storage.
 mod remote;
 mod repository;
 mod runner;
@@ -11,3 +11,6 @@ pub use remote::{
 pub use repository::{capture, restore, snapshot_refs, SnapshotRefs};
 pub use runner::Options;
 pub use workspace::{Encryption, Workspace};
+
+mod transfer;
+pub use transfer::VerifiedTransfer;
