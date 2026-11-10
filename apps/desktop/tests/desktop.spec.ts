@@ -4,7 +4,7 @@ import type { Status } from '../src/api';
 async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false, migration = false) {
   await page.addInitScript(({ unlocked, workspace, plan, migration }) => {
     const state:Status = { version: '0.1.0-alpha.5', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true, plan: plan ? {schema:1,observedAt:10,provider:'gitlab',deployment:'self_hosted',instance:'https://git.example/platform/',requestedRepository:'group/sub/repo',sourceName:'history',sourceSha256:'a'.repeat(64),sourceVerification:'authenticated_manifest',actor:{id:1,login:'fixture'},repository:null,policies:[{endpoint:'protected_branches',complete:false,count:0,issue:{code:'access_denied',status:403,retryAfterSeconds:null}}],blockers:[],warnings:['policy_coverage_incomplete_never_assume_unprotected'],apiIssues:[],destinationFingerprint:'b'.repeat(64),destinationHead:null,sourceExcludedRefs:2,destinationExcludedRefs:1,rows:41,counts:{create_candidate:41},executionSupported:false,writeAuthorization:'unproven'} : null };
-    state.newMigration=migration ? {id:'1'.repeat(32),expiresAt:Math.floor(Date.now()/1000)+900,provider:'github',repository:'fixture/new-private',actor:{id:10,login:'fixture'},sourceName:'history',sourceSha256:'a'.repeat(64),defaultBranch:'main',refCount:5,refs:{'refs/heads/main':'b'.repeat(40)},excludedRefs:2,visibility:'private',automation:'disabled',scopeProof:'classic_repo_workflow'} : null;
+    state.newMigration=migration ? {id:'1'.repeat(32),expiresAt:Math.floor(Date.now()/1000)+900,provider:'github',instance:'https://github.com/',deployment:'cloud',repository:'fixture/new-private',actor:{id:10,login:'fixture'},sourceName:'history',sourceSha256:'a'.repeat(64),defaultBranch:'main',refCount:5,refs:{'refs/heads/main':'b'.repeat(40)},excludedRefs:2,visibility:'private',automation:'disabled',scopeProof:'classic_repo_workflow'} : null;
     const calls: { command: string; args: unknown }[] = [];
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
@@ -159,6 +159,7 @@ test('new private migration preparation clears credentials and uses typed IPC',a
 test('execution requires exact reviewed target and locking removes its review',async({page})=>{
  await mockDesktop(page,true,true,false,true);await page.goto('/');
  await page.getByRole('button',{name:'New migrations',exact:true}).click();
+ await expect(page.getByRole('region',{name:'New private migration review'})).toContainText('https://github.com/');
  const execute=page.getByRole('button',{name:'Create private repository and migrate',exact:true});
  await expect(execute).toBeDisabled();
  await page.getByLabel('Execute migration token',{exact:true}).fill('synthetic-new-token');

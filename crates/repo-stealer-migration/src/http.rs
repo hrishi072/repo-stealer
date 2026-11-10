@@ -193,8 +193,9 @@ impl<'a> Api<'a> {
                 return Err(ApiIssue::new("api_body_exceeds_limit", Some(status)));
             }
         }
-        // Never deserialize or display provider error bodies/headers. Successful
-        // JSON is also bounded and only normalized allowlisted fields survive.
+        // Error bodies are never displayed or persisted; the sole feature-absence
+        // classification above is bounded and exact. Successful JSON is also
+        // bounded and only normalized allowlisted fields survive.
         let classic_write_scopes = response
             .headers()
             .get("x-oauth-scopes")
