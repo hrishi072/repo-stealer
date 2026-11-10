@@ -6,7 +6,7 @@ Alpha.4 development adds read-only acquisition from an explicit HTTPS Git clone 
 
 Unlock a vault, verify encrypted working storage, then choose Capture repository → HTTPS remote. Supply a new snapshot name and clone URL. Choose Anonymous or Username & token. A custom PEM CA bundle is optional for self-hosted servers; TLS verification stays enabled. Redirects are refused, so provide the canonical clone URL.
 
-Vault identities remain in Rust. Operational tokens are not added to snapshots, backups, preferences or job history. Rust zeroizes owned token input, while JavaScript cannot guarantee memory erasure. Git reads an ephemeral credential store inside the verified LUKS/EFS session. A mounted working volume is accessible to its authorized OS user; crash remnants remain filesystem-encrypted. This is not a separately age-encrypted credential file.
+The desktop uses an incognito webview and no application browser storage for credentials. Vault identities remain in Rust. Operational tokens are not added to snapshots, backups, preferences or job history. Rust zeroizes owned token input, while JavaScript cannot guarantee memory erasure. Git reads an ephemeral credential store inside the verified LUKS/EFS session. A mounted working volume is accessible to its authorized OS user; crash remnants remain filesystem-encrypted. This is not a separately age-encrypted credential file.
 
 ## CLI
 
@@ -39,7 +39,7 @@ The default-HEAD tree is bounded to 100,000 entries and Git command output to 8 
 
 Remote snapshots use Git manifest version 2 inside the existing encrypted vault/backup format. The remote report is authenticated with that snapshot. Local captures retain version 1. Alpha.4 reads both; alpha.3 cannot restore version-2 Git snapshots. Portable vault backups retain the original age identity and passphrase recovery behavior. Restore still creates a new verified bare repository inside encrypted working storage and never overwrites a destination.
 
-Current activity/report display is session-only; the authenticated provenance remains inside the archived Git snapshot. No dedicated historical provenance browser exists yet. See [Git snapshot scope](GIT-SNAPSHOTS.md) and [security boundaries](SECURITY.md).
+Current activity/report display is session-only, and locking clears remote reports from activity; the authenticated provenance remains inside the archived Git snapshot. No dedicated historical provenance browser exists yet. See [Git snapshot scope](GIT-SNAPSHOTS.md) and [security boundaries](SECURITY.md).
 
 ## Test plan
 

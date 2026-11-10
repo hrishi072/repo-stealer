@@ -72,7 +72,7 @@ def main():
             print("Desktop control:", text, flush=True)
             def attempt(d):
                 for element in d.find_elements(By.TAG_NAME, "button"):
-                    if element.text.strip() == text and element.is_enabled() and element.is_displayed():
+                    if (element.get_attribute("aria-label") or element.text).strip() == text and element.is_enabled() and element.is_displayed():
                         element.click()
                         return True
                 return False
@@ -160,6 +160,7 @@ def main():
             click("Verify backup"); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
+            assert all(job["result"] is None for job in status()["jobs"]), "Lock retained decrypted remote provenance"
             click("Restore backup"); fill("Encrypted backup", backup); fill("New vault location", root / "restored-vault"); fill("Original vault passphrase", password)
             click("Restore vault"); completed()
             assert status()["vault"]["itemCount"] == 2

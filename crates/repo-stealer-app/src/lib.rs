@@ -228,6 +228,11 @@ impl Engine {
         }
         inner.vault = None;
         inner.summary = None;
+        // The generic activity trail can remain visible while locked, but
+        // origin URLs and inventory are decrypted snapshot metadata.
+        for job in &mut inner.jobs {
+            job.result = None;
+        }
         Ok(())
     }
     pub fn items(&self, query: &str, offset: usize, limit: usize) -> Result<ItemPage, String> {

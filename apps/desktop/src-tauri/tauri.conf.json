@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "label": "main", "title": "Repo Stealer", "width": 1320, "height": 940, "minWidth": 900, "minHeight": 700, "center": true }],
+    "windows": [{ "label": "main", "incognito": true, "title": "Repo Stealer", "width": 1320, "height": 940, "minWidth": 900, "minHeight": 700, "center": true }],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'"
     }
