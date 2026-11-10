@@ -301,6 +301,37 @@ fn checkpoint(vault: &mut Vault, plan: &NewPlan, phase: &str, detail: Value) -> 
         &json!({"schema":1,"operation":plan.id,"repository":plan.repository,"phase":phase,"time":now()?,"detail":detail}),
     )
 }
+fn policy_baseline(
+    api: &Api<'_>,
+    d: &Destination,
+    id: u64,
+    guard: &str,
+    source: Option<&str>,
+) -> Result<()> {
+    if d.provider == Provider::Github {
+        ensure!(super::policies(api,d).iter().all(|p|p.complete && p.count==0),"New GitHub policy baseline must be completely readable and unrestricted; policies are never bypassed");
+    } else {
+        let mut endpoint = d.api_url(&format!("projects/{id}/protected_branches"));
+        endpoint.query_pairs_mut().append_pair("per_page", "100");
+        let response = api
+            .get(endpoint)
+            .map_err(|_| anyhow::anyhow!("Cannot read new-project branch protection baseline"))?;
+        let items = response
+            .value
+            .as_array()
+            .context("Invalid branch protection baseline")?;
+        ensure!(
+            !response.next
+                && items.len() < 100
+                && items.iter().all(|p| p
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .is_some_and(|name| name == guard || Some(name) == source)),
+            "Unexpected/inherited branch policies require manual review"
+        );
+    }
+    Ok(())
+}
 /// No retries or adoption. Even uncertain attempts consume their encrypted plan.
 pub fn execute_new(
     vault: &mut Vault,
@@ -400,6 +431,12 @@ pub fn execute_new(
             json!({"id":repo.id,"url":repo.clone_url}),
         )?;
         result.last_phase = "configure_new_repository".into();
+        checkpoint(
+            vault,
+            &plan,
+            "configure-intent",
+            json!({"automation":"disabled"}),
+        )?;
         if plan.provider == Provider::Github {
             api.write(
                 reqwest::Method::PUT,
@@ -452,6 +489,8 @@ pub fn execute_new(
             &marker,
         )?;
         current(&api, &d, &plan, &access, repo.id)?;
+        result.last_phase = "destination_policy_baseline".into();
+        policy_baseline(&api, &d, repo.id, default, None)?;
         checkpoint(
             vault,
             &plan,
@@ -469,6 +508,12 @@ pub fn execute_new(
         )?;
         result.last_phase = "default_branch_configuration".into();
         current(&api, &d, &plan, &access, repo.id)?;
+        checkpoint(
+            vault,
+            &plan,
+            "default-intent",
+            json!({"defaultBranch":plan.default_branch}),
+        )?;
         // Only our new GitLab project is addressed by immutable numeric ID.
         // New source default protection is restrictive; inherited rules remain.
         if plan.provider == Provider::Gitlab {
@@ -489,12 +534,6 @@ pub fn execute_new(
                 "Default protection did not match the reviewed restrictive policy"
             );
         }
-        checkpoint(
-            vault,
-            &plan,
-            "default-intent",
-            json!({"defaultBranch":plan.default_branch}),
-        )?;
         api.write(
             if plan.provider == Provider::Github {
                 reqwest::Method::PATCH

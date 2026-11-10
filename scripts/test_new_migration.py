@@ -32,7 +32,9 @@ class CreationFixture(HTTPSFixture):
         assert not self.exists
         assert body["name"]==self.project.split('/')[1]
         if self.provider=="github":assert body["private"] is True and body["auto_init"] is True
-        else:assert body["visibility"]=="private" and body["initialize_with_readme"] is True and body["builds_access_level"]=="disabled" and body["namespace_id"]==100
+        else:
+            assert body["visibility"]=="private" and body["initialize_with_readme"] is True and body["builds_access_level"]=="disabled" and body["namespace_id"]==100
+            self.actions=False
         self.description=body["description"];self.private=self.mode!="public-response"
         self.default_branch=body.get("default_branch","main" if self.mode=="normal-main" else "bootstrap")
         self.created_guard=self.default_branch
@@ -84,7 +86,9 @@ class CreationFixture(HTTPSFixture):
                     if path.startswith(branch_prefix):
                         branch=urllib.parse.unquote(path[len(branch_prefix):]);oid=git(owner.repository,"rev-parse","refs/heads/"+branch).decode().strip()
                         return send({"commit":{"sha" if owner.provider=="github" else "id":oid}})
+                    if path in (repo+"/branches",repo+"/rulesets") and self.command=="GET":return send([])
                     protection=api+f"projects/{owner.repo_id}/protected_branches"
+                    if path==protection and self.command=="GET":return send(list(owner.protections.values()))
                     if path==protection and self.command=="POST":
                         assert set(body)=={"name","push_access_level","merge_access_level","allow_force_push"}
                         assert body["allow_force_push"] is False and body["push_access_level"]==40 and body["merge_access_level"]==40
