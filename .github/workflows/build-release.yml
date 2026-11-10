@@ -65,10 +65,24 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Identify CLI compiler cache
+        id: native_compiler
+        shell: bash
+        run: echo "version=$(rustc --version | tr ' /' '--')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        id: native_cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/release
+          key: native-${{ runner.os }}-${{ steps.native_compiler.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: native-${{ runner.os }}-${{ steps.native_compiler.outputs.version }}-
       - name: Probe anonymous synthetic Git HTTPS trust
         run: python scripts/test_remote.py --probe-https
       - run: cargo test --workspace --release --locked -- --test-threads=1
       - run: cargo build --release --locked -p repo-stealer-cli
+        id: cli_build
       - name: Native CLI, crash and portability fixture
         run: python scripts/test_cli.py ${{ matrix.binary }} --fixture-out fixture/portable.rsbackup
       - name: Read the committed format fixture
@@ -114,6 +128,15 @@ jobs:
           cp fixture/git-portable.rsbackup "fixture/git-$PLATFORM.rsbackup"
           cp fixture/remote-portable.rsbackup "fixture/remote-$PLATFORM.rsbackup"
           gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup" "fixture/git-$PLATFORM.rsbackup" "fixture/remote-$PLATFORM.rsbackup"
+      - if: always() && steps.cli_build.outcome == 'success' && steps.native_cache.outputs.cache-hit != 'true'
+        name: Retain CLI compiled dependencies
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/release
+          key: ${{ steps.native_cache.outputs.cache-primary-key }}
 
   desktop:
     needs: staging

@@ -208,7 +208,7 @@ def main():
             click("Restore vault"); completed()
             assert status()["vault"]["itemCount"] == 2
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
-            click("Unlock vault");fill("Vault location",root / "restored-vault");fill("Vault passphrase",password)
+            click("Overview");click("Unlock vault");fill("Vault location",root / "restored-vault");fill("Vault passphrase",password)
             driver.find_element(By.CSS_SELECTOR,'.modal-footer button:not([type])').click();completed()
             click("New migrations")
             from selenium.webdriver.support.ui import Select
