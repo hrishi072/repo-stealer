@@ -1,14 +1,14 @@
 # Handover
 
-## 2026-11-10 — HTTPS native acceptance and release preparation
+## 2026-11-10 — published HTTPS capture alpha
 
 **Done:** Explicit HTTPS capture through CLI/UI with transient username/token credentials, custom CA trust, isolated network/offline workers, pre/post source observations, manifest v2 provenance and bounded default-HEAD LFS/gitlink reporting. Redirects/alternates/bundle URIs and recursive external fetches are refused. Report metadata clears on lock. Linux uses a new private tmpfs browser profile; Windows retains incognito WebView2. Unix Git session/restored root permissions are explicitly private.
 
 **Acceptance:** [Run 42791025283](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283) passed all jobs: native engine and desktop flows on both OSes, source-change/trust/auth failure cases, reciprocal remote Git/backup recovery, UI cancellation/privacy, Linux profile policy tests and existing packaging/launch gates. No real hosting credentials or production repositories used. See docs/REMOTE-CAPTURE.md and docs/TESTING.md for precise limits and evidence.
 
-**Release:** Preparing signed v0.1.0-alpha.4; do not claim publication until its full tagged workflow succeeds. Manifest v2 requires alpha.4 for Git restore; vault/backup key identity and container format are unchanged. Existing published UI release is alpha.3.
+**Release:** Published signed [v0.1.0-alpha.4](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) from `fe15b63` after the [tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) passed every gate and staging cleanup. Four UI and six CLI assets plus SHA256SUMS are available. All ten downloaded package hashes matched; local copies are in ignored `dist/releases/v0.1.0-alpha.4/`. Manifest v2 needs alpha.4 for Git restore; vault/backup identity and container format are unchanged. Source commits/tags are SSH-signed, application packages are not OS code-signed.
 
-**Next:** Verify tagged publication/assets, then implement destination preflight/read-only plans before destination writes. SSH/proxies, API metadata, actual LFS/submodule payload transfer, automatic wiki discovery and resumable/bulk jobs remain future work. Preserve encryption and no-overwrite gates.
+**Next:** Implement destination preflight/read-only plans before destination writes. SSH/proxies, API metadata, actual LFS/submodule payload transfer, automatic wiki discovery and resumable/bulk jobs remain future work. Preserve encryption and no-overwrite gates.
 
 ## 2026-11-10 — HTTPS capture implementation
 

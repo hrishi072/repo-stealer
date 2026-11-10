@@ -114,3 +114,9 @@ Run 42766343436 passed Windows private HTTPS UI/report/cancellation, report clea
 [Run 42791025283](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283) passed the complete matrix on 2026-11-10: quality/formatting/Clippy and core Rust 1.88 checks; 20 Linux/18 Windows root Rust tests; six browser tests per OS; two Linux native browser-profile policy tests; native HTTPS auth/custom-CA/full-history/inventory/no-overwrite/source-change/redirect/alternate/timeout checks; both reciprocal remote snapshot recovery jobs; real desktop HTTPS capture, report display, cancellation during an active request, report clearing on lock and same-key backup/recovery. Existing CLI/Git/crash tests and DEB/AppImage/NSIS launch checks also passed. Desktop RPM packaging/identity/digest checks passed; Fedora/openSUSE desktop RPM installation remains untested.
 
 The Linux policy uses the production tmpfs profile function, not an automation-only configuration. Browser profiles, Git staging and newly restored Unix roots have explicit owner-only directory permissions.
+
+## Published alpha.4 evidence
+
+[Tagged run 42792675341](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) repeated the complete matrix successfully, verified the SSH-signed version tag, published four desktop plus six CLI assets and SHA256SUMS, and removed its temporary staging draft. The immutable tag resolves to `fe15b634700dfc2087c73f20481832515e58489f`.
+
+All ten packages were downloaded into ignored `dist/releases/v0.1.0-alpha.4/` and independently matched the published SHA-256 digests. A transient CDN download failure was retried without changing the published assets.

@@ -57,3 +57,5 @@ Desktop [v0.1.0-alpha.3](https://github.com/hrishi072/repo-stealer/releases/tag/
 ## 2026-11-10 HTTPS increment
 
 Alpha.4 implements explicit HTTPS acquisition through the UI/CLI, transient username/token credentials, custom PEM CA trust, advertised ref/HEAD rechecks, authenticated remote provenance and bounded default-HEAD LFS/gitlink inventory. [Native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283) passed both OSes, reciprocal remote backup/Git recovery, UI cancellation/report privacy and package checks. Wiki URLs remain explicit separate captures; external payload transfer, provider metadata and destination migration remain future work.
+
+HTTPS capture [v0.1.0-alpha.4](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) is published after [signed-tag acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341). This completes the explicit read-only remote capture → encrypted snapshot → offline local restore slice. Destination migration and hosting metadata remain separate increments.

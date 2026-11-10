@@ -1,6 +1,6 @@
 # Desktop application
 
-The first desktop increment exposes the existing local encryption and Git engine through Tauri 2 and React. It captures local repositories and explicit HTTPS clone URLs; provider APIs and destination migration are not available yet. Native Linux and Windows workflow acceptance passed in [run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189), including installed DEB/NSIS and extracted AppImage launch checks. RPM packaging and digest checks passed; desktop RPM installation on Fedora/openSUSE has not yet been exercised. [Alpha.3 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) are published following the [successful signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642).
+The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git capture/restore, and same-key portable backups. Provider APIs and destination migration remain future work. [Alpha.4 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) passed native Linux/Windows HTTPS, recovery, privacy/cancellation, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
 ![Browser preview of the desktop overview](screenshots/desktop-overview.png)
 

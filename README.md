@@ -4,7 +4,7 @@ A local-first project for a desktop application for migrating, archiving, and ev
 
 **Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. Provider APIs, destination migration and external LFS/submodule transfers remain future work. The storage format has not had an independent security review.
 
-Download the [desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases). Choose `repo-stealer-desktop-*` for the graphical application.
+Download the [alpha.4 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4). Choose `repo-stealer-desktop-*` for the graphical application.
 
 ## Start here
 
@@ -73,4 +73,4 @@ Restore creates a new bare reftable repository with verified refs, HEAD and comp
 
 ## HTTPS repository capture
 
-Alpha.4 adds explicit HTTPS capture, username/token authentication, self-hosted custom CA support and default-HEAD external-content reporting through the CLI and UI. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283); signed-tag publication repeats the full matrix. See [usage, security boundaries and fidelity](docs/REMOTE-CAPTURE.md).
+Alpha.4 adds explicit HTTPS capture, username/token authentication, self-hosted custom CA support and default-HEAD external-content reporting through the CLI and UI. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283); [signed-tag acceptance and publication also passed](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341). See [usage, security boundaries and fidelity](docs/REMOTE-CAPTURE.md).

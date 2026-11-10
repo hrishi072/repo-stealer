@@ -1,6 +1,6 @@
 # HTTPS repository capture
 
-Alpha.4 adds read-only acquisition from an explicit HTTPS Git clone URL. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283). This is Git transport, not a GitHub/GitLab API connection or destination migration.
+[Alpha.4](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) adds read-only acquisition from an explicit HTTPS Git clone URL. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283). This is Git transport, not a GitHub/GitLab API connection or destination migration.
 
 ## Desktop
 
@@ -46,3 +46,5 @@ Current activity/report display is session-only, and locking clears remote repor
 `scripts/test_remote.py` runs a disposable TLS Git HTTP backend with synthetic credentials, never real hosting accounts. Native CI uses real LUKS/EFS workspaces. It checks authentication and custom trust, independent history/ref restoration, report contents, duplicate-name refusal, redirect/HTTP-alternate refusal, source ref changes, timeout and token-free diagnostics. OS jobs exchange remote-containing backups in both directions. The native desktop test exercises private HTTPS capture, report rendering and cancellation during an active request, then same-key backup/recovery. All native and reciprocal recovery checks passed in [run 42791025283](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283), including both desktop cancellation/report/lock flows and package checks. The Linux native shell additionally passed two tmpfs/private-profile policy tests.
 
 Git behavior references: [credential-store](https://git-scm.com/docs/git-credential-store), [configuration](https://git-scm.com/docs/git-config), [advertised refs](https://git-scm.com/docs/git-ls-remote), [mirror clone](https://git-scm.com/docs/git-clone). Git 2.48’s [HTTP walker implementation](https://github.com/git/git/blob/v2.48.0/http-walker.c) rejects alternates unless redirects are explicitly set to always; the worker sets them to false.
+
+Published after the [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) repeated all native, reciprocal recovery, packaging, version/signature and cleanup gates successfully. All ten downloaded release packages matched SHA256SUMS.
