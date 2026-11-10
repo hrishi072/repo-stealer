@@ -1,5 +1,10 @@
 # Handover
 
+## Alpha.5 destination planning — implementation in progress
+
+Implemented a shared read-only migration crate, CLI `migration plan` and desktop Migration plans page for GitHub/GitLab cloud/self-hosted. Full source authentication precedes API access; clone-origin binding, identity/ref rechecks, unknown policy coverage, preserve/conflict rows, no write authorization, bounded API data and session-only paginated plans are explicit. Added synthetic native API/Git acceptance and both-provider native UI flows. Version advanced to alpha.5; latest published release remains alpha.4. Local Rust workspace tests/clippy and frontend build pass; native desktop compilation on this host is blocked by missing GDK development libraries, so native Linux/Windows acceptance is pending CI. Initial native Linux acceptance exposed a fixture certificate incorrectly used as both CA and TLS leaf. A separate CA-signed server leaf now passes strict Rustls validation locally; no TLS verification is disabled. Added source-v2, empty/SHA-256 destination and bounded API timeout/cancellation acceptance cases. See docs/MIGRATION-PLANS.md.
+
+
 ## 2026-11-10 — published HTTPS capture alpha
 
 **Done:** Explicit HTTPS capture through CLI/UI with transient username/token credentials, custom CA trust, isolated network/offline workers, pre/post source observations, manifest v2 provenance and bounded default-HEAD LFS/gitlink reporting. Redirects/alternates/bundle URIs and recursive external fetches are refused. Report metadata clears on lock. Linux uses a new private tmpfs browser profile; Windows retains incognito WebView2. Unix Git session/restored root permissions are explicitly private.
@@ -77,7 +82,3 @@ Read first: README.md, docs/SECURITY.md, docs/DECISIONS.md and docs/RELEASING.md
 **Do not touch:** Do not run the legacy pull/push scripts against user data, disable SSH/TLS verification, or interpret a source deletion as permission to delete destination work. Keep secrets out of code, logs and test fixtures. Proposed capabilities must not be presented as implemented.
 
 Read first: README.md, docs/ARCHITECTURE.md, docs/SECURITY.md, docs/DECISIONS.md. Update this record with actual evidence when the implementation changes.
-
-## Alpha.5 destination planning — implementation in progress
-
-Implemented a shared read-only migration crate, CLI `migration plan` and desktop Migration plans page for GitHub/GitLab cloud/self-hosted. Full source authentication precedes API access; clone-origin binding, identity/ref rechecks, unknown policy coverage, preserve/conflict rows, no write authorization, bounded API data and session-only paginated plans are explicit. Added synthetic native API/Git acceptance and both-provider native UI flows. Version advanced to alpha.5; latest published release remains alpha.4. Local Rust workspace tests/clippy and frontend build pass; native desktop compilation on this host is blocked by missing GDK development libraries, so native Linux/Windows acceptance is pending CI. See docs/MIGRATION-PLANS.md.

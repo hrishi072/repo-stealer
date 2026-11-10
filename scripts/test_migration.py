@@ -5,9 +5,10 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 import urllib.parse
 
-from test_git import PASSWORD, encrypted_files, git
+from test_git import PASSWORD, encrypted_files, fixture, git
 from test_remote import HTTPSFixture, TOKEN, USERNAME, command
 
 
@@ -20,6 +21,7 @@ class ProviderFixture(HTTPSFixture):
         self.policy_pages = []
         self.external_requests = []
         self.rpc_bodies = []
+        self.allow_fetch = False
         super().__init__(root)
 
     @property
@@ -42,6 +44,9 @@ class ProviderFixture(HTTPSFixture):
                 api = owner.prefix + ("/api/v3/" if owner.provider == "github" else "/api/v4/")
                 if path.startswith(api):
                     assert self.command == "GET", "Provider API mutation attempted"
+                    if owner.mode == "slow-api":
+                        time.sleep(4)
+                        return self.send(503)
                     if owner.mode == "redirect":
                         return self.send(302, headers={"Location": owner.instance + "/redirect-trap"})
                     if self.headers.get("Authorization") != "Bearer " + TOKEN:
@@ -90,7 +95,8 @@ class ProviderFixture(HTTPSFixture):
                     if self.command == "POST":
                         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
                         owner.rpc_bodies.append(body)
-                        assert b"command=fetch" not in body and b"command=push" not in body, "Plan fetched or pushed objects"
+                        if not owner.allow_fetch:
+                            assert b"command=fetch" not in body and b"command=push" not in body, "Plan fetched or pushed objects"
                         self.rfile = io.BytesIO(body)
                     self.path = self.path.replace(external, "/project.git", 1)
                     if owner.mode == "git-denied":
@@ -118,6 +124,10 @@ def main():
         secrets = {"vault_passphrase": PASSWORD.decode().strip(), "token": TOKEN}
         with ProviderFixture(root / "https") as server:
             command(binary, "git", "capture", vault, "source", server.source, "--work-root", work)
+            server.allow_fetch = True
+            command(binary, "git", "capture-remote", vault, "remote-source", server.instance + "/" + server.project + ".git", "--work-root", work,
+                    "--username", USERNAME, "--ca-file", server.certificate, secrets=secrets)
+            server.allow_fetch = False
             # Difference classes, including tag conflict and destination-only refs.
             source_head = git(server.repository, "rev-parse", "HEAD").decode().strip()
             git(server.repository, "update-ref", "refs/heads/main", "HEAD~1")
@@ -126,10 +136,10 @@ def main():
             git(server.repository, "update-ref", "-d", "refs/heads/feature")
             before = {p.relative_to(vault): p.read_bytes() for p in vault.rglob("*") if p.is_file()}
 
-            def plan(mode="normal", *, token=TOKEN, ca=True, name="source", ok=True):
+            def plan(mode="normal", *, token=TOKEN, ca=True, name="source", timeout=30, ok=True):
                 server.mode = mode; server.repo_reads = 0; server.policy_pages.clear(); server.external_requests.clear(); server.rpc_bodies.clear()
                 result = command(binary, "migration", "plan", vault, name, "--provider", server.provider,
-                                 "--repository", server.project, "--instance", server.instance, "--work-root", work,
+                                 "--repository", server.project, "--instance", server.instance, "--work-root", work, "--timeout-seconds", timeout,
                                  "--username", USERNAME, *( ["--ca-file", server.certificate] if ca else []),
                                  secrets={**secrets, "token": token}, ok=ok)
                 if not ok:
@@ -170,13 +180,34 @@ def main():
                 assert untrusted["rows"] == [] and untrusted["summary"]["apiIssues"][0]["code"] == "https_request_failed"
                 wrong = plan(token="wrong-token")
                 assert wrong["rows"] == [] and wrong["summary"]["apiIssues"][0]["code"] == "authentication_rejected"
+            timeout=plan("slow-api",timeout=1)
+            assert timeout["rows"]==[] and timeout["summary"]["apiIssues"][0]["code"]=="timeout"
+            remote = plan(name="remote-source")
+            assert remote["summary"]["sourceVerification"] == "authenticated_manifest" and remote["rows"]
+            server.provider="github"; server.prefix=""
+            same=plan(name="remote-source")
+            assert "source_and_destination_same_clone_url" in same["summary"]["blockers"]
             changed = plan("changed-refs")
             assert "destination_refs_changed_during_preflight" in changed["summary"]["blockers"] and not changed["rows"]
             assert before == {p.relative_to(vault): p.read_bytes() for p in vault.rglob("*") if p.is_file()}, "Read-only plan changed vault files"
+            original = server.repository.with_name("original.git")
+            server.repository.rename(original)
+            empty = server.repository
+            empty.mkdir()
+            git(empty,"init","--bare","--initial-branch=main")
+            empty_plan=plan()
+            assert "empty_destination_object_format_unknown" in empty_plan["summary"]["warnings"]
+            assert empty_plan["rows"] and all(row["change"]=="create_candidate" for row in empty_plan["rows"])
+            empty.rename(empty.with_name("empty.git"))
+            sha = fixture(root / "sha256-source", "sha256")
+            git(sha,"clone","--mirror",str(sha),str(server.repository))
+            incompatible=plan()
+            assert "incompatible_git_object_format" in incompatible["summary"]["blockers"] and not incompatible["rows"]
             # Authentication must consume the tail, not trust a readable header.
             objects = list((vault / "data/objects").glob("*"))
-            assert len(objects) == 1
-            path = objects[0]; data = bytearray(path.read_bytes()); data[-1] ^= 1; path.write_bytes(data)
+            assert len(objects) == 2
+            for path in objects:
+                data = bytearray(path.read_bytes()); data[-1] ^= 1; path.write_bytes(data)
             plan(ok=False)
             assert server.external_requests == [], "Corrupted source contacted destination"
         encrypted_files(work)

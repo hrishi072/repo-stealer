@@ -52,7 +52,20 @@ class HTTPSFixture:
         self.repository = self.export / "project.git"
         self.certificate = self.root / "ca.pem"
         self.key = self.root / "server.key"
-        subprocess.run([openssl(), "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1", "-keyout", str(self.key), "-out", str(self.certificate)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        ca_key = self.root / "ca.key"
+        server_certificate = self.root / "server.pem"
+        request = self.root / "server.csr"
+        extensions = self.root / "server.ext"
+        extensions.write_text("basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:localhost,IP:127.0.0.1\n")
+        # A CA certificate is not a valid TLS end-entity certificate. Keep a
+        # separate signed leaf so both Git and strict Rustls verification pass.
+        commands = [
+            ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=Repo Stealer fixture CA", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,keyCertSign,cRLSign", "-keyout", str(ca_key), "-out", str(self.certificate)],
+            ["req", "-new", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=localhost", "-keyout", str(self.key), "-out", str(request)],
+            ["x509", "-req", "-in", str(request), "-CA", str(self.certificate), "-CAkey", str(ca_key), "-CAcreateserial", "-days", "2", "-extfile", str(extensions), "-out", str(server_certificate)],
+        ]
+        for arguments in commands:
+            subprocess.run([openssl(), *arguments], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         backend = pathlib.Path(subprocess.check_output(["git", "--exec-path"], text=True).strip()) / "git-http-backend"
         self.backend = backend if backend.is_file() else backend.with_suffix(".exe")
         assert self.backend.is_file()
@@ -61,7 +74,7 @@ class HTTPSFixture:
         self.requests = []
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), self.handler())
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(self.certificate, self.key)
+        context.load_cert_chain(server_certificate, self.key)
         self.server.socket = context.wrap_socket(self.server.socket, server_side=True)
         self.url = f"https://127.0.0.1:{self.server.server_port}/project.git"
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)

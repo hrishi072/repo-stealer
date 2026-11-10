@@ -412,6 +412,9 @@ impl Engine {
                     .as_ref()
                     .map(|v| summarize(v, path.as_deref().unwrap_or_default()));
                 inner.vault = vault;
+                if inner.vault.is_none() {
+                    inner.plan = None;
+                }
                 inner.workspace = workspace;
                 inner.busy = false;
                 inner.cancelled = None;

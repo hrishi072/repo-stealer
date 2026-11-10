@@ -175,6 +175,13 @@ def main():
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Migration plan result"]'))
                     assert driver.find_element(By.CSS_SELECTOR,'input[aria-label="Destination access token"]').get_attribute("value")==""
                     assert "Write authorization unproven" in driver.find_element(By.TAG_NAME,"body").text
+                provider_server.mode="slow-api"
+                provider_server.external_requests.clear()
+                fill("Destination access token",TOKEN)
+                click("Prepare read-only plan")
+                wait.until(lambda _:provider_server.external_requests)
+                click("Cancel"); completed("cancelled")
+                assert status()["plan"] is None, "Cancelled preparation retained an old plan"
                 encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)

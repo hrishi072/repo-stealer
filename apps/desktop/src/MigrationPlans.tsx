@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { GitBranch, ShieldCheck } from 'lucide-react';
+import { FolderOpen, GitBranch, ShieldCheck } from 'lucide-react';
 import { choosePath, listPlanRows, type Action, type PlanRow, type Status } from './api';
 
 const words = (text: string) => text.replaceAll('_', ' ');
@@ -52,7 +52,7 @@ export function MigrationPlans({ status, onSubmit }: { status: Status; onSubmit:
         <label className="field"><span>Destination repository path</span><input aria-label="Destination repository" required maxLength={1024} value={repository} onChange={event => setRepository(event.target.value)} placeholder={provider === 'github' ? 'owner/repository' : 'group/subgroup/project'} autoComplete="off"/></label>
         <label className="checkbox-field"><input type="checkbox" checked={anonymous} onChange={event => { setAnonymous(event.target.checked); setToken(''); setUsername(''); }}/> Anonymous read-only access</label>
         {!anonymous && <><label className="field"><span>Destination access token</span><input aria-label="Destination access token" type="password" required maxLength={4096} value={token} onChange={event => setToken(event.target.value)} autoComplete="off"/><small>The same token reads provider metadata and Git refs. It is cleared after starting the job.</small></label><label className="field"><span>Git username (optional)</span><input aria-label="Destination Git username" value={username} onChange={event => setUsername(event.target.value)} autoComplete="off"/><small>Uses the API actor login when available; otherwise a provider token username.</small></label></>}
-        <label className="field"><span>Private CA bundle (optional)</span><div className="path-input"><input aria-label="Destination CA bundle" value={caFile} onChange={event => setCaFile(event.target.value)}/><button type="button" className="button secondary" onClick={() => void choosePath('key_open').then(path => { if (path) setCaFile(path); }).catch(() => setError('Cannot open the certificate picker.'))}>Browse</button></div><small>TLS stays verified. Redirects are refused.</small></label>
+        <label className="field"><span>Private CA bundle (optional)</span><div className="path-input"><input aria-label="Destination CA bundle" value={caFile} onChange={event => setCaFile(event.target.value)}/><button type="button" aria-label="Browse destination CA bundle" onClick={() => void choosePath('key_open').then(path => { if (path) setCaFile(path); }).catch(() => setError('Cannot open the certificate picker.'))}><FolderOpen size={17}/></button></div><small>TLS stays verified. Redirects are refused.</small></label>
         {error && <p role="alert" className="job-error">{error}</p>}
         <button className="button primary" disabled={!ready}><GitBranch size={17}/> Prepare read-only plan</button>
       </form>

@@ -82,6 +82,11 @@ fn check(options: &Options) -> Result<()> {
     );
     Ok(())
 }
+fn report(options: &Options, phase: &'static str) {
+    if let Some(progress) = &options.progress {
+        progress(phase);
+    }
+}
 fn portable(name: &str) -> bool {
     name.starts_with("refs/heads/") || name.starts_with("refs/tags/")
 }
@@ -251,6 +256,7 @@ pub fn prepare(
         execution_supported: false,
         write_authorization: "unproven".into(),
     };
+    report(options, "Reading destination API identity");
     let api = http::Api::new(access.as_ref(), ca, options)?;
     if access.is_some() {
         summary.actor = actor(&api, destination, &mut summary);
@@ -318,7 +324,9 @@ pub fn prepare(
             options,
         )
     };
+    report(options, "Observing destination Git refs");
     let before = observe();
+    report(options, "Reading destination policy coverage");
     summary.policies = policies(&api, destination);
     if summary.policies.iter().any(|p| !p.complete) {
         summary
@@ -330,6 +338,7 @@ pub fn prepare(
             .warnings
             .push("destination_policies_require_manual_review".into());
     }
+    report(options, "Rechecking destination identity and refs");
     let repo_after = repository(&api, destination, &mut summary);
     let actor_after = if access.is_some() {
         actor(&api, destination, &mut summary)

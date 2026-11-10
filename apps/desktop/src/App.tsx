@@ -52,7 +52,7 @@ export default function App() {
 
   return <div className="app-shell">
     <aside className="sidebar"><Brand/><div className="nav-label">WORKSPACE</div><nav aria-label="Main navigation">{([
-      ['plans', GitBranch], ['overview', LayoutDashboard], ['repositories', FolderGit2], ['backups', FileArchive], ['activity', Activity],
+      ['overview', LayoutDashboard], ['repositories', FolderGit2], ['plans', GitBranch], ['backups', FileArchive], ['activity', Activity],
     ] as const).map(([name, Icon]) => <button key={name} aria-label={titles[name]} aria-current={page === name ? 'page' : undefined} className={`nav-item ${page === name ? 'active' : ''}`} onClick={() => setPage(name)}><Icon size={18}/>{titles[name]}{name === 'activity' && status.jobs.length > 0 && <span className="nav-count">{status.jobs.length}</span>}</button>)}</nav>
       <div className="sidebar-note"><div className="note-symbol"><ShieldCheck size={19}/><span>Built to keep it yours.</span></div><p>Your vault and backups stay encrypted and under your control.</p><button onClick={() => setPage('settings')}>Storage & security <ArrowUpRight size={13}/></button></div>
       <div className="sidebar-bottom"><button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => setPage('settings')}><Settings2 size={18}/> Settings</button><div className="version"><span className="status-dot"/>Repo Stealer <span>{status.version}</span></div></div>
