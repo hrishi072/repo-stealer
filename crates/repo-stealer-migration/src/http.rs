@@ -103,6 +103,7 @@ impl<'a> Api<'a> {
         if check(self.options).is_err() {
             return Err(ApiIssue::new("cancelled", None));
         }
+        let rulesets = url.path().ends_with("/rulesets");
         let mut request = self
             .client
             .request(method, url)
@@ -150,6 +151,23 @@ impl<'a> Api<'a> {
                 }
             };
             let mut issue = ApiIssue::new(code, Some(status));
+            // Normalize only GitHub's explicit subscription-feature absence.
+            // Never expose/store error bodies; all other 403s remain unknown.
+            if rulesets && status == 403 && !limited {
+                let mut body = zeroize::Zeroizing::new(Vec::new());
+                if std::io::Read::by_ref(&mut response)
+                    .take(2049)
+                    .read_to_end(&mut body)
+                    .is_ok()
+                    && body.len() <= 2048
+                {
+                    if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&body) {
+                        if value.get("message").and_then(serde_json::Value::as_str)==Some("Upgrade to GitHub Pro or make this repository public to enable this feature.") && value.get("documentation_url").and_then(serde_json::Value::as_str)==Some("https://docs.github.com/rest/repos/rules#get-all-repository-rulesets") {
+                            issue.code="private_rulesets_feature_unavailable".into();
+                        }
+                    }
+                }
+            }
             issue.retry_after_seconds = response
                 .headers()
                 .get("retry-after")

@@ -301,6 +301,24 @@ fn checkpoint(vault: &mut Vault, plan: &NewPlan, phase: &str, detail: Value) -> 
         &json!({"schema":1,"operation":plan.id,"repository":plan.repository,"phase":phase,"time":now()?,"detail":detail}),
     )
 }
+fn restrictive_policy(value: &Value, name: &str) -> bool {
+    value.get("name").and_then(Value::as_str) == Some(name)
+        && value.get("allow_force_push") == Some(&Value::Bool(false))
+        && ["push_access_levels", "merge_access_levels"]
+            .iter()
+            .all(|key| {
+                value
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .is_some_and(|levels| {
+                        levels.len() == 1
+                            && levels[0].get("access_level").and_then(Value::as_u64) == Some(40)
+                            && ["user_id", "group_id", "deploy_key_id"]
+                                .iter()
+                                .all(|key| levels[0].get(key).is_none_or(Value::is_null))
+                    })
+            })
+}
 fn policy_baseline(
     api: &Api<'_>,
     d: &Destination,
@@ -309,7 +327,15 @@ fn policy_baseline(
     source: Option<&str>,
 ) -> Result<()> {
     if d.provider == Provider::Github {
-        ensure!(super::policies(api,d).iter().all(|p|p.complete && p.count==0),"New GitHub policy baseline must be completely readable and unrestricted; policies are never bypassed");
+        let baseline = super::policies(api, d);
+        let approved = baseline.iter().all(|p| {
+            (p.complete && p.count == 0)
+                || (p.endpoint == "rulesets"
+                    && p.issue
+                        .as_ref()
+                        .is_some_and(|i| i.code == "private_rulesets_feature_unavailable"))
+        });
+        ensure!(approved,"New GitHub policy baseline must be empty or explicitly unavailable by subscription; unknown policies are never bypassed");
     } else {
         let mut endpoint = d.api_url(&format!("projects/{id}/protected_branches"));
         endpoint.query_pairs_mut().append_pair("per_page", "100");
@@ -328,6 +354,10 @@ fn policy_baseline(
                     .and_then(Value::as_str)
                     .is_some_and(|name| name == guard || Some(name) == source)),
             "Unexpected/inherited branch policies require manual review"
+        );
+        ensure!(
+            source.is_none_or(|name| items.iter().any(|policy| restrictive_policy(policy, name))),
+            "Source default protection changed or is missing"
         );
     }
     Ok(())
@@ -520,17 +550,7 @@ pub fn execute_new(
             let endpoint = d.api_url(&format!("projects/{}/protected_branches", repo.id));
             let protection=api.write(reqwest::Method::POST,endpoint,json!({"name":plan.default_branch,"push_access_level":40,"merge_access_level":40,"allow_force_push":false}),201).map_err(|_|anyhow::anyhow!("Cannot protect the new source default branch"))?.value;
             ensure!(
-                protection.get("name").and_then(Value::as_str) == Some(&plan.default_branch)
-                    && protection.get("allow_force_push") == Some(&Value::Bool(false))
-                    && ["push_access_levels", "merge_access_levels"]
-                        .iter()
-                        .all(
-                            |key| protection.get(key).and_then(Value::as_array).is_some_and(
-                                |levels| levels.len() == 1
-                                    && levels[0].get("access_level").and_then(Value::as_u64)
-                                        == Some(40)
-                            )
-                        ),
+                restrictive_policy(&protection, &plan.default_branch),
                 "Default protection did not match the reviewed restrictive policy"
             );
         }
@@ -550,6 +570,7 @@ pub fn execute_new(
             updated.default_branch.as_ref() == Some(&plan.default_branch),
             "Default branch did not match source"
         );
+        policy_baseline(&api, &d, repo.id, default, Some(&plan.default_branch))?;
         checkpoint(vault, &plan, "finalize-intent", json!({"guard":guard_ref}))?;
         result.last_phase = "guard_finalization".into();
         if plan.provider == Provider::Gitlab {
@@ -579,6 +600,7 @@ pub fn execute_new(
             final_repo.default_branch.as_ref() == Some(&plan.default_branch),
             "Default branch changed during verification"
         );
+        policy_baseline(&api, &d, repo.id, default, Some(&plan.default_branch))?;
         checkpoint(
             vault,
             &plan,

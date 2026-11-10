@@ -86,7 +86,9 @@ class CreationFixture(HTTPSFixture):
                     if path.startswith(branch_prefix):
                         branch=urllib.parse.unquote(path[len(branch_prefix):]);oid=git(owner.repository,"rev-parse","refs/heads/"+branch).decode().strip()
                         return send({"commit":{"sha" if owner.provider=="github" else "id":oid}})
-                    if path in (repo+"/branches",repo+"/rulesets") and self.command=="GET":return send([])
+                    if path in (repo+"/branches",repo+"/rulesets") and self.command=="GET":
+                        if path.endswith("/rulesets") and owner.mode=="normal-free":return send({"message":"Upgrade to GitHub Pro or make this repository public to enable this feature.","documentation_url":"https://docs.github.com/rest/repos/rules#get-all-repository-rulesets"},403)
+                        return send([])
                     protection=api+f"projects/{owner.repo_id}/protected_branches"
                     if path==protection and self.command=="GET":return send(list(owner.protections.values()))
                     if path==protection and self.command=="POST":
@@ -132,7 +134,7 @@ def main():
         expected=None
         for provider in ("github","gitlab"):
             modes=["normal","bad-scope","public-response","hostile-clone","race-guard","verify-change","lost-create","existing","create-conflict","no-atomic"]
-            if provider=="github":modes.append("normal-main")
+            if provider=="github":modes.extend(["normal-main","normal-free"])
             for mode in modes:
                 with CreationFixture(root/(provider+mode),provider,mode) as server:
                     if expected is None:
@@ -150,13 +152,13 @@ def main():
                         continue
                     plan=json.loads(call("plan-new","source").stdout)
                     assert plan["visibility"]=="private" and plan["automation"]=="disabled"
-                    outcome=json.loads(call("execute-new",plan["id"],ok=mode in ("normal","normal-main"),timeout=1 if mode=="lost-create" else 30).stdout)
-                    assert outcome["state"]==("verified" if mode in ("normal","normal-main") else "needs_attention"),outcome
+                    outcome=json.loads(call("execute-new",plan["id"],ok=mode in ("normal","normal-main","normal-free"),timeout=1 if mode=="lost-create" else 30).stdout)
+                    assert outcome["state"]==("verified" if mode in ("normal","normal-main","normal-free") else "needs_attention"),outcome
                     posts=sum(method=="POST" and path.endswith(("user/repos","projects")) for method,path,_ in server.api_calls)
                     assert posts==1
                     call("execute-new",plan["id"],ok=False)
                     assert sum(method=="POST" and path.endswith(("user/repos","projects")) for method,path,_ in server.api_calls)==1,"Consumed plan retried creation"
-                    if mode in ("normal","normal-main"):
+                    if mode in ("normal","normal-main","normal-free"):
                         actual={line.split()[1]:line.split()[0] for line in git(server.repository,"for-each-ref","--format=%(objectname) %(refname)").decode().splitlines()}
                         assert actual==expected
                         assert git(server.repository,"symbolic-ref","HEAD").strip()==b"refs/heads/main"
