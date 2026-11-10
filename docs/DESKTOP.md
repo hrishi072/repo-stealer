@@ -42,3 +42,5 @@ Wry’s WebKitGTK incognito path replaces its automation-enabled context, preven
 ## Migration plans
 
 The Migration plans page reads existing GitHub/GitLab cloud or self-hosted destinations with transient credentials and optional private CA trust. It shows normalized identity, permission caveats, policy coverage, blockers and paginated head/tag comparisons. No Apply control or destination mutation exists. Plans stay in memory and clear on lock/new preparation; they are not vault backup contents. See [migration plans](MIGRATION-PLANS.md).
+
+Alpha.5 planning UI acceptance passed on both native webviews in [run 42806187044](https://github.com/hrishi072/repo-stealer/actions/runs/42806187044), including both providers, API cancellation/recovery, credential clearing and lock-time removal of a populated plan. Fresh DEB/NSIS installation and extracted AppImage launch verified the expected backend version; RPM packaging/digest checks passed. This implementation is on main; the published installer link above still points to alpha.4.
