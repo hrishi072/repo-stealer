@@ -48,3 +48,5 @@ Alpha.5 planning UI acceptance passed on both native webviews in [run 4280618704
 ## New private migrations
 
 The New migrations page prepares an encrypted, expiring plan and lists exact source refs. Execution requires reentered credentials and exact typed destination confirmation. It creates only in the authenticated personal namespace, disables destination automation, uses atomic ref leases and independent verification, and retains encrypted receipts. Existing repositories are never adopted. Review/results clear on lock. See [guarded migrations](GUARDED-MIGRATIONS.md) for scopes, constraints and incomplete-operation handling.
+
+Guarded new-private migration acceptance passed in [run 42834823523](https://github.com/hrishi072/repo-stealer/actions/runs/42834823523) on Linux and Windows, including both native UI creation flows, exact review/confirmation, failure/race/no-retry cases, encrypted receipt recovery, all existing reciprocal recovery and fresh installer/version checks. See [guarded migration scope](GUARDED-MIGRATIONS.md). Alpha.5 signed-tag publication is the next gate.

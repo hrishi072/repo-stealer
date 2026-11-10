@@ -130,3 +130,5 @@ Final alpha.5 acceptance: [run 42806187044](https://github.com/hrishi072/repo-st
 ## Guarded private creation
 
 `python scripts/test_new_migration.py CLI` uses synthetic personal-provider TLS APIs and real smart-HTTP receive-pack on verified LUKS/EFS. Native desktop acceptance also creates and verifies two private fixture repositories through real IPC. Existing archive/read-only checks and reciprocal recovery remain enabled. New acceptance/publication results will be recorded after CI.
+
+Guarded new-private migration acceptance passed in [run 42834823523](https://github.com/hrishi072/repo-stealer/actions/runs/42834823523) on Linux and Windows, including both native UI creation flows, exact review/confirmation, failure/race/no-retry cases, encrypted receipt recovery, all existing reciprocal recovery and fresh installer/version checks. See [guarded migration scope](GUARDED-MIGRATIONS.md). Alpha.5 signed-tag publication is the next gate.

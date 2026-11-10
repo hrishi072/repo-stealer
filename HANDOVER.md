@@ -1,5 +1,17 @@
 # Handover
 
+## 2026-11-10 — guarded private migration accepted
+
+**Done:** Separate encrypted, expiring new plans and exact typed confirmation for GitHub/GitLab personal repositories, cloud/self-hosted. Scope/actor/namespace proofs, full offline source verification before exclusive private creation, disabled destination automation, unique guard and atomic exact ref leases, source-default configuration/protection, independent clone/fsck/ref verification, and immutable encrypted intent/result entries. Existing destinations cannot be adopted. Review binds instance, source SHA-256 and exact refs; metadata clears on lock. See [guarded migrations](docs/GUARDED-MIGRATIONS.md) for limits and administrative-race boundaries.
+
+**Acceptance:** [Run 42834823523](https://github.com/hrishi072/repo-stealer/actions/runs/42834823523) passed every applicable job on `5544268`: Rust formatting/Clippy/minimum compiler; full native Linux/Windows encrypted archive, preflight and guarded receive-pack suites; 10 browser tests on both OSes; real WebKit/WebView2 private creation/verification and lock privacy; fresh DEB/NSIS installation and extracted AppImage version/launch checks; RPM packaging/digests; and reciprocal archive/Git/remote recovery. Provider writes use disposable synthetic TLS fixtures, not live accounts or production repositories. Desktop RPM installation on Fedora/openSUSE remains untested.
+
+**Safety/compatibility:** One-shot plans never retry/adopt uncertain creations or delete repositories. GitHub Free's exact private-ruleset subscription response is normalized separately from permission/rate-limit errors. The real API was queried read-only on this code repository to confirm that response. Native input replacement now uses the input prototype setter and input/change events to keep React state synchronized across both webviews; it still exercises real forms and Rust IPC. Compiler caches speed repeated/tagged checks without replacing tests.
+
+**Release:** Version remains `0.1.0-alpha.5`. Main acceptance is complete; the signed alpha.5 tag will repeat all release gates before publication. Vault/Git snapshot/backup formats and same-key recovery are unchanged.
+
+**Next:** Broader namespaces and credential types, external payload fidelity, and resumable execution with explicit reconciliation. Existing-destination writes and automatic retries remain separate work.
+
 ## 2026-11-10 — destination preflight accepted
 
 **Done:** Shared read-only migration service, CLI `migration plan` and desktop Migration plans page for GitHub.com/GitHub Enterprise Server and GitLab.com/self-hosted GitLab, including relative URL prefixes. The complete source archive is authenticated before network access. Provider identity and clone origins are bound to the selected instance/path; API identity/roles and Git refs/HEAD are rechecked. Plans flag unavailable/stale state, incomplete policies and conflicts, preserve destination-only refs, and always keep write authorization unproven. Desktop plans are session-only, paginated and cleared on lock/new preparation. No destination write operation exists. See [migration plans](docs/MIGRATION-PLANS.md).
@@ -89,7 +101,3 @@ Read first: README.md, docs/SECURITY.md, docs/DECISIONS.md and docs/RELEASING.md
 **Do not touch:** Do not run the legacy pull/push scripts against user data, disable SSH/TLS verification, or interpret a source deletion as permission to delete destination work. Keep secrets out of code, logs and test fixtures. Proposed capabilities must not be presented as implemented.
 
 Read first: README.md, docs/ARCHITECTURE.md, docs/SECURITY.md, docs/DECISIONS.md. Update this record with actual evidence when the implementation changes.
-
-## Guarded private migration implementation — pending native acceptance
-
-Implemented encrypted expiring new plans, exact typed confirmation, supported personal scope/actor checks, exclusive private creation, disabled destination automation, creation guard and atomic exact ref leases, source-default configuration/protection, independent clone/fsck/ref verification and immutable encrypted receipts. New CLI and desktop flows are connected; existing destinations cannot be adopted or overwritten through this workflow. Added synthetic receive-pack failure/race/no-retry and native UI acceptance. Local Rust checks and 10 browser tests pass; full Linux/Windows acceptance and requested alpha.5 signed-tag publication are pending. See docs/GUARDED-MIGRATIONS.md.
