@@ -37,7 +37,7 @@ flowchart TD
 
 Core owns validation, plans, conflict rules and job state. Providers own API paging, capabilities and field translation. Git worker owns object transfer and verification. Vault owns keys and persistence. Desktop owns presentation; vault identities stay in Rust, passphrases cross typed local IPC transiently, and the renderer cannot run arbitrary shell commands.
 
-**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. `repo-stealer-app` provides the shared desktop service, bounded catalog/status APIs and session jobs; `apps/desktop` contains the Tauri 2 shell and React renderer. Provider/remote-transfer modules remain planned. See [actual and proposed flow](FLOW.md).
+**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. `repo-stealer-app` provides the shared desktop service, bounded catalog/status APIs and session jobs; `apps/desktop` contains the Tauri 2 shell and React renderer. The Git worker now provides isolated read-only HTTPS acquisition with scoped ephemeral credentials and authenticated provenance; provider APIs and destination writes remain planned. See [actual and proposed flow](FLOW.md).
 
 ## Persistence and job model
 
@@ -63,3 +63,5 @@ Local Git snapshot implementation uses installed Git 2.48+, reftable, isolated c
 ## Desktop implementation
 
 The native shell is a standalone Cargo workspace so CLI development does not depend on WebKitGTK. The renderer receives summaries, up to 100 requested catalog entries and 20 session jobs. The application service owns the unlocked Vault and a single background operation; Git progress uses fixed phase callbacks and cancellation flags. Session history is not durable or resumable. No provider credentials or connection UI are implemented. Native source and installed-package tests are separate release gates. See [desktop usage and boundaries](DESKTOP.md).
+
+HTTPS acquisition mirrors advertised accessible refs into verified encrypted storage, then uses the independent offline verifier before archive publication. A second remote observation rejects changed refs/HEAD. Manifest v2 adds credential-free provenance and bounded default-HEAD external-content counts; local v1 snapshots remain supported. Windows uses private WebView2; Linux uses a new owner-only tmpfs browser profile without a disk fallback. See REMOTE-CAPTURE.md and decisions D010/D011.

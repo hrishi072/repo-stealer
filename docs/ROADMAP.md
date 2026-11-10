@@ -16,7 +16,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: remote acquisition into verified encrypted workspaces, with explicit LFS/wiki/submodule policy.** Encrypted vault/backups and local full-history Git capture/restore passed native Linux/Windows and reciprocal restore tests. Keep the current encryption gate and begin with one read-only remote capture before adding destination writes or hosting metadata adapters.
+**Next: destination connection preflight and a read-only migration plan, followed by explicit safe writes.** Encrypted vault/backups and local full-history Git capture/restore passed native Linux/Windows and reciprocal restore tests. Read-only HTTPS acquisition is now implemented and accepted on both platforms. Keep encryption, source-change detection and no-overwrite gates when introducing destination operations.
 
 Use the verified local Git fixture as the baseline for the first remote capture, then a GitHub -> GitLab test; expand metadata one entity type at a time. This is the shortest path to evidence that the difficult parts work together.
 
@@ -53,3 +53,7 @@ After native acceptance, the next task is remote acquisition into verified encry
 The first local desktop workflow is implemented: vault create/unlock/lock, verified workspace setup, local repository capture/restore, same-key backup/verification/recovery, paginated archive and real job phases. Native Linux/Windows workflow, DEB/AppImage/NSIS launch and RPM packaging/digest acceptance passed in run 42626327189; signed-tag publication repeats the complete matrix. This partially implements milestone 6; instance connections, remote migration, durable queueing and metadata screens remain future work. No benchmark or resumable-job claim is made.
 
 Desktop [v0.1.0-alpha.3](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) is published. The [signed-tag acceptance and publication workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642) passed all native, portability, package and signature gates, then removed its temporary draft.
+
+## 2026-11-10 HTTPS increment
+
+Alpha.4 implements explicit HTTPS acquisition through the UI/CLI, transient username/token credentials, custom PEM CA trust, advertised ref/HEAD rechecks, authenticated remote provenance and bounded default-HEAD LFS/gitlink inventory. [Native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283) passed both OSes, reciprocal remote backup/Git recovery, UI cancellation/report privacy and package checks. Wiki URLs remain explicit separate captures; external payload transfer, provider metadata and destination migration remain future work.

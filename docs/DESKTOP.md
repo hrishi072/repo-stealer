@@ -1,6 +1,6 @@
 # Desktop application
 
-The first desktop increment exposes the existing local encryption and Git engine through Tauri 2 and React. It captures local repositories; hosting connections and remote migration are not available yet. Native Linux and Windows workflow acceptance passed in [run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189), including installed DEB/NSIS and extracted AppImage launch checks. RPM packaging and digest checks passed; desktop RPM installation on Fedora/openSUSE has not yet been exercised. [Alpha.3 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) are published following the [successful signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642).
+The first desktop increment exposes the existing local encryption and Git engine through Tauri 2 and React. It captures local repositories and explicit HTTPS clone URLs; provider APIs and destination migration are not available yet. Native Linux and Windows workflow acceptance passed in [run 42626327189](https://github.com/hrishi072/repo-stealer/actions/runs/42626327189), including installed DEB/NSIS and extracted AppImage launch checks. RPM packaging and digest checks passed; desktop RPM installation on Fedora/openSUSE has not yet been exercised. [Alpha.3 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.3) are published following the [successful signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/42627291642).
 
 ![Browser preview of the desktop overview](screenshots/desktop-overview.png)
 
@@ -31,7 +31,7 @@ From `apps/desktop`, run `npm run tauri build -- --bundles deb,appimage -- --loc
 
 The renderer uses a narrow typed command interface and local bundled assets. It cannot execute arbitrary shell commands or directly access the filesystem. Native dialogs return selected paths; Rust validates paths and verifies encrypted working storage again for each Git operation. The vault identity stays in Rust. Passphrases cross local IPC transiently and are cleared from the form after submission; JavaScript cannot guarantee memory erasure. Owned passphrase inputs are zeroized in Rust even when a job is rejected before starting. Neither actions nor secrets enter job logs.
 
-Catalog queries are paginated and bounded; status polls return summaries and up to 20 session jobs. A local CSP disallows external application content. The desktop adds no network capability to the Git engine. See [security scope](SECURITY.md), including OS encryption keys, swap/dumps and mounted-volume access.
+Catalog queries are paginated and bounded; status polls return summaries and up to 20 session jobs. A local CSP disallows external application content. HTTPS acquisition is isolated from the offline verifier/restore worker. Redirects, HTTP alternates and bundle-URI acquisition are refused, with TLS verification enabled. See [HTTPS capture](REMOTE-CAPTURE.md). See [security scope](SECURITY.md), including OS encryption keys, swap/dumps and mounted-volume access.
 
 ## Browser profile privacy
 
