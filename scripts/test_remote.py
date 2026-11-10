@@ -114,13 +114,15 @@ class HTTPSFixture:
                 pass
 
             def send(self, code, data=b"", headers=None):
-                self.send_response(code)
-                self.send_header("Content-Length", str(len(data)))
-                self.send_header("Connection", "close")
-                for key, value in (headers or {}).items():
-                    self.send_header(key, value)
-                self.end_headers()
+                # Cancellation/timeout closes sockets before either headers or
+                # bodies may be sent. Both are expected fixture disconnects.
                 with contextlib.suppress(BrokenPipeError, ConnectionResetError, ssl.SSLError):
+                    self.send_response(code)
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Connection", "close")
+                    for key, value in (headers or {}).items():
+                        self.send_header(key, value)
+                    self.end_headers()
                     self.wfile.write(data)
 
             def do_GET(self):

@@ -188,6 +188,8 @@ jobs:
         run: python scripts/test_desktop_native.py ${{ matrix.application }}
       - if: always() && runner.os == 'Linux'
         run: python scripts/ci_workspace.py destroy
+      - name: Clean restored installer outputs
+        run: python scripts/package_desktop.py --clean-bundle
       - name: Bundle native desktop installers
         working-directory: apps/desktop
         run: npm run tauri bundle -- --bundles ${{ matrix.bundles }}

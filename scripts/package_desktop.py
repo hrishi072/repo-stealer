@@ -4,12 +4,20 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 
 root = pathlib.Path(__file__).resolve().parents[1]
 desktop = root / "apps/desktop"
 version = json.loads((desktop / "package.json").read_text())["version"]
 bundle = desktop / "src-tauri/target/release/bundle"
+if sys.argv[1:] == ["--clean-bundle"]:
+    assert not bundle.is_symlink(), "refuse a symlinked generated bundle directory"
+    if bundle.exists():
+        shutil.rmtree(bundle)
+    print("Removed generated desktop installer outputs before bundling")
+    raise SystemExit(0)
+assert len(sys.argv)==1, "usage: package_desktop.py [--clean-bundle]"
 out = root / "dist-desktop"
 out.mkdir(exist_ok=True)
 platform = "windows" if os.name == "nt" else "linux"

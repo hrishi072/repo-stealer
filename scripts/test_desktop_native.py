@@ -98,6 +98,8 @@ def main():
 
         wait.until(lambda _: driver.find_elements(By.CSS_SELECTOR, ".page-heading h1"))
         assert "Browser preview" not in driver.find_element(By.TAG_NAME, "body").text
+        expected_version=json.loads((pathlib.Path(__file__).resolve().parents[1] / "apps/desktop/package.json").read_text())["version"]
+        assert status()["version"]==expected_version, "Native/installed app version differs from the requested build"
         if args.smoke:
             assert status()["vault"] is None
             print("Installed native desktop launched with real IPC and a locked vault.")
@@ -182,6 +184,10 @@ def main():
                 wait.until(lambda _:provider_server.external_requests)
                 click("Cancel"); completed("cancelled")
                 assert status()["plan"] is None, "Cancelled preparation retained an old plan"
+                provider_server.mode="normal"
+                fill("Destination access token",TOKEN)
+                click("Prepare read-only plan"); completed()
+                assert status()["plan"] is not None, "Cannot prepare a new plan after cancellation"
                 encrypted_files(work)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True, exist_ok=True)
@@ -193,6 +199,7 @@ def main():
             completed(); assert backup.is_file()
             click("Verify backup"); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
+            assert status()["plan"] is not None, "Lock test must begin with a populated plan"
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             assert status()["plan"] is None, "Lock retained decrypted migration plan"
             assert all(job["result"] is None for job in status()["jobs"]), "Lock retained decrypted remote provenance"
