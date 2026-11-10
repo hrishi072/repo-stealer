@@ -12,6 +12,7 @@ import urllib.request
 from selenium import webdriver
 from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
@@ -81,8 +82,14 @@ def main():
             wait.until(attempt)
 
         def fill(label, value):
-            element = wait.until(lambda d: d.find_element(By.CSS_SELECTOR, f'input[aria-label="{label}"]'))
-            element.clear(); element.send_keys(str(value))
+            # Native WebDriver clear() can change the DOM without a React input
+            # event, causing subsequent typing to append stale controlled state.
+            def replace(d):
+                element=d.find_element(By.CSS_SELECTOR,f'input[aria-label="{label}"]')
+                element.click()
+                element.send_keys(Keys.CONTROL,"a",Keys.NULL,str(value))
+                return element.get_attribute("value")==str(value)
+            wait.until(replace, message="Native input did not retain requested value: "+label)
 
         def status():
             return driver.execute_async_script("const done=arguments[0]; window.__TAURI_INTERNALS__.invoke('get_status').then(done).catch(e=>done({error:String(e)}));")
