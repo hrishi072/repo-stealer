@@ -3014,10 +3014,12 @@ dependencies = [
 name = "repo-stealer-desktop"
 version = "0.1.0-alpha.4"
 dependencies = [
+ "libc",
  "repo-stealer-app",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "tempfile",
 ]
 
 [[package]]

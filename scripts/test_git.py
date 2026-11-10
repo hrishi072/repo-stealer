@@ -64,7 +64,11 @@ def fixture(path, object_format="sha1"):
 
 def encrypted_files(root):
     if os.name != "nt":
-        return  # Linux block verification plus raw LUKS scan happens in CI.
+        # Block verification/raw LUKS scans test encryption; crash remnants
+        # must also keep their private session directory inaccessible to peers.
+        for session in root.glob(".rs-git-*"):
+            assert session.stat().st_mode & 0o077 == 0, f"Git session permissions are not private: {session}"
+        return
     get = ctypes.windll.kernel32.GetFileAttributesW
     get.argtypes = [ctypes.c_wchar_p]
     get.restype = ctypes.c_uint32

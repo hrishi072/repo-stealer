@@ -4,6 +4,8 @@ use repo_stealer_app::{Action, Engine, ItemPage, Status};
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
+#[cfg(target_os = "linux")]
+mod profile;
 
 #[tauri::command]
 fn get_status(engine: State<'_, Arc<Engine>>) -> Result<Status, String> {
@@ -64,6 +66,17 @@ async fn choose_path(app: tauri::AppHandle, purpose: String) -> Result<Option<St
 }
 
 fn main() {
+    #[allow(unused_mut)]
+    let mut context = tauri::generate_context!();
+    #[cfg(target_os = "linux")]
+    let _profile = {
+        let profile = profile::create().expect("cannot create private tmpfs browser storage");
+        for window in &mut context.config_mut().app.windows {
+            window.incognito = false;
+            window.data_directory = Some(profile.path().to_owned());
+        }
+        profile // Retain the private directory until the event loop exits.
+    };
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(Engine::new()))
@@ -82,6 +95,6 @@ fn main() {
             cancel_job,
             choose_path
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("cannot start Repo Stealer desktop runtime");
 }

@@ -164,6 +164,9 @@ jobs:
         env:
           CARGO_BUILD_JOBS: '2'
         run: npm run tauri build -- --no-bundle -- --locked
+      - if: runner.os == 'Linux'
+        name: Enforce private RAM-backed browser profile policy
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked --features tauri/custom-protocol
       - run: cargo install tauri-driver --version 2.0.6 --locked
         env:
           CARGO_TARGET_DIR: apps/desktop/src-tauri/target/driver

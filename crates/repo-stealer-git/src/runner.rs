@@ -257,6 +257,13 @@ impl Runner {
                 path.as_os_str(),
             ],
         )?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            // Keep restored plaintext-at-the-filesystem-layer repositories
+            // private even when their verified encrypted parent is shared.
+            fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+        }
         Ok(())
     }
 }

@@ -74,9 +74,14 @@ impl Workspace {
             verify_path(&self.root)? == self.encryption,
             "workspace encryption changed"
         );
-        let session = tempfile::Builder::new()
-            .prefix(".rs-git-")
-            .tempdir_in(&self.root)?;
+        let mut builder = tempfile::Builder::new();
+        builder.prefix(".rs-git-");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            builder.permissions(fs::Permissions::from_mode(0o700));
+        }
+        let session = builder.tempdir_in(&self.root)?;
         ensure!(
             verify_path(session.path())? == self.encryption,
             "session encryption inheritance failed"

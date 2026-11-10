@@ -61,3 +61,11 @@ Prioritize a usable unlock/create -> encrypted workspace -> capture/restore -> b
 Read remote refs before acquisition and again after independent local verification, immediately before archive publication. Reject observed changes rather than silently archiving a moving target. Preserve advertised accessible refs and default HEAD; unadvertised/unborn HEAD is explicitly reported. Remote snapshots use manifest v2 with authenticated credential-free provenance. Continue accepting v1 local snapshots; portable vault/backup format is unchanged.
 
 Inventory external content at default HEAD with explicit bounds: gitlinks plus at most 4096 small files (<=1024 bytes) for LFS pointer candidates. Report incomplete pointer scans and never auto-follow submodule/wiki URLs or download LFS payloads. This keeps the first acquisition fast without claiming exhaustive historical external-data coverage. Native synthetic HTTPS fixtures, mutation/trust/auth failure checks, UI cancellation and reciprocal OS recovery gate release.
+
+## D011: Private browser profiles with native Linux automation
+
+2026-11-10: Windows incognito WebView2 passed the complete native workflow and package checks. Linux incognito failed to create a WebDriver browsing context: Wry 0.57.1 replaces the supplied automation context when incognito is enabled. Use a new owner-only tmpfs-backed WebKit data/cache profile on Linux instead, with a runtime filesystem-type check, no ordinary-disk fallback and normal-exit cleanup. Keep Windows incognito. The same production setup is tested in CI, including explicit private-mode/cleanup and non-tmpfs rejection tests. No dependency fork or automation-only configuration.
+
+The Linux desktop requires writable `/dev/shm` tmpfs. This is browser/session RAM storage, never Git scratch or a replacement for LUKS. tmpfs swap and OS dumps remain under the documented OS policy. Private Unix Git session directories and newly restored bare roots also use explicit `0700` permissions rather than depending on parent permissions or umask.
+
+Source evidence: [Wry WebKitGTK context selection](https://github.com/tauri-apps/wry/blob/wry-v0.57.1/src/webkitgtk/mod.rs), [Wry browser data manager](https://github.com/tauri-apps/wry/blob/wry-v0.57.1/src/webkitgtk/web_context.rs).

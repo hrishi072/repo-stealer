@@ -217,6 +217,8 @@ def main():
             destination = work / "restored.git"
             command(binary, "git", "restore", vault, "remote-history", destination, "--work-root", work)
             assert inventory(server.repository) == inventory(destination)
+            if os.name != "nt":
+                assert destination.stat().st_mode & 0o077 == 0, "Restored repository is not owner-private"
             count = len(server.requests)
             capture("remote-history", ok=False)
             assert len(server.requests) == count, "Duplicate snapshot made unnecessary network requests"

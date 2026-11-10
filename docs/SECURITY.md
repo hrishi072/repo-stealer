@@ -60,3 +60,7 @@ Windows EFS does not hide every filesystem metadata field; reftable keeps ref na
 | Compromised webview/dependency | Invoke privileged operations / steal keys | Narrow typed IPC capabilities, CSP, no remote application content, signed releases, dependency review. |
 
 No source deletion or destructive mirror push is a default action. Remote writes are not globally transactional: capture destination recovery evidence first and keep a resumable action ledger.
+
+## Desktop session profile
+
+The alpha.4 desktop uses incognito WebView2 on Windows and a fresh owner-only profile on verified `/dev/shm` tmpfs on Linux. Linux refuses normal-disk profile fallback and removes its profile on ordinary exit. The application does not use browser localStorage/sessionStorage for credentials. Git working data and operational credential files remain in separately verified LUKS/EFS storage; browser tmpfs is never accepted as Git working storage. OS swap, dumps, mounted-volume access and forced-termination tmpfs remnants remain OS/session concerns, not guarantees supplied by age encryption. Lock clears decrypted origin/inventory reports from the session activity trail. Unix Git sessions and new restored bare roots explicitly use owner-only directory permissions.
