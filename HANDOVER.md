@@ -2,6 +2,14 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-12 — alpha.6 release preparation
+
+**Scope:** Release the accepted encrypted LFS implementation as Linux x86_64 desktop DEB/RPM/AppImage and Windows x86_64 NSIS installers, alongside the six CLI packages and SHA256SUMS. Git manifest v3 requires alpha.6; v1/v2 snapshots and same-key backups remain supported. Runtime Git 2.48+ and verified LUKS/EFS storage remain required.
+
+**Gate:** The signed version tag will run the complete matrix again: quality/minimum compiler, native Linux/Windows encryption and Git/LFS suites, real desktop flows, fresh package/version checks and reciprocal backup/Git/LFS recovery. Publication waits for every required job, then tag signature and package-version/checksum verification. Source/tag signing does not imply OS installer signing; desktop RPM distro installation remains untested.
+
+**Status:** Release preparation only; publication and downloaded-asset verification will be recorded after the tagged workflow passes.
+
 ## 2026-11-12 — encrypted LFS accepted
 
 **Done:** Development alpha.6 introduces optional all-reachable-history LFS capture from standard local caches or explicit HTTPS Batch/Basic transfer, strict pointer/size/SHA-256 verification, authenticated manifest v3 with bounded streaming payloads, offline restore into the standard LFS cache, unchanged same-key backups, desktop checkbox/results and reviewed migration counts. Guarded migration refuses incomplete Git-only LFS sources before creation, uploads/download-verifies payloads before ref publication and verifies them again after independent cloning. Endpoint/action/credential isolation and incomplete-operation boundaries are documented in [GIT-LFS.md](docs/GIT-LFS.md).
