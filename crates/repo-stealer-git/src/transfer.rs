@@ -227,50 +227,59 @@ impl VerifiedTransfer {
             .report("Independently downloading and verifying destination history");
         let runner = self.runner.as_ref().context("Runner missing")?;
         let audit = self.session.path().join("audit.git");
-        runner.run(
-            None,
-            &[
-                OsStr::new("clone"),
-                OsStr::new("--mirror"),
-                OsStr::new("--no-local"),
-                OsStr::new("--no-hardlinks"),
-                OsStr::new("--ref-format=reftable"),
-                OsStr::new(self.url.as_ref().context("URL missing")?.as_str()),
-                audit.as_os_str(),
-            ],
-        )?;
+        runner
+            .run(
+                None,
+                &[
+                    OsStr::new("clone"),
+                    OsStr::new("--mirror"),
+                    OsStr::new("--no-local"),
+                    OsStr::new("--no-hardlinks"),
+                    OsStr::new("--ref-format=reftable"),
+                    OsStr::new(self.url.as_ref().context("URL missing")?.as_str()),
+                    audit.as_os_str(),
+                ],
+            )
+            .context("verify_clone")?;
         let offline = self.session.path().join("audit-offline");
         fs::create_dir(&offline)?;
         let verifier = Runner::new(&offline, &self.options)?;
-        verifier.run(
-            Some(&audit),
-            &[
-                OsStr::new("fsck"),
-                OsStr::new("--full"),
-                OsStr::new("--strict"),
-            ],
-        )?;
-        let manifest = inspect_source(&verifier, &audit)?;
+        verifier
+            .run(
+                Some(&audit),
+                &[
+                    OsStr::new("fsck"),
+                    OsStr::new("--full"),
+                    OsStr::new("--strict"),
+                ],
+            )
+            .context("verify_fsck")?;
+        let manifest = inspect_source(&verifier, &audit).context("verify_refs")?;
         let actual: BTreeMap<_, _> = manifest.refs.into_iter().map(|r| (r.name, r.oid)).collect();
         ensure!(
             actual == self.refs && manifest.head == Head::Symbolic(self.head.clone()),
             "Destination refs/HEAD do not exactly match the source heads and tags"
         );
         if let Some(transport) = &self.lfs_transport {
-            let actual = crate::lfs::inventory(&verifier, &audit, &offline, true)?;
+            let actual = crate::lfs::inventory(&verifier, &audit, &offline, true)
+                .context("verify_lfs_inventory")?;
             // Notes/internal refs are excluded by the existing migration policy.
             ensure!(
                 actual.iter().all(|o| self.lfs.contains(o)),
                 "Unarchived LFS pointer at destination"
             );
-            transport.download(&audit, &actual)?;
+            transport
+                .download(&audit, &actual)
+                .context("verify_lfs_download")?;
         }
-        let ads = self.observe()?;
+        let ads = self.observe().context("verify_advertisement")?;
         ensure!(
             ads.refs == self.refs && ads.symbolic_head.as_ref() == Some(&self.head),
             "Destination changed during independent verification"
         );
-        self.workspace.verify_tree(self.session.path())?;
+        self.workspace
+            .verify_tree(self.session.path())
+            .context("verify_encryption")?;
         Ok(())
     }
     pub fn guard_oid(&self) -> Result<&str> {

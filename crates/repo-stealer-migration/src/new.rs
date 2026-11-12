@@ -51,6 +51,8 @@ pub struct ExecutionReport {
     pub state: String,
     pub last_phase: String,
     pub receipt_prefix: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_code: Option<String>,
 }
 fn now() -> Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())
@@ -450,6 +452,7 @@ pub fn execute_new(
         state: "needs_attention".into(),
         last_phase: "create_outcome_unknown".into(),
         receipt_prefix: format!("migration-{id}-"),
+        failure_code: None,
     };
     let operation = (|| -> Result<()> {
         report(options, "Creating a new private repository");
@@ -638,7 +641,8 @@ pub fn execute_new(
         result.last_phase = "verified".into();
         Ok(())
     })();
-    if operation.is_err() {
+    if let Err(error) = operation {
+        result.failure_code = Some(failure_code(&error));
         if options.cancelled.load(std::sync::atomic::Ordering::Relaxed) {
             result.state = "cancelled_needs_attention".into();
         }
@@ -646,7 +650,7 @@ pub fn execute_new(
             vault,
             &plan,
             "needs-attention",
-            json!({"repositoryId":result.repository_id,"lastPhase":result.last_phase,"state":result.state}),
+            json!({"repositoryId":result.repository_id,"lastPhase":result.last_phase,"state":result.state,"failureCode":result.failure_code}),
         )?;
     }
     Ok(result)
@@ -669,4 +673,86 @@ fn validate_access(access: &Access) -> Result<()> {
         "Token must contain 1..4096 bytes without controls"
     );
     Ok(())
+}
+
+/// Only fixed stage/cause labels and numeric OS/HTTP codes cross the report
+/// boundary. Never persist or display arbitrary diagnostics or response bodies.
+fn failure_code(error: &anyhow::Error) -> String {
+    let messages: Vec<_> = error.chain().map(ToString::to_string).collect();
+    let stage = [
+        "verify_clone",
+        "verify_fsck",
+        "verify_refs",
+        "verify_lfs_inventory",
+        "verify_lfs_download",
+        "verify_advertisement",
+        "verify_encryption",
+    ]
+    .into_iter()
+    .find(|stage| messages.iter().any(|m| m == stage))
+    .unwrap_or("migration");
+    let cause = if let Some(io) = error.downcast_ref::<std::io::Error>() {
+        io.raw_os_error()
+            .map(|n| format!("os_{n}"))
+            .unwrap_or("io_error".into())
+    } else if messages.iter().any(|m| m.starts_with("Git clone failed")) {
+        "git_clone_failed".into()
+    } else if messages.iter().any(|m| m.starts_with("Git fsck failed")) {
+        "git_fsck_failed".into()
+    } else if messages.iter().any(|m| m == "Git command timed out") {
+        "git_timeout".into()
+    } else if messages
+        .iter()
+        .any(|m| m == "LFS download size/hash verification failed")
+    {
+        "lfs_payload_verification".into()
+    } else if messages
+        .iter()
+        .any(|m| m.starts_with("LFS HTTPS request failed"))
+    {
+        "lfs_transport".into()
+    } else if let Some(status) = messages
+        .iter()
+        .filter_map(|m| m.strip_prefix("LFS HTTP status "))
+        .filter_map(|m| m.split(';').next())
+        .filter_map(|m| m.parse::<u16>().ok())
+        .next()
+    {
+        format!("http_{status}")
+    } else if messages
+        .iter()
+        .any(|m| m == "Destination refs/HEAD do not exactly match the source heads and tags")
+    {
+        "refs_mismatch".into()
+    } else if messages
+        .iter()
+        .any(|m| m == "Destination changed during independent verification")
+    {
+        "refs_changed".into()
+    } else if messages
+        .iter()
+        .any(|m| m.contains("EFS") || m.contains("unencrypted"))
+    {
+        "encryption_check".into()
+    } else {
+        "check_failed".into()
+    };
+    format!("{stage}:{cause}")
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+    #[test]
+    fn codes_never_echo_arbitrary_diagnostics() {
+        let error = anyhow::anyhow!("secret-token, https://host/path?credential=secret")
+            .context("verify_lfs_download");
+        assert_eq!(failure_code(&error), "verify_lfs_download:check_failed");
+        let error =
+            anyhow::anyhow!("Git clone failed (128); private details").context("verify_clone");
+        assert_eq!(failure_code(&error), "verify_clone:git_clone_failed");
+        let error =
+            anyhow::Error::new(std::io::Error::from_raw_os_error(5)).context("verify_encryption");
+        assert_eq!(failure_code(&error), "verify_encryption:os_5");
+    }
 }

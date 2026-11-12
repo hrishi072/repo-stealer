@@ -36,4 +36,4 @@ export type PlanSummary = { schema: number; observedAt: number; provider: string
 export async function listPlanRows(query: string, offset: number, limit=20): Promise<{rows:PlanRow[]; total:number}> { requireDesktop(); return invoke('get_plan_rows',{query,offset,limit}); }
 
 export type NewMigration = { id:string; expiresAt:number; provider:string; instance:string; deployment:string; repository:string; actor:{id:number;login:string}; sourceName:string; sourceSha256:string; defaultBranch:string; refCount:number; refs:Record<string,string>; excludedRefs:number; lfsObjects?:number; lfsBytes?:number; visibility:string; automation:string; scopeProof:string };
-export type MigrationResult = {id:string;repository:string;repositoryId:number|null;state:string;lastPhase:string;receiptPrefix:string};
+export type MigrationResult = {id:string;repository:string;repositoryId:number|null;state:string;lastPhase:string;receiptPrefix:string;failureCode?:string|null};

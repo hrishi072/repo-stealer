@@ -289,6 +289,25 @@ class HTTPSFixture:
         self.revocation_thread.join(timeout=5)
 
 
+def probe_synthetic_git(server,work):
+    """Anonymous, read-only clone probe after a controlled fixture failure.
+
+    Never used against user hosts: this helper only accepts HTTPSFixture objects
+    and does not send or print any Git/application credential.
+    """
+    assert isinstance(server,HTTPSFixture)
+    url=server.lfs_url if hasattr(server,"lfs_url") else server.url
+    assert urllib.parse.urlsplit(url).hostname=="127.0.0.1"
+    env={k:v for k,v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_NOSYSTEM="1",GIT_CONFIG_GLOBAL=os.devnull,GIT_TERMINAL_PROMPT="0",TMP=str(work),TEMP=str(work),TMPDIR=str(work))
+    old=server.require_auth;server.require_auth=False
+    try:
+        result=subprocess.run(["git","-c","credential.helper=","-c","core.hooksPath="+str(work/"unused-hooks"),"-c","protocol.allow=never","-c","protocol.https.allow=always","-c","http.followRedirects=false","-c","http.sslVerify=true","-c","http.schannelUseSSLCAInfo=true","-c","http.sslCAInfo="+str(server.certificate),"clone","--mirror","--no-local","--no-hardlinks","--ref-format=reftable",url,str(work/"synthetic-diagnostic.git")],env=env,capture_output=True,timeout=30)
+        assert TOKEN.encode() not in result.stdout+result.stderr
+        print("SYNTHETIC_ANONYMOUS_GIT_PROBE="+json.dumps({"returncode":result.returncode,"stderr":result.stderr.decode(errors="replace")},separators=(",",":")),flush=True)
+    finally:server.require_auth=old
+
+
 def command(binary, *args, secrets=None, ok=True):
     data = json.dumps(secrets).encode() if secrets is not None else PASSWORD
     option = "--secrets-stdin" if secrets is not None else "--password-stdin"

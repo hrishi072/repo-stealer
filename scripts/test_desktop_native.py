@@ -267,6 +267,8 @@ def main():
                     except AssertionError:
                         # Controlled fixture metadata only: no credentials or response bodies.
                         print("SYNTHETIC_MIGRATION_DIAGNOSTIC="+json.dumps({"provider":provider_name,"migrationResult":status().get("migrationResult"),"lfsMethods":[method for method,_ in target.lfs_transfers],"pushes":len(target.pushes),"apiMethods":[[method,path] for method,path,_ in target.api_calls]},separators=(",",":")),flush=True)
+                        from test_remote import probe_synthetic_git
+                        probe_synthetic_git(target,work)
                         raise
                     assert done["migrationResult"]["state"]=="verified",done["migrationResult"]
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Private migration result"]'))

@@ -8,7 +8,7 @@ import tempfile
 import time
 import urllib.parse
 from test_git import PASSWORD, git, encrypted_files, inventory
-from test_remote import HTTPSFixture, TOKEN, USERNAME, command
+from test_remote import HTTPSFixture, TOKEN, USERNAME, command, probe_synthetic_git
 
 class CreationFixture(HTTPSFixture):
     def __init__(self,root,provider="github",mode="normal"):
@@ -149,7 +149,12 @@ def main():
                     if mode=="existing":server.create({"name":"new-private","description":"existing unrelated","private":True,"auto_init":True,"namespace_id":100,"visibility":"private","initialize_with_readme":True,"builds_access_level":"disabled"})
                     def call(verb,item,*extra,ok=True,timeout=30):
                         dest=["--provider",provider,"--repository",server.project,"--instance",server.instance] if verb=="plan-new" else ["--confirm-repository",server.project]
-                        return command(binary,"migration",verb,vault,item,"--work-root",work,"--ca-file",server.certificate,"--timeout-seconds",timeout,*dest,*extra,*( ["--lfs-workers",4] if verb=="execute-new" else []),secrets=secrets,ok=ok)
+                        try:return command(binary,"migration",verb,vault,item,"--work-root",work,"--ca-file",server.certificate,"--timeout-seconds",timeout,*dest,*extra,*( ["--lfs-workers",4] if verb=="execute-new" else []),secrets=secrets,ok=ok)
+                        except AssertionError:
+                            if ok and verb=="execute-new" and server.exists:
+                                print("SYNTHETIC_MIGRATION_REQUESTS="+json.dumps({"provider":provider,"mode":mode,"pushes":len(server.pushes),"lfsMethods":[method for method,_ in server.lfs_transfers]},separators=(",",":")),flush=True)
+                                probe_synthetic_git(server,work)
+                            raise
                     if provider=="github" and mode=="normal":
                         command(binary,"git","capture",vault,"git-only-lfs",server.source,"--work-root",work)
                         legacy=json.loads(call("plan-new","git-only-lfs").stdout)
