@@ -162,7 +162,7 @@ class HTTPSFixture:
             def send(self, code, data=b"", headers=None):
                 # Cancellation/timeout closes sockets before either headers or
                 # bodies may be sent. Both are expected fixture disconnects.
-                with contextlib.suppress(BrokenPipeError, ConnectionResetError, ssl.SSLError):
+                with contextlib.suppress(BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ssl.SSLError):
                     self.send_response(code)
                     self.send_header("Content-Length", str(len(data)))
                     self.send_header("Connection", "close")
@@ -230,7 +230,7 @@ class HTTPSFixture:
                         if owner.lfs_mode=="corrupt":data=b"x"*len(data)
                         if owner.lfs_mode=="extra":data+=b"x"
                         if owner.lfs_body_delay:
-                            with contextlib.suppress(BrokenPipeError,ConnectionResetError,ssl.SSLError):
+                            with contextlib.suppress(BrokenPipeError,ConnectionResetError,ConnectionAbortedError,ssl.SSLError):
                                 self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Connection","close");self.end_headers();self.wfile.flush()
                                 time.sleep(owner.lfs_body_delay);self.wfile.write(data)
                             return

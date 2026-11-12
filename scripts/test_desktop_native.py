@@ -112,7 +112,7 @@ def main():
         def completed(expected="completed"):
             nonlocal last_job
             result = wait.until(lambda _: (state if not state["busy"] and state["jobs"][0]["id"] > last_job else False) if (state := status()).get("jobs") else False)
-            assert result["jobs"][0]["state"] == expected, result["jobs"][0]
+            assert result["jobs"][0]["state"] == expected, {"job":result["jobs"][0],"migrationResult":result.get("migrationResult")}
             last_job = result["jobs"][0]["id"]
             print("Completed desktop job:", result["jobs"][0]["label"], flush=True)
             return result
@@ -262,7 +262,12 @@ def main():
                     assert review["newMigration"]["repository"]==target.project
                     assert TOKEN not in json.dumps(review)
                     fill("Execute migration token",TOKEN);fill("Confirm new repository",target.project)
-                    click("Create private repository and migrate");done=completed()
+                    click("Create private repository and migrate")
+                    try:done=completed()
+                    except AssertionError:
+                        # Controlled fixture metadata only: no credentials or response bodies.
+                        print("SYNTHETIC_MIGRATION_DIAGNOSTIC="+json.dumps({"provider":provider_name,"migrationResult":status().get("migrationResult"),"lfsMethods":[method for method,_ in target.lfs_transfers],"pushes":len(target.pushes),"apiMethods":[[method,path] for method,path,_ in target.api_calls]},separators=(",",":")),flush=True)
+                        raise
                     assert done["migrationResult"]["state"]=="verified",done["migrationResult"]
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Private migration result"]'))
                     assert len(target.pushes)==2
