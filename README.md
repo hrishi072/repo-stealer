@@ -2,9 +2,9 @@
 
 A local-first project for a desktop application for migrating, archiving, and eventually synchronizing repositories across GitHub and GitLab, including enterprise/self-hosted instances.
 
-**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. Read-only GitHub/GitLab destination preflight and migration plans support cloud and self-hosted instances. Guarded new private personal-repository migrations are implemented for GitHub/GitLab; existing destinations remain protected. Development alpha.6 adds explicit encrypted LFS payload capture, offline restore and guarded migration; submodule transfer remains future work. The storage format has not had an independent security review.
+**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. Read-only GitHub/GitLab destination preflight and migration plans support cloud and self-hosted instances. Guarded new private personal-repository migrations are implemented for GitHub/GitLab; existing destinations remain protected. Alpha.6 adds explicit encrypted LFS payload capture, offline restore and guarded migration; submodule transfer remains future work. The storage format has not had an independent security review.
 
-Download the [alpha.5 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5). Choose `repo-stealer-desktop-*` for the graphical application.
+Download the [alpha.6 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6). Choose `repo-stealer-desktop-*` for the graphical application.
 
 ## Start here
 
@@ -82,6 +82,8 @@ Alpha.4 adds explicit HTTPS capture, username/token authentication, self-hosted 
 
 Alpha.5 adds reviewed, encrypted migration plans and one-shot creation of new private personal repositories on GitHub/GitLab cloud and self-hosted instances. Existing destinations are refused. Source authentication, disabled destination automation, atomic ref leases and independent history verification gate completion; partial outcomes retain encrypted receipts. [Supported credentials, source limits and recovery](docs/GUARDED-MIGRATIONS.md) are explicit. The [signed-tag Linux/Windows workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed before publication.
 
-LFS payload support is in the alpha.6 development build. Use `--include-lfs` or the desktop checkbox for capture; restore and guarded migration automatically verify archived payloads. See [LFS compatibility, limits and recovery](docs/GIT-LFS.md). Published alpha.5 does not read LFS manifest v3.
+LFS payload support is included in the alpha.6 installers. Use `--include-lfs` or the desktop checkbox for capture; restore and guarded migration automatically verify archived payloads. See [LFS compatibility, limits and recovery](docs/GIT-LFS.md). Published alpha.5 does not read LFS manifest v3.
 
 [Alpha.6 native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed Linux/Windows engine, desktop, package and reciprocal LFS recovery checks.
+
+[Alpha.6 signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed before [installer publication](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6).

@@ -1,6 +1,6 @@
 # Verification, failure behavior and rollback
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
+Alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 ## Current prototype
 
@@ -141,4 +141,12 @@ Post-publication verification on 2026-11-12 downloaded all ten packages into ign
 
 [Run 43167395183](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed every applicable job on `610598521c767c9fa6182852736d4cb7cc1ca879`: formatting/Clippy/minimum Rust, native Linux/Windows encrypted Git/LFS capture and offline restore, both-provider guarded migration/failure suites, 12 browser tests per OS, real WebKitGTK/WebView2 LFS capture and recovered-snapshot migration, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, and reciprocal Linux-to-Windows/Windows-to-Linux vault/Git/remote/LFS recovery. Temporary staging cleanup passed. Tests use disposable synthetic TLS services and real LUKS/EFS; no live provider writes are used. Desktop RPM installation on Fedora/openSUSE remains untested.
 
-Windows fixtures write binary LF pointer bytes and assert the committed encoding; production validation still refuses noncanonical pointers. The capture dialog keeps its footer visible while its body scrolls, verified at a 900×620 browser viewport and through both native webviews. Development alpha.6 is accepted on main; no alpha.6 release is claimed.
+Windows fixtures write binary LF pointer bytes and assert the committed encoding; production validation still refuses noncanonical pointers. The capture dialog keeps its footer visible while its body scrolls, verified at a 900×620 browser viewport and through both native webviews. The main acceptance run preceded the signed-tag publication below.
+
+## Alpha.6 release acceptance
+
+The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed quality/minimum Rust, native Linux/Windows encryption and Git/LFS capture/restore/migration suites, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, reciprocal vault/Git/remote/LFS recovery, tag/version verification, publication and temporary-draft cleanup.
+
+Published [v0.1.0-alpha.6](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) from immutable signed tag source `a71d9cef42f35d43dee332f6526abfc36e733579`. Four desktop plus six CLI assets and SHA256SUMS are available; package signing and desktop RPM distro installation remain outside the tested scope.
+
+Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.

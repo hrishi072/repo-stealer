@@ -2,13 +2,17 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-12 — alpha.6 release preparation
+## 2026-11-12 — published LFS alpha.6
 
-**Scope:** Release the accepted encrypted LFS implementation as Linux x86_64 desktop DEB/RPM/AppImage and Windows x86_64 NSIS installers, alongside the six CLI packages and SHA256SUMS. Git manifest v3 requires alpha.6; v1/v2 snapshots and same-key backups remain supported. Runtime Git 2.48+ and verified LUKS/EFS storage remain required.
+**Release:** Signed [v0.1.0-alpha.6](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) was published on 2026-11-12 from `a71d9cef42f35d43dee332f6526abfc36e733579`. Four desktop installers (Linux x86_64 DEB/RPM/AppImage and Windows x86_64 NSIS setup EXE), six CLI packages and SHA256SUMS are available.
 
-**Gate:** The signed version tag will run the complete matrix again: quality/minimum compiler, native Linux/Windows encryption and Git/LFS suites, real desktop flows, fresh package/version checks and reciprocal backup/Git/LFS recovery. Publication waits for every required job, then tag signature and package-version/checksum verification. Source/tag signing does not imply OS installer signing; desktop RPM distro installation remains untested.
+**Acceptance:** The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed quality/minimum Rust, native Linux/Windows encryption and Git/LFS capture/restore/migration suites, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, reciprocal vault/Git/remote/LFS recovery, tag/version verification, publication and temporary-draft cleanup. Provider tests use disposable synthetic TLS services and real LUKS/EFS rather than live hosting accounts. Desktop RPM installation on Fedora/openSUSE remains untested.
 
-**Status:** Release preparation only; publication and downloaded-asset verification will be recorded after the tagged workflow passes.
+**Compatibility:** LFS capture is explicit via the checkbox/`--include-lfs`; restore and guarded new-private migration automatically verify archived payloads. Git manifest v3 requires alpha.6; v1/v2 snapshots and same-key backup containers remain supported. Git 2.48+ and verified LUKS/EFS storage remain required. Source commits/tag are SSH-signed; installers are not OS code-signed.
+
+**Asset verification:** Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.
+
+**Next:** Measure LFS throughput/cancellation on representative repositories before adding bounded concurrency; retain completeness, privacy, no-overwrite and independent verification gates.
 
 ## 2026-11-12 — encrypted LFS accepted
 

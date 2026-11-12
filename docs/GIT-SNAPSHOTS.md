@@ -1,6 +1,6 @@
 # Encrypted Git working storage and full-history snapshots
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
+Alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 Implemented commands capture a **local** ordinary or bare repository into the existing age-encrypted vault and restore it as a new bare repository. Installed Git **2.48+** is required. Local capture/restore do not connect to hosting providers or execute repository hooks, checkouts, builds or submodule fetches. Explicit HTTPS acquisition and guarded migration use separate scoped network workers.
 

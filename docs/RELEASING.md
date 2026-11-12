@@ -60,8 +60,12 @@ Post-publication verification on 2026-11-12 downloaded all ten packages into ign
 
 [Run 43167395183](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed every applicable job on `610598521c767c9fa6182852736d4cb7cc1ca879`: formatting/Clippy/minimum Rust, native Linux/Windows encrypted Git/LFS capture and offline restore, both-provider guarded migration/failure suites, 12 browser tests per OS, real WebKitGTK/WebView2 LFS capture and recovered-snapshot migration, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, and reciprocal Linux-to-Windows/Windows-to-Linux vault/Git/remote/LFS recovery. Temporary staging cleanup passed. Tests use disposable synthetic TLS services and real LUKS/EFS; no live provider writes are used. Desktop RPM installation on Fedora/openSUSE remains untested.
 
-Version is aligned to `0.1.0-alpha.6` across Cargo/npm/Tauri and both lockfiles. The main workflow correctly skipped release publication; no alpha.6 signed tag or release was created. Prepared release notes describe manifest-v3 compatibility and LFS limits. Alpha.5 remains the published installer release.
+Version is aligned to `0.1.0-alpha.6` across Cargo/npm/Tauri and both lockfiles. The main acceptance workflow skipped publication at that stage. The signed-tag publication below followed it.
 
-## Alpha.6 release preparation
+## Alpha.6 LFS publication
 
-The user-authorized alpha.6 signed tag repeats the complete native matrix before automatic prerelease publication. Versions and both lockfiles match `0.1.0-alpha.6`; release notes cover LFS opt-in, manifest-v3 compatibility, canonical pointers, transport/resource limits and partial-operation recovery. Record the tagged run, immutable source commit and all ten independently downloaded package digests after publication.
+Signed [v0.1.0-alpha.6](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) targets `a71d9cef42f35d43dee332f6526abfc36e733579` and was published on 2026-11-12. The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed quality/minimum Rust, native Linux/Windows encryption and Git/LFS capture/restore/migration suites, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, reciprocal vault/Git/remote/LFS recovery, tag/version verification, publication and temporary-draft cleanup.
+
+Four desktop and six CLI package assets plus SHA256SUMS are available. LFS-aware Git manifest v3 requires alpha.6; existing v1/v2 and same-key backups remain supported. Source commits/tag are SSH-signed; installers are not OS code-signed. Desktop RPM packaging/digests passed; Fedora/openSUSE desktop RPM installation remains untested.
+
+Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.

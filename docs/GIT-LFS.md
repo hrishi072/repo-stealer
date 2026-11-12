@@ -1,6 +1,6 @@
 # Encrypted Git LFS payloads
 
-Development alpha.6 adds explicit payload capture, offline restore and guarded new-private migration. Published alpha.5 installers remain unchanged. LFS-aware snapshots use Git manifest v3 and require alpha.6 or newer to restore; existing v1/v2 snapshots and vault/same-key backup formats remain readable and unchanged.
+Alpha.6 adds explicit payload capture, offline restore and guarded new-private migration. [Alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) are published for Linux and Windows. LFS-aware snapshots use Git manifest v3 and require alpha.6 or newer to restore; existing v1/v2 snapshots and vault/same-key backup formats remain readable and unchanged.
 
 ## Capture and restore
 
@@ -39,3 +39,7 @@ Batch responses may authorize HTTPS storage/CDN actions with signed queries or a
 Protocol references: [Git LFS pointers](https://github.com/git-lfs/git-lfs/blob/main/docs/spec.md), [Batch API](https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md), [Basic transfer](https://github.com/git-lfs/git-lfs/blob/main/docs/api/basic-transfers.md).
 
 [Run 43167395183](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed every applicable job on `610598521c767c9fa6182852736d4cb7cc1ca879`: formatting/Clippy/minimum Rust, native Linux/Windows encrypted Git/LFS capture and offline restore, both-provider guarded migration/failure suites, 12 browser tests per OS, real WebKitGTK/WebView2 LFS capture and recovered-snapshot migration, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, and reciprocal Linux-to-Windows/Windows-to-Linux vault/Git/remote/LFS recovery. Temporary staging cleanup passed. Tests use disposable synthetic TLS services and real LUKS/EFS; no live provider writes are used. Desktop RPM installation on Fedora/openSUSE remains untested.
+
+The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed quality/minimum Rust, native Linux/Windows encryption and Git/LFS capture/restore/migration suites, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, fresh DEB/NSIS installation and extracted AppImage launch/version checks, RPM packaging/digests, reciprocal vault/Git/remote/LFS recovery, tag/version verification, publication and temporary-draft cleanup. Source commit: `a71d9cef42f35d43dee332f6526abfc36e733579`. Desktop RPM distribution installation remains untested; installers are not OS code-signed.
+
+Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.
