@@ -22,7 +22,7 @@ hosting metadata are excluded.
 Git commands accept --password-stdin and --timeout-seconds N (default 3600 per Git command).
 Remote credentials are prompted when --username is supplied; never put tokens in URLs/argv/env.
 Remote automation: --secrets-stdin reads JSON {\"vault_passphrase\":\"...\",\"token\":\"...\"}; token may be null for anonymous capture.
---lfs-workers 1..4 bounds concurrent HTTPS LFS object transfers (default 1).
+--lfs-workers 1..4 bounds concurrent HTTPS LFS object transfers (default 4; use 1 for serial transfers).
 HTTPS redirects are refused. Wiki repositories need their own explicit clone URL.";
 
 pub fn run_workspace(args: &[OsString]) -> Result<(), String> {
@@ -155,7 +155,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         return Err("--lfs-workers requires HTTPS capture with --include-lfs".into());
     }
     let options = Options {
-        lfs_workers: lfs_workers.unwrap_or(1),
+        lfs_workers: lfs_workers.unwrap_or_else(|| Options::default().lfs_workers),
         include_lfs,
         timeout: Duration::from_secs(timeout),
         ..Options::default()

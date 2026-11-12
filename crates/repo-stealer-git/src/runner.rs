@@ -26,7 +26,7 @@ impl Default for Options {
         Self {
             timeout: Duration::from_secs(3600),
             include_lfs: false,
-            lfs_workers: 1,
+            lfs_workers: 4,
             cancelled: Arc::new(AtomicBool::new(false)),
             progress: None,
         }

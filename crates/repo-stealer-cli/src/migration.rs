@@ -14,7 +14,7 @@ New private personal-repository migrations:
   repo-stealer migration execute-new VAULT PLAN_ID --confirm-repository USER/NEW_NAME --work-root ROOT
 New plans are encrypted, expire after 15 minutes and are consumed once. GitHub requires
 classic PAT repo+workflow; GitLab requires personal api+write_repository scopes.
-execute-new accepts --lfs-workers 1..4 (default 1); this changes scheduling only.
+execute-new accepts --lfs-workers 1..4 (default 4); this changes scheduling only.
 Creation disables destination automation. No existing repository is adopted or deleted.
 Cloud is the default; --instance selects GitHub Enterprise Server or self-hosted GitLab.
 Tokens are prompted or read from --secrets-stdin JSON with vault_passphrase and token.
@@ -117,10 +117,10 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if !(1..=86400).contains(&timeout) {
         return Err(HELP.into());
     }
-    let lfs_workers = text("--lfs-workers")
-        .unwrap_or("1")
-        .parse::<usize>()
-        .map_err(|_| HELP)?;
+    let lfs_workers = match text("--lfs-workers") {
+        Some(value) => value.parse::<usize>().map_err(|_| HELP)?,
+        None => Options::default().lfs_workers,
+    };
     if !(1..=4).contains(&lfs_workers) || (values.contains_key("--lfs-workers") && !execute) {
         return Err(HELP.into());
     }

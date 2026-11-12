@@ -48,6 +48,8 @@ def main():
                         report=json.loads(result.stdout.splitlines()[0]);assert report["lfs"]["objects"]==len(server.lfs_source_objects)
                         assert server.lfs_active==0 and 1<=server.lfs_peak<=workers
                         if workers==4:assert server.lfs_peak>=2,"No actual parallel LFS requests were observed"
+                        assert len(server.lfs_transfers)==len(server.lfs_source_objects)
+                        assert len({oid for method,oid in server.lfs_transfers if method=="GET"})==len(server.lfs_source_objects)
                         elapsed=server.lfs_last-server.lfs_first
                         destination=work/(name+".git");started=time.perf_counter()
                         command(binary,"git","restore",vault,name,destination,"--work-root",work)
@@ -55,7 +57,7 @@ def main():
                         actual={p.name:p.read_bytes() for p in (destination/"lfs/objects").rglob("*") if p.is_file()}
                         assert actual==server.lfs_source_objects
                         assert all(hashlib.sha256(data).hexdigest()==oid for oid,data in actual.items())
-                        samples.append({"profile":profile,"repeat":repeat,"workers":workers,"objects":len(actual),"bytes":total,"injectedDelayMs":100,"peakRequests":server.lfs_peak,"objectSpanSeconds":round(elapsed,6),"captureSeconds":round(capture,6),"restoreSeconds":round(restored,6),"objectMiBPerSecond":round(total/(1024*1024)/elapsed,6)})
+                        samples.append({"profile":profile,"repeat":repeat,"workers":workers,"objects":len(actual),"bytes":total,"injectedDelayMs":100,"peakRequests":server.lfs_peak,"requestCount":len(server.lfs_transfers),"objectSpanSeconds":round(elapsed,6),"captureSeconds":round(capture,6),"restoreSeconds":round(restored,6),"objectMiBPerSecond":round(total/(1024*1024)/elapsed,6)})
                 # Corruption must stop queued work; every started worker drains before return.
                 server.lfs_mode="corrupt";server.reset_lfs_metrics()
                 command(binary,"git","capture-remote",vault,"rejected-"+profile,server.url,"--work-root",work,"--include-lfs","--lfs-workers",4,"--username",USERNAME,"--ca-file",server.certificate,secrets=secrets,ok=False)

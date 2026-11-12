@@ -153,4 +153,4 @@ Post-publication verification on 2026-11-12 downloaded all ten package assets in
 
 ## Bounded LFS measurement development
 
-Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/timing-only JSON plus job summaries for 1/4-worker capture/restore comparisons. Native desktop tests measure cancellation at delayed LFS headers/body with no publication. Parallel migration checks upload rejection, joined workers and no Git ref publication. Measurement/acceptance results are pending; see [performance methodology](LFS-PERFORMANCE.md).
+Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/timing-only JSON plus job summaries for 1/4-worker capture/restore comparisons. Native desktop tests measure cancellation at delayed LFS headers/body with no publication. Parallel migration checks upload rejection, joined workers and no Git ref publication. Comparison run 43176013068 passed both OSes and reciprocal recovery; the selected four-worker default is pending the repeat matrix. Raw samples and interpretation are in [performance methodology](LFS-PERFORMANCE.md).

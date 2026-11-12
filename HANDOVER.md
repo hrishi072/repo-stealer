@@ -4,13 +4,13 @@ Sections are chronological milestone records, newest first; earlier pending stat
 
 ## 2026-11-12 — bounded LFS measurement in progress
 
-**Scope:** Development alpha.7 adds an explicit 1..4-worker LFS transfer pool, first-error queue stop and joined workers, preserving cancellation classification, encrypted staging, no-retry semantics and independent verification before refs. The comparison build defaults to one worker until native measurements justify a change. CLI tuning is limited to HTTPS LFS capture and execute-new.
+**Scope:** Development alpha.7 adds an explicit 1..4-worker LFS transfer pool, first-error queue stop and joined workers, preserving cancellation classification, encrypted staging, no-retry semantics and independent verification before refs. The comparison build used one worker; native results now justify a capped four-worker default, with an explicit serial override. CLI tuning is limited to HTTPS LFS capture and execute-new.
 
 **Measurements:** A reproducible synthetic TLS benchmark covers many-small/few-large/mixed payloads, three alternating 1/4-worker samples, observed in-flight request bounds, complete encrypted capture/offline restore, corruption queue stop and source/hash equality. Native UI adds header/body stall cancellation measurements. Both-provider migration exercises a larger LFS set, parallel uploads, upload failure and no ref publication. See [measurement scope](docs/LFS-PERFORMANCE.md).
 
-**Validation:** Local formatting/Clippy, all 26 Linux root Rust tests, production UI compilation and 12 browser tests passed. Native Linux/Windows measurements and full acceptance are pending. No alpha.7 release is requested or published; alpha.6 remains the installer release. Snapshot/backup formats are unchanged.
+**Validation:** Local formatting/Clippy, all 26 Linux root Rust tests, production UI compilation and 12 browser tests passed. Comparison run 43176013068 passed the complete native matrix on both OSes and reciprocal recovery. Controlled object phases improved 2.9–3.9×; complete captures improved 15–41%. Raw samples and cancellation measurements are checked into docs/benchmarks. The selected four-worker default is pending a repeat of the complete matrix. No alpha.7 release is requested or published; alpha.6 remains the installer release. Snapshot/backup formats are unchanged.
 
-**Next:** Compare native results, select a default only if the evidence supports it, resolve failures and record the complete acceptance run with signed commits.
+**Next:** Accept the four-worker default on both OSes, retain the explicit serial override, and record the complete acceptance run with signed commits.
 
 ## 2026-11-12 — published LFS alpha.6
 

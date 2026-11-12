@@ -1,0 +1,292 @@
+{
+  "schema": 1,
+  "workflowRun": "https://github.com/hrishi072/repo-stealer/actions/runs/43176013068",
+  "sourceCommit": "6d649635ca309d1d82925a35f24301dbad0207f1",
+  "transfer": {
+    "schema": 1,
+    "platform": "Windows",
+    "scenario": "loopback HTTPS, 100 ms delay per object, real LUKS/EFS, three alternating samples",
+    "samples": [
+      {
+        "profile": "many-small",
+        "repeat": 0,
+        "workers": 1,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 2.184548,
+        "captureSeconds": 6.161253,
+        "restoreSeconds": 1.319717,
+        "objectMiBPerSecond": 0.543591
+      },
+      {
+        "profile": "many-small",
+        "repeat": 0,
+        "workers": 4,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.637776,
+        "captureSeconds": 4.580224,
+        "restoreSeconds": 1.341652,
+        "objectMiBPerSecond": 1.861939
+      },
+      {
+        "profile": "many-small",
+        "repeat": 1,
+        "workers": 4,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.649345,
+        "captureSeconds": 4.693572,
+        "restoreSeconds": 1.334702,
+        "objectMiBPerSecond": 1.828765
+      },
+      {
+        "profile": "many-small",
+        "repeat": 1,
+        "workers": 1,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 2.193566,
+        "captureSeconds": 6.176785,
+        "restoreSeconds": 1.347114,
+        "objectMiBPerSecond": 0.541356
+      },
+      {
+        "profile": "many-small",
+        "repeat": 2,
+        "workers": 1,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 2.1919,
+        "captureSeconds": 7.079605,
+        "restoreSeconds": 1.328265,
+        "objectMiBPerSecond": 0.541767
+      },
+      {
+        "profile": "many-small",
+        "repeat": 2,
+        "workers": 4,
+        "objects": 18,
+        "bytes": 1245184,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.649013,
+        "captureSeconds": 4.742345,
+        "restoreSeconds": 1.348949,
+        "objectMiBPerSecond": 1.829703
+      },
+      {
+        "profile": "few-large",
+        "repeat": 0,
+        "workers": 1,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.287968,
+        "captureSeconds": 5.399041,
+        "restoreSeconds": 1.365924,
+        "objectMiBPerSecond": 6.356915
+      },
+      {
+        "profile": "few-large",
+        "repeat": 0,
+        "workers": 4,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.444369,
+        "captureSeconds": 4.464056,
+        "restoreSeconds": 1.362543,
+        "objectMiBPerSecond": 18.424994
+      },
+      {
+        "profile": "few-large",
+        "repeat": 1,
+        "workers": 4,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.446978,
+        "captureSeconds": 4.655161,
+        "restoreSeconds": 1.631026,
+        "objectMiBPerSecond": 18.31746
+      },
+      {
+        "profile": "few-large",
+        "repeat": 1,
+        "workers": 1,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.340591,
+        "captureSeconds": 5.684201,
+        "restoreSeconds": 1.532041,
+        "objectMiBPerSecond": 6.107381
+      },
+      {
+        "profile": "few-large",
+        "repeat": 2,
+        "workers": 1,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.29122,
+        "captureSeconds": 5.467422,
+        "restoreSeconds": 1.394192,
+        "objectMiBPerSecond": 6.340903
+      },
+      {
+        "profile": "few-large",
+        "repeat": 2,
+        "workers": 4,
+        "objects": 10,
+        "bytes": 8585216,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.403239,
+        "captureSeconds": 5.035148,
+        "restoreSeconds": 1.34245,
+        "objectMiBPerSecond": 20.304356
+      },
+      {
+        "profile": "mixed",
+        "repeat": 0,
+        "workers": 1,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.971586,
+        "captureSeconds": 6.019336,
+        "restoreSeconds": 1.31511,
+        "objectMiBPerSecond": 1.743521
+      },
+      {
+        "profile": "mixed",
+        "repeat": 0,
+        "workers": 4,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.551815,
+        "captureSeconds": 4.578005,
+        "restoreSeconds": 1.972245,
+        "objectMiBPerSecond": 6.229442
+      },
+      {
+        "profile": "mixed",
+        "repeat": 1,
+        "workers": 4,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.546479,
+        "captureSeconds": 4.633094,
+        "restoreSeconds": 1.335961,
+        "objectMiBPerSecond": 6.290273
+      },
+      {
+        "profile": "mixed",
+        "repeat": 1,
+        "workers": 1,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.942405,
+        "captureSeconds": 5.928807,
+        "restoreSeconds": 1.430284,
+        "objectMiBPerSecond": 1.769714
+      },
+      {
+        "profile": "mixed",
+        "repeat": 2,
+        "workers": 1,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 1,
+        "objectSpanSeconds": 1.952872,
+        "captureSeconds": 5.974688,
+        "restoreSeconds": 1.442019,
+        "objectMiBPerSecond": 1.760228
+      },
+      {
+        "profile": "mixed",
+        "repeat": 2,
+        "workers": 4,
+        "objects": 16,
+        "bytes": 3604480,
+        "injectedDelayMs": 100,
+        "peakRequests": 4,
+        "objectSpanSeconds": 0.553239,
+        "captureSeconds": 5.069247,
+        "restoreSeconds": 1.357837,
+        "objectMiBPerSecond": 6.213408
+      }
+    ],
+    "summary": [
+      {
+        "profile": "many-small",
+        "serialObjectSpanMedianSeconds": 2.1919,
+        "parallelObjectSpanMedianSeconds": 0.649013,
+        "objectSpanSpeedup": 3.377,
+        "serialCaptureMedianSeconds": 6.176785,
+        "parallelCaptureMedianSeconds": 4.693572
+      },
+      {
+        "profile": "few-large",
+        "serialObjectSpanMedianSeconds": 1.29122,
+        "parallelObjectSpanMedianSeconds": 0.444369,
+        "objectSpanSpeedup": 2.906,
+        "serialCaptureMedianSeconds": 5.467422,
+        "parallelCaptureMedianSeconds": 4.655161
+      },
+      {
+        "profile": "mixed",
+        "serialObjectSpanMedianSeconds": 1.952872,
+        "parallelObjectSpanMedianSeconds": 0.551815,
+        "objectSpanSpeedup": 3.539,
+        "serialCaptureMedianSeconds": 5.974688,
+        "parallelCaptureMedianSeconds": 4.633094
+      }
+    ]
+  },
+  "cancellation": {
+    "schema": 1,
+    "platform": "win32",
+    "samples": [
+      {
+        "stage": "headers",
+        "injectedDelaySeconds": 2,
+        "cancelToCompletionSeconds": 2.213116,
+        "peakRequests": 1,
+        "published": false
+      },
+      {
+        "stage": "body",
+        "injectedDelaySeconds": 2,
+        "cancelToCompletionSeconds": 2.226346,
+        "peakRequests": 1,
+        "published": false
+      }
+    ]
+  }
+}

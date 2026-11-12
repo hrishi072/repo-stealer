@@ -221,8 +221,9 @@ class HTTPSFixture:
                     with owner.lfs_transfer(self.command,oid):
                         if self.command=="PUT":
                             assert not getattr(owner,"actions",False)
-                            body=self.rfile.read(int(self.headers["Content-Length"]));assert hashlib.sha256(body).hexdigest()==oid
+                            body=self.rfile.read(int(self.headers["Content-Length"]))
                             if owner.lfs_mode=="upload-error":return self.send(503)
+                            assert hashlib.sha256(body).hexdigest()==oid
                             owner.lfs_store[oid]=body;return self.send(200)
                         if owner.lfs_mode=="redirect":return self.send(302,headers={"Location":"https://external.invalid/never"})
                         data=owner.lfs_store[oid]
