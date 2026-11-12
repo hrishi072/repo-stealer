@@ -3,6 +3,7 @@ import argparse
 import base64
 import contextlib
 import http.server
+import hashlib
 import json
 import os
 import pathlib
@@ -32,13 +33,28 @@ def openssl():
 
 
 class HTTPSFixture:
-    def __init__(self, root):
+    def __init__(self, root, lfs=False):
         self.root = pathlib.Path(root)
         self.root.mkdir()
         self.source = fixture(self.root / "project.git")
+        self.lfs_store = {}; self.lfs_source_objects = {}; self.lfs_mode = "normal"; self.lfs_calls = []
+        if lfs:
+            first=b"historical encrypted LFS payload\x00"*4096
+            oid=hashlib.sha256(first).hexdigest(); self.lfs_source_objects[oid]=first
+            (self.source / "historical.bin").write_text(f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(first)}\n")
+            git(self.source,"add",".");git(self.source,"commit","-m","historical LFS payload")
+            (self.source / "historical.bin").unlink()
         # These are Git pointer/gitlink bytes only; neither external store is
         # available. Successful capture must never try to fetch either one.
         (self.source / "large.bin").write_text("version https://git-lfs.github.com/spec/v1\noid sha256:" + "a" * 64 + "\nsize 10000000\n")
+        if lfs:
+            data=b"current encrypted LFS payload\x00"*2048
+            oid=hashlib.sha256(data).hexdigest();self.lfs_source_objects[oid]=data
+            (self.source/"large.bin").write_text(f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(data)}\n")
+            (self.source/".lfsconfig").write_text("[lfs]\nurl = https://external.invalid/do-not-use\n")
+            for oid,data in self.lfs_source_objects.items():
+                path=self.source/".git/lfs/objects"/oid[:2]/oid[2:4]/oid;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+            self.lfs_store=dict(self.lfs_source_objects)
         (self.source / ".gitmodules").write_text('[submodule "component"]\npath = deps/component\nurl = https://external.invalid/component.git\n')
         git(self.source, "add", ".")
         head = git(self.source, "rev-parse", "HEAD").decode().strip()
@@ -132,6 +148,9 @@ class HTTPSFixture:
             def do_POST(self):
                 self.process()
 
+            def do_PUT(self):
+                self.process()
+
             def process(self):
                 parsed = urllib.parse.urlsplit(self.path)
                 path = parsed.path
@@ -144,6 +163,41 @@ class HTTPSFixture:
                 expected = "Basic " + base64.b64encode(f"{USERNAME}:{TOKEN}".encode()).decode()
                 if owner.require_auth and self.headers.get("Authorization") != expected:
                     return self.send(401, headers={"WWW-Authenticate": 'Basic realm="synthetic Git"'})
+                if path.startswith("/project.git/info/lfs/"):
+                    owner.lfs_calls.append((self.command,path))
+                    base=owner.lfs_url if hasattr(owner,"lfs_url") else owner.url
+                    if path.endswith("/objects/batch"):
+                        body=json.loads(self.rfile.read(int(self.headers.get("Content-Length","0"))))
+                        assert body["transfers"]==["basic"] and body["operation"] in ("upload","download")
+                        objects=[]
+                        for obj in body["objects"]:
+                            oid=obj["oid"];actions={}
+                            if body["operation"]=="upload":
+                                assert not getattr(owner,"actions",False),"Automation enabled during LFS upload"
+                                if oid not in owner.lfs_store:actions={"upload":{"href":base+"/info/lfs/objects/"+oid},"verify":{"href":base+"/info/lfs/verify/"+oid}}
+                            else:
+                                if oid not in owner.lfs_store or owner.lfs_mode=="missing":objects.append({**obj,"error":{"code":404,"message":TOKEN}});continue
+                                href=base+"/info/lfs/objects/"+oid
+                                if owner.lfs_mode=="unsafe-url":href=href.replace("https:","http:")
+                                actions={"download":{"href":href}}
+                            row={**obj}
+                            if actions:row["actions"]=actions
+                            objects.append(row)
+                        return self.send(200,json.dumps({"transfer":"basic","objects":objects}).encode())
+                    oid=path.rsplit("/",1)[-1]
+                    if "/verify/" in path:
+                        body=json.loads(self.rfile.read(int(self.headers.get("Content-Length","0"))))
+                        assert oid in owner.lfs_store and body["size"]==len(owner.lfs_store[oid])
+                        return self.send(200)
+                    if self.command=="PUT":
+                        assert not getattr(owner,"actions",False)
+                        body=self.rfile.read(int(self.headers["Content-Length"]));assert hashlib.sha256(body).hexdigest()==oid
+                        owner.lfs_store[oid]=body;return self.send(200)
+                    if owner.lfs_mode=="redirect":return self.send(302,headers={"Location":"https://external.invalid/never"})
+                    data=owner.lfs_store[oid]
+                    if owner.lfs_mode=="corrupt":data=b"x"*len(data)
+                    if owner.lfs_mode=="extra":data+=b"x"
+                    return self.send(200,data)
                 if path.startswith("/dumb.git/"):
                     oid = git(owner.repository, "rev-parse", "HEAD").strip()
                     if path.endswith("/info/refs"):

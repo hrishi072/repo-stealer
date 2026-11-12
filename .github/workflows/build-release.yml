@@ -96,6 +96,8 @@ jobs:
         run: python scripts/test_git.py ${{ matrix.binary }} --fixture-out fixture/git-portable.rsbackup
       - name: HTTPS capture, authentication, trust and source mutation
         run: python scripts/test_remote.py ${{ matrix.binary }} --fixture-out fixture/remote-portable.rsbackup
+      - name: Encrypted historical LFS capture and offline restore
+        run: python scripts/test_lfs.py ${{ matrix.binary }} --fixture-out fixture/lfs-portable.rsbackup
       - name: Read-only GitHub and GitLab destination plans
         run: python scripts/test_migration.py ${{ matrix.binary }}
       - name: Guarded new private GitHub and GitLab migrations
@@ -127,7 +129,8 @@ jobs:
           cp fixture/portable.rsbackup "fixture/fixture-$PLATFORM.rsbackup"
           cp fixture/git-portable.rsbackup "fixture/git-$PLATFORM.rsbackup"
           cp fixture/remote-portable.rsbackup "fixture/remote-$PLATFORM.rsbackup"
-          gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup" "fixture/git-$PLATFORM.rsbackup" "fixture/remote-$PLATFORM.rsbackup"
+          cp fixture/lfs-portable.rsbackup "fixture/lfs-$PLATFORM.rsbackup"
+          gh release upload "$STAGING_TAG" dist/* "fixture/fixture-$PLATFORM.rsbackup" "fixture/git-$PLATFORM.rsbackup" "fixture/remote-$PLATFORM.rsbackup" "fixture/lfs-$PLATFORM.rsbackup"
       - if: always() && steps.cli_build.outcome == 'success' && steps.native_cache.outputs.cache-hit != 'true'
         name: Retain CLI compiled dependencies
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
@@ -276,6 +279,7 @@ jobs:
           gh release download "$STAGING_TAG" --pattern "fixture-$OTHER.rsbackup" --dir fixture
           gh release download "$STAGING_TAG" --pattern "git-$OTHER.rsbackup" --dir fixture
           gh release download "$STAGING_TAG" --pattern "remote-$OTHER.rsbackup" --dir fixture
+          gh release download "$STAGING_TAG" --pattern "lfs-$OTHER.rsbackup" --dir fixture
       - if: runner.os == 'Linux'
         name: Provision encrypted cross-OS restore storage
         run: |
@@ -287,11 +291,13 @@ jobs:
           python scripts/test_cli.py repo-stealer-*/repo-stealer --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
           python scripts/test_git.py repo-stealer-*/repo-stealer --restore-fixture fixture/git-${{ matrix.other }}.rsbackup
           python scripts/test_remote.py repo-stealer-*/repo-stealer --restore-fixture fixture/remote-${{ matrix.other }}.rsbackup
+          python scripts/test_lfs.py repo-stealer-*/repo-stealer --restore-fixture fixture/lfs-${{ matrix.other }}.rsbackup
       - if: runner.os == 'Windows'
         run: |
           python scripts/test_cli.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/fixture-${{ matrix.other }}.rsbackup
           python scripts/test_git.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/git-${{ matrix.other }}.rsbackup
           python scripts/test_remote.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/remote-${{ matrix.other }}.rsbackup
+          python scripts/test_lfs.py packages/repo-stealer-windows-x86_64.exe --restore-fixture fixture/lfs-${{ matrix.other }}.rsbackup
       - if: always() && runner.os == 'Linux'
         name: Inspect raw encrypted cross-OS storage
         run: python scripts/ci_workspace.py destroy

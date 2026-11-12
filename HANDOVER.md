@@ -2,6 +2,14 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-12 — encrypted LFS implementation
+
+**Done:** Development alpha.6 introduces optional all-reachable-history LFS capture from standard local caches or explicit HTTPS Batch/Basic transfer, strict pointer/size/SHA-256 verification, authenticated manifest v3 with bounded streaming payloads, offline restore into the standard LFS cache, unchanged same-key backups, desktop checkbox/results and reviewed migration counts. Guarded migration refuses incomplete Git-only LFS sources before creation, uploads/download-verifies payloads before ref publication and verifies them again after independent cloning. Endpoint/action/credential isolation and incomplete-operation boundaries are documented in [GIT-LFS.md](docs/GIT-LFS.md).
+
+**Validation:** Local formatting, Clippy, root Rust and browser/UI checks are in progress. Native Linux/Windows LUKS/EFS LFS, GUI, installer and reciprocal backup recovery acceptance is pending CI. No alpha.6 release is requested or published; alpha.5 remains the installer release. No live provider writes are used for acceptance.
+
+**Next:** Resolve acceptance failures, record native evidence and push signed commits. Preserve Git-only snapshot compatibility and fail closed on missing payloads.
+
 ## 2026-11-10 — guarded private migration accepted
 
 **Done:** Separate encrypted, expiring new plans and exact typed confirmation for GitHub/GitLab personal repositories, cloud/self-hosted. Scope/actor/namespace proofs, full offline source verification before exclusive private creation, disabled destination automation, unique guard and atomic exact ref leases, source-default configuration/protection, independent clone/fsck/ref verification, and immutable encrypted intent/result entries. Existing destinations cannot be adopted. Review binds instance, source SHA-256 and exact refs; metadata clears on lock. See [guarded migrations](docs/GUARDED-MIGRATIONS.md) for limits and administrative-race boundaries.

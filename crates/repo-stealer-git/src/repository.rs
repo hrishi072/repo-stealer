@@ -26,6 +26,7 @@ pub struct SnapshotRefs {
     pub refs: BTreeMap<String, String>,
     pub symbolic_head: Option<String>,
     pub remote: Option<crate::CaptureProvenance>,
+    pub lfs: Option<Vec<crate::LfsObject>>,
 }
 
 /// Authenticate the entire vault object while retaining only its bounded Git
@@ -84,6 +85,7 @@ pub fn snapshot_refs(vault: &Vault, name: &str, options: &Options) -> Result<Sna
             Head::Detached(_) => None,
         },
         remote: manifest.remote,
+        lfs: manifest.lfs.map(|l| l.objects),
     })
 }
 
@@ -114,6 +116,8 @@ pub(crate) struct Manifest {
     external_data: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     remote: Option<crate::CaptureProvenance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lfs: Option<crate::lfs::Archive>,
 }
 
 pub fn capture(
@@ -143,6 +147,7 @@ pub(crate) fn capture_impl(
     let source = source_git_dir(source)?;
     let mut manifest = inspect_source(&runner, &source)?;
     validate(&manifest)?;
+    let original = manifest.clone();
     let view = session.path().join("source-view.git");
     runner.init(&view, &manifest.object_format)?;
     let objects = fs::canonicalize(source.join("objects"))?;
@@ -183,11 +188,34 @@ pub(crate) fn capture_impl(
     options.report("Verifying independent Git objects and refs");
     materialize(&runner, &verified, &manifest, &bundle, session.path())?;
     ensure!(inspect_source(&runner, &source)? == manifest, "source refs, HEAD or repository mode changed during capture; retry from a quiescent source");
-    if let Some((provenance, recheck)) = remote {
-        recheck()?;
+    if let Some((provenance, _)) = remote {
         manifest.version = 2;
         manifest.remote = Some(provenance.clone());
         validate(&manifest)?;
+    }
+    if options.include_lfs {
+        options.report("Verifying and staging all reachable LFS payloads");
+        let objects =
+            crate::lfs::inventory(&runner, &verified, session.path(), head_resolves(&manifest))?;
+        crate::lfs::copy_local(&source, &verified, &objects, options)?;
+        manifest.version = 3;
+        manifest.external_data="git-lfs: complete reachable canonical v1 payloads; submodules and hosting metadata excluded".into();
+        manifest.lfs = Some(crate::lfs::Archive {
+            bundle_bytes: if manifest.bundle {
+                fs::metadata(&bundle)?.len()
+            } else {
+                0
+            },
+            objects,
+        });
+        validate(&manifest)?;
+    }
+    ensure!(
+        inspect_source(&runner, &source)? == original,
+        "Source changed during LFS capture"
+    );
+    if let Some((_, recheck)) = remote {
+        recheck()?;
     }
     workspace.verify_tree(session.path())?;
     options.check()?;
@@ -199,11 +227,19 @@ pub(crate) fn capture_impl(
     let mut prefix = MAGIC.to_vec();
     prefix.extend_from_slice(&(json.len() as u32).to_le_bytes());
     prefix.extend_from_slice(&json);
-    let contents: Box<dyn Read> = if manifest.bundle {
-        Box::new(io::Cursor::new(prefix).chain(File::open(&bundle)?))
-    } else {
-        Box::new(io::Cursor::new(prefix))
-    };
+    let mut paths = std::collections::VecDeque::new();
+    if manifest.bundle {
+        paths.push_back(bundle);
+    }
+    if let Some(lfs) = &manifest.lfs {
+        for object in &lfs.objects {
+            paths.push_back(crate::lfs::object_path(&verified, object));
+        }
+    }
+    let contents = io::Cursor::new(prefix).chain(Payloads {
+        paths,
+        current: None,
+    });
     options.report("Encrypting verified snapshot into vault");
     vault.put(
         name,
@@ -263,25 +299,56 @@ pub fn restore(
     let bundle = session.path().join("history.bundle");
     if manifest.bundle {
         let mut output = File::create(&bundle)?;
-        let copied = io::copy(
-            &mut Cancellable {
-                inner: input,
-                options: options.clone(),
-            },
-            &mut output,
-        )?;
-        ensure!(copied > 0, "missing Git bundle");
-        output.sync_all()?;
-    } else {
-        let mut extra = [0; 1];
+        let copied = if let Some(lfs) = &manifest.lfs {
+            io::copy(
+                &mut Cancellable {
+                    inner: (&mut input).take(lfs.bundle_bytes),
+                    options: options.clone(),
+                },
+                &mut output,
+            )?
+        } else {
+            io::copy(
+                &mut Cancellable {
+                    inner: &mut input,
+                    options: options.clone(),
+                },
+                &mut output,
+            )?
+        };
         ensure!(
-            input.read(&mut extra)? == 0,
-            "trailing data in empty repository snapshot"
+            copied > 0
+                && manifest
+                    .lfs
+                    .as_ref()
+                    .is_none_or(|l| copied == l.bundle_bytes),
+            "Missing/truncated Git bundle"
         );
+        output.sync_all()?;
     }
     let restored = session.path().join("repository.git");
     options.report("Restoring and verifying Git objects and refs");
     materialize(&runner, &restored, &manifest, &bundle, session.path())?;
+    if let Some(lfs) = &manifest.lfs {
+        options.report("Restoring and verifying archived LFS objects offline");
+        ensure!(
+            crate::lfs::inventory(&runner, &restored, session.path(), head_resolves(&manifest))?
+                == lfs.objects,
+            "LFS manifest differs from reachable Git pointers"
+        );
+        for object in &lfs.objects {
+            let path = crate::lfs::object_path(&restored, object);
+            fs::create_dir_all(path.parent().unwrap())?;
+            let mut output = File::create(path)?;
+            crate::lfs::copy_verified(&mut input, &mut output, object, options)?;
+            output.sync_all()?;
+        }
+    }
+    let mut extra = [0];
+    ensure!(
+        input.read(&mut extra)? == 0,
+        "Trailing data in Git snapshot"
+    );
     workspace.verify_tree(session.path())?;
     sync_tree(&restored)?;
     options.check()?;
@@ -375,6 +442,7 @@ pub(crate) fn inspect_source(runner: &Runner, source: &Path) -> Result<Manifest>
             "git-only: LFS payloads, submodule repositories and hosting metadata are not included"
                 .into(),
         remote: None,
+        lfs: None,
     };
     validate(&manifest)?;
     Ok(manifest)
@@ -493,8 +561,12 @@ pub(crate) fn valid_oid(oid: &str, len: usize) -> bool {
 fn validate(manifest: &Manifest) -> Result<()> {
     ensure!(
         matches!(
-            (manifest.version, manifest.remote.is_some()),
-            (1, false) | (2, true)
+            (
+                manifest.version,
+                manifest.remote.is_some(),
+                manifest.lfs.is_some()
+            ),
+            (1, false, false) | (2, true, false) | (3, _, true)
         ) && manifest.refs.len() <= MAX_REFS,
         "unsupported or oversized Git manifest"
     );
@@ -551,7 +623,17 @@ fn validate(manifest: &Manifest) -> Result<()> {
             == (!manifest.refs.is_empty() || matches!(manifest.head, Head::Detached(_))),
         "inconsistent bundle presence"
     );
-    ensure!(manifest.external_data == "git-only: LFS payloads, submodule repositories and hosting metadata are not included", "unsupported capture scope");
+    if let Some(lfs) = &manifest.lfs {
+        crate::lfs::validate(&lfs.objects)?;
+        ensure!(
+            (lfs.bundle_bytes > 0) == manifest.bundle
+                && lfs.bundle_bytes <= 1024 * 1024 * 1024 * 1024,
+            "Invalid LFS archive bundle length"
+        );
+        ensure!(manifest.external_data=="git-lfs: complete reachable canonical v1 payloads; submodules and hosting metadata excluded","Unsupported LFS capture scope");
+    } else {
+        ensure!(manifest.external_data == "git-only: LFS payloads, submodule repositories and hosting metadata are not included", "unsupported capture scope");
+    }
     Ok(())
 }
 
@@ -739,6 +821,32 @@ fn publish(source: &Path, destination: &Path) -> Result<()> {
 #[cfg(not(any(target_os = "linux", windows)))]
 fn publish(_: &Path, _: &Path) -> Result<()> {
     anyhow::bail!("unsupported OS")
+}
+
+// Keep a single file open regardless of object count; no recursive chain/drop.
+struct Payloads {
+    paths: std::collections::VecDeque<PathBuf>,
+    current: Option<File>,
+}
+impl Read for Payloads {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if buffer.is_empty() {
+            return Ok(0);
+        }
+        loop {
+            if let Some(file) = &mut self.current {
+                let n = file.read(buffer)?;
+                if n > 0 {
+                    return Ok(n);
+                }
+                self.current = None;
+            }
+            let Some(path) = self.paths.pop_front() else {
+                return Ok(0);
+            };
+            self.current = Some(File::open(path)?);
+        }
+    }
 }
 
 #[cfg(test)]

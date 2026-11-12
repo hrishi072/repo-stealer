@@ -51,6 +51,8 @@ pub enum Action {
     CaptureLocal {
         name: String,
         source: String,
+        #[serde(default)]
+        include_lfs: bool,
     },
     CaptureRemote {
         name: String,
@@ -58,6 +60,8 @@ pub enum Action {
         username: Option<String>,
         token: Option<Passphrase>,
         ca_file: Option<String>,
+        #[serde(default)]
+        include_lfs: bool,
     },
     PreparePlan {
         name: String,
@@ -553,7 +557,15 @@ fn perform(
                     encryption: format!("{:?}", verified.encryption()),
                 });
             }
-            Action::CaptureLocal { name, source } => {
+            Action::CaptureLocal {
+                name,
+                source,
+                include_lfs,
+            } => {
+                let options = &Options {
+                    include_lfs,
+                    ..options.clone()
+                };
                 let root = Workspace::open(Path::new(
                     &workspace.as_ref().ok_or("workspace required")?.path,
                 ))?;
@@ -571,7 +583,12 @@ fn perform(
                 username,
                 token,
                 ca_file,
+                include_lfs,
             } => {
+                let options = &Options {
+                    include_lfs,
+                    ..options.clone()
+                };
                 let url = RemoteUrl::parse(&url)?;
                 let credentials = match (username, token) {
                     (None, None) => None,
@@ -783,7 +800,8 @@ mod tests {
         assert!(engine
             .start(Action::CaptureLocal {
                 name: "test".into(),
-                source: "source".into()
+                source: "source".into(),
+                include_lfs: false
             })
             .is_err());
         let directory = tempfile::tempdir().unwrap();

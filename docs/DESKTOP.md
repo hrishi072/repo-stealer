@@ -1,5 +1,7 @@
 # Desktop application
 
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+
 The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git capture/restore, and same-key portable backups. Alpha.5 adds read-only destination preflight and guarded migration into new private personal repositories on GitHub/GitLab cloud and self-hosted instances. Existing destinations cannot be adopted. [Alpha.5 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed native Linux/Windows migration, recovery, privacy/cancellation, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
 ![Browser preview of the desktop overview](screenshots/desktop-overview.png)

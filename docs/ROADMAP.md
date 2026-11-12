@@ -16,7 +16,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: add external LFS payload capture/restore and transfer with explicit fidelity checks.** Guarded private personal creation/push is accepted and published in alpha.5; org/group namespaces, broader token types, hosting metadata and resumable reconciliation remain separate increments. Preserve reviewed source hashes, identity/scope/policy checks, atomic leases and encrypted receipts when expanding migration support.
+**Current: accept encrypted LFS payload capture/restore and guarded transfer.** Guarded private personal creation/push is accepted and published in alpha.5; org/group namespaces, broader token types, hosting metadata and resumable reconciliation remain separate increments. Preserve reviewed source hashes, identity/scope/policy checks, atomic leases and encrypted receipts when expanding migration support.
 
 Start with an encrypted LFS archive and offline recovery drill, then upload only independently verified payloads to a newly created destination. Test pointer/object completeness, size limits, credentials and interruption on Linux and Windows before extending the UI.
 
@@ -65,3 +65,5 @@ HTTPS capture [v0.1.0-alpha.4](https://github.com/hrishi072/repo-stealer/release
 Alpha.5 destination preflight/read-only plans passed the [complete native matrix](https://github.com/hrishi072/repo-stealer/actions/runs/42806187044) on Linux/Windows, including cloud endpoint binding, self-hosted GitHub/GitLab TLS fixtures, policy/identity/ref failure cases, real UI cancellation/lock privacy, fresh installer/version checks and reciprocal recovery. [Scope and limitations](MIGRATION-PLANS.md) remain explicit. This completed the read-only planning slice. The guarded new-private write increment below followed it; metadata transfer remains future work.
 
 Guarded new-private migration acceptance passed in [run 42834823523](https://github.com/hrishi072/repo-stealer/actions/runs/42834823523) on Linux and Windows, including both native UI creation flows, exact review/confirmation, failure/race/no-retry cases, encrypted receipt recovery, all existing reciprocal recovery and fresh installer/version checks. See [guarded migration scope](GUARDED-MIGRATIONS.md). The [alpha.5 signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) subsequently passed all gates and [published the release](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5).
+
+The alpha.6 LFS slice is implemented with explicit all-history capture, offline same-key recovery and before-ref independent payload verification; native acceptance is pending. See [scope and limits](GIT-LFS.md). Next after acceptance: improve measured throughput and reconciliation, then broader namespaces/credential types.

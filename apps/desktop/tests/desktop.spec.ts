@@ -68,7 +68,7 @@ test('capture uses verified readiness and sends a typed local job', async ({ pag
   await page.getByLabel('Local repository', { exact: true }).fill('/synthetic/source');
   await page.getByRole('button', { name: 'Capture repository', exact: true }).last().click();
   const calls = await page.evaluate(() => (window as unknown as { __desktopTestCalls: { command: string; args: { action?: unknown } }[] }).__desktopTestCalls);
-  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind: 'capture_local', name: 'synthetic-history', source: '/synthetic/source' });
+  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind: 'capture_local', name: 'synthetic-history', source: '/synthetic/source', includeLfs: false });
 });
 
 test('navigation and dialogs stay usable at the minimum desktop width', async ({ page }) => {
@@ -100,7 +100,7 @@ test('private HTTPS capture submits transient credentials and a custom CA', asyn
   await page.getByLabel('Custom CA file (optional)', { exact: true }).fill('/synthetic/ca.pem');
   await page.getByRole('button', { name: 'Capture repository', exact: true }).last().click();
   const calls = await page.evaluate(() => (window as unknown as { __desktopTestCalls: { command: string; args: { action?: unknown } }[] }).__desktopTestCalls);
-  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind: 'capture_remote', name: 'remote-history', url: 'https://git.example.invalid/group/repo.git', username: 'synthetic-user', token: 'synthetic-private-token', caFile: '/synthetic/ca.pem' });
+  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind: 'capture_remote', name: 'remote-history', url: 'https://git.example.invalid/group/repo.git', username: 'synthetic-user', token: 'synthetic-private-token', caFile: '/synthetic/ca.pem', includeLfs: false });
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
   expect(await page.content()).not.toContain('synthetic-private-token');
@@ -173,4 +173,16 @@ test('execution requires exact reviewed target and locking removes its review',a
  expect(calls.find(c=>c.command==='start_job')?.args.action).toEqual({kind:'execute_new_migration',planId:'1'.repeat(32),confirmation:'fixture/new-private',token:'synthetic-new-token',username:null,caFile:null});
  await page.getByRole('button',{name:'Lock vault',exact:true}).click();
  await expect(page.getByRole('region',{name:'New private migration review'})).toHaveCount(0);
+});
+
+test('LFS capture is explicit and sent through typed IPC', async ({ page }) => {
+  await mockDesktop(page, true, true);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Capture repository', exact: true }).first().click();
+  await page.getByLabel('Snapshot name').fill('lfs-history');
+  await page.getByLabel('Local repository', { exact: true }).fill('/synthetic/source');
+  await page.getByLabel('Include Git LFS payloads', { exact: true }).check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Capture repository', exact: true }).click();
+  const calls = await page.evaluate(() => (window as unknown as { __desktopTestCalls: { command: string; args: { action?: unknown } }[] }).__desktopTestCalls);
+  expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind:'capture_local',name:'lfs-history',source:'/synthetic/source',includeLfs:true });
 });

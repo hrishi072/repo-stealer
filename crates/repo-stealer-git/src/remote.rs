@@ -49,6 +49,7 @@ impl RemoteUrl {
 }
 
 // Deliberately no Debug/Serialize: tokens must not become diagnostics or jobs.
+#[derive(Clone)]
 pub struct Credentials {
     pub username: String,
     pub token: SecretString,
@@ -66,7 +67,16 @@ pub struct ExternalInventory {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct LfsSummary {
+    pub objects: usize,
+    pub bytes: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CaptureProvenance {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lfs: Option<LfsSummary>,
     pub url: String,
     pub advertised_ref_count: usize,
     pub head_advertised: bool,
@@ -79,6 +89,12 @@ impl CaptureProvenance {
                 && self.advertised_ref_count <= 100_000,
             "Invalid remote snapshot provenance"
         );
+        if let Some(lfs) = &self.lfs {
+            ensure!(
+                lfs.objects <= crate::lfs::MAX_OBJECTS && lfs.bytes <= 100 * 1024 * 1024 * 1024,
+                "Invalid LFS provenance"
+            );
+        }
         let i = &self.inventory;
         ensure!(
             i.head_submodules <= 100_000
@@ -112,7 +128,7 @@ pub fn capture_remote(
     let session = workspace.session()?;
     let mut runner = Runner::new(session.path(), options)?;
     runner.check_version()?;
-    configure_https(session.path(), url, credentials, ca_file)?;
+    configure_https(session.path(), url, credentials.clone(), ca_file)?;
     workspace.verify_tree(session.path())?;
     runner.enable_https();
     options.report("Reading advertised remote refs");
@@ -143,8 +159,21 @@ pub fn capture_remote(
     }
     let manifest = inspect_source(&runner, &acquired)?;
     before.matches(&manifest)?;
+    let mut lfs_summary = None;
+    if options.include_lfs {
+        options.report("Downloading and verifying all reachable LFS payloads");
+        let objects =
+            crate::lfs::inventory(&runner, &acquired, session.path(), before.head.is_some())?;
+        crate::lfs::Transport::new(url, credentials, ca_file, options)?
+            .download(&acquired, &objects)?;
+        lfs_summary = Some(LfsSummary {
+            objects: objects.len(),
+            bytes: objects.iter().map(|o| o.size).sum(),
+        });
+    }
     options.report("Inventorying external content at default HEAD");
     let provenance = CaptureProvenance {
+        lfs: lfs_summary,
         url: url.as_str().into(),
         advertised_ref_count: before.refs.len(),
         head_advertised: before.head.is_some() || before.symbolic_head.is_some(),

@@ -24,6 +24,8 @@ pub struct VerifiedTransfer {
     url: Option<RemoteUrl>,
     guard: Option<(String, String)>,
     options: Options,
+    lfs: Vec<crate::LfsObject>,
+    lfs_transport: Option<crate::lfs::Transport>,
 }
 impl VerifiedTransfer {
     pub fn open(
@@ -51,6 +53,12 @@ impl VerifiedTransfer {
             .map(|r| (r.name, r.oid))
             .collect();
         ensure!(refs.contains_key(&head), "Source default branch must exist");
+        let lfs = crate::lfs::inventory(&verifier, &source, &inspect, true)?;
+        let archived = crate::snapshot_refs(vault, name, options)?;
+        ensure!(
+            lfs.is_empty() || archived.lfs.as_ref() == Some(&lfs),
+            "Source has LFS pointers without complete archived payloads; recapture with LFS"
+        );
         Ok(Self {
             session,
             workspace: nested,
@@ -61,6 +69,8 @@ impl VerifiedTransfer {
             url: None,
             guard: None,
             options: options.clone(),
+            lfs,
+            lfs_transport: None,
         })
     }
     pub fn connect(
@@ -75,6 +85,14 @@ impl VerifiedTransfer {
         let root = self.session.path().join("network");
         fs::create_dir(&root)?;
         let mut runner = Runner::new(&root, &self.options)?;
+        if !self.lfs.is_empty() {
+            self.lfs_transport = Some(crate::lfs::Transport::new(
+                &url,
+                Some(credentials.clone()),
+                ca,
+                &self.options,
+            )?);
+        }
         configure_https(&root, &url, Some(credentials), ca)?;
         self.workspace.verify_tree(self.session.path())?;
         runner.enable_https();
@@ -145,6 +163,20 @@ impl VerifiedTransfer {
         self.guard = Some((guard_ref.into(), commit));
         self.runner = Some(runner);
         self.url = Some(url);
+        Ok(())
+    }
+    /// Upload first, then independently download/hash every object before publishing refs.
+    pub fn transfer_lfs(&self) -> Result<()> {
+        if let Some(transport) = &self.lfs_transport {
+            self.options
+                .report("Uploading and independently verifying LFS payloads");
+            self.workspace.verify_tree(self.session.path())?;
+            transport.upload(&self.source, &self.lfs)?;
+            let audit = self.session.path().join("lfs-before-refs");
+            fs::create_dir(&audit)?;
+            transport.download(&audit, &self.lfs)?;
+            self.workspace.verify_tree(self.session.path())?;
+        }
         Ok(())
     }
     pub fn push_initial(&self, initial_oid: &str) -> Result<()> {
@@ -224,6 +256,15 @@ impl VerifiedTransfer {
             actual == self.refs && manifest.head == Head::Symbolic(self.head.clone()),
             "Destination refs/HEAD do not exactly match the source heads and tags"
         );
+        if let Some(transport) = &self.lfs_transport {
+            let actual = crate::lfs::inventory(&verifier, &audit, &offline, true)?;
+            // Notes/internal refs are excluded by the existing migration policy.
+            ensure!(
+                actual.iter().all(|o| self.lfs.contains(o)),
+                "Unarchived LFS pointer at destination"
+            );
+            transport.download(&audit, &actual)?;
+        }
         let ads = self.observe()?;
         ensure!(
             ads.refs == self.refs && ads.symbolic_head.as_ref() == Some(&self.head),

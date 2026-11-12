@@ -122,6 +122,8 @@ def main():
             vault = root / "vault"
             work = pathlib.Path(encrypted) / "workspace"
             source = fixture(root / "source")
+            from test_lfs import local_history
+            lfs_objects=local_history(source)
             password = "synthetic desktop passphrase"
             click("Create new")
             fill("Vault location", vault); fill("Vault passphrase", password); fill("Confirm passphrase", password)
@@ -133,6 +135,7 @@ def main():
             click("Set up workspace"); click("Create workspace")
             fill("Encrypted workspace", work); click("Verify workspace"); completed()
             click("Capture repository"); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
+            driver.find_element(By.CSS_SELECTOR,'input[aria-label="Include Git LFS payloads"]').click()
             # The background page action is obscured; select the dialog submit.
             driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
             completed()
@@ -237,6 +240,7 @@ def main():
                     assert done["migrationResult"]["state"]=="verified",done["migrationResult"]
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Private migration result"]'))
                     assert len(target.pushes)==2
+                    assert target.lfs_store==lfs_objects
             click("Lock vault");wait.until(lambda _:status()["vault"] is None)
             assert status()["newMigration"] is None and status()["migrationResult"] is None
             print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")

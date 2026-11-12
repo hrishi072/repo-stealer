@@ -14,3 +14,6 @@ pub use workspace::{Encryption, Workspace};
 
 mod transfer;
 pub use transfer::VerifiedTransfer;
+
+mod lfs;
+pub use lfs::LfsObject;

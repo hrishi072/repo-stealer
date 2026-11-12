@@ -34,6 +34,10 @@ pub struct NewPlan {
     pub ref_count: usize,
     pub refs: std::collections::BTreeMap<String, String>,
     pub excluded_refs: usize,
+    #[serde(default)]
+    pub lfs_objects: usize,
+    #[serde(default)]
+    pub lfs_bytes: u64,
     pub visibility: String,
     pub automation: String,
     pub scope_proof: String,
@@ -216,6 +220,11 @@ pub fn prepare_new(
             .map(|(n, o)| (n.clone(), o.clone()))
             .collect(),
         excluded_refs: source.refs.keys().filter(|n| !super::portable(n)).count(),
+        lfs_objects: source.lfs.as_ref().map_or(0, Vec::len),
+        lfs_bytes: source
+            .lfs
+            .as_ref()
+            .map_or(0, |objects| objects.iter().map(|o| o.size).sum()),
         visibility: "private".into(),
         automation: "disabled".into(),
         scope_proof: match d.provider {
@@ -527,6 +536,16 @@ pub fn execute_new(
             "transfer-intent",
             json!({"guard":guard_ref,"initialOid":initial,"guardOid":transfer.guard_oid()?}),
         )?;
+        checkpoint(
+            vault,
+            &plan,
+            "lfs-transfer-intent",
+            json!({"objects":plan.lfs_objects,"bytes":plan.lfs_bytes}),
+        )?;
+        result.last_phase = "lfs_transfer_outcome_unknown".into();
+        transfer.transfer_lfs()?;
+        current(&api, &d, &plan, &access, repo.id)?;
+        policy_baseline(&api, &d, repo.id, default, None)?;
         result.last_phase = "transfer_outcome_unknown".into();
         report(options, "Atomically transferring source branches and tags");
         transfer.push_initial(initial)?;

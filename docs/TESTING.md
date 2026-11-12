@@ -1,5 +1,7 @@
 # Verification, failure behavior and rollback
 
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+
 ## Current prototype
 
 ```sh

@@ -16,6 +16,7 @@ use std::{
 #[derive(Clone)]
 pub struct Options {
     pub timeout: Duration,
+    pub include_lfs: bool,
     pub cancelled: Arc<AtomicBool>,
     pub progress: Option<Arc<dyn Fn(&'static str) + Send + Sync>>,
 }
@@ -23,6 +24,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(3600),
+            include_lfs: false,
             cancelled: Arc::new(AtomicBool::new(false)),
             progress: None,
         }

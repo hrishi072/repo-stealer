@@ -16,11 +16,14 @@ class CreationFixture(HTTPSFixture):
         self.project=USERNAME+"/new-private";self.prefix="/platform" if provider=="gitlab" else ""
         self.repo_id=91;self.description="";self.private=True;self.actions=True;self.protections={}
         self.api_calls=[];self.pushes=[];self.created_guard=None;self.race_oid=None
-        super().__init__(root)
+        super().__init__(root,lfs=True)
+        self.lfs_store={}
         self.repository.rename(self.repository.with_name("source-mirror.git"))
         self.allow_receive=True
     @property
     def instance(self):return self.url.removesuffix("/project.git")+self.prefix
+    @property
+    def lfs_url(self):return self.instance+"/"+self.project+".git"
     def metadata(self):
         value={"id":self.repo_id,"archived":False,"default_branch":self.default_branch,"description":self.description}
         clone=self.instance+"/"+self.project+".git"
@@ -133,24 +136,31 @@ def main():
         secrets={"vault_passphrase":PASSWORD.decode().strip(),"token":TOKEN}
         expected=None
         for provider in ("github","gitlab"):
-            modes=["normal","bad-scope","public-response","hostile-clone","race-guard","verify-change","lost-create","existing","create-conflict","no-atomic"]
+            modes=["normal","bad-scope","public-response","hostile-clone","race-guard","verify-change","lost-create","existing","create-conflict","no-atomic","lfs-corrupt","lfs-missing"]
             if provider=="github":modes.extend(["normal-main","normal-free"])
             for mode in modes:
                 with CreationFixture(root/(provider+mode),provider,mode) as server:
                     if expected is None:
-                        command(binary,"git","capture",vault,"source",server.source,"--work-root",work)
+                        command(binary,"git","capture",vault,"source",server.source,"--work-root",work,"--include-lfs")
                         expected={line.split()[1]:line.split()[0] for line in git(server.source,"for-each-ref","--format=%(objectname) %(refname)","refs/heads","refs/tags").decode().splitlines()}
                     if mode=="existing":server.create({"name":"new-private","description":"existing unrelated","private":True,"auto_init":True,"namespace_id":100,"visibility":"private","initialize_with_readme":True,"builds_access_level":"disabled"})
                     def call(verb,item,*extra,ok=True,timeout=30):
                         dest=["--provider",provider,"--repository",server.project,"--instance",server.instance] if verb=="plan-new" else ["--confirm-repository",server.project]
                         return command(binary,"migration",verb,vault,item,"--work-root",work,"--ca-file",server.certificate,"--timeout-seconds",timeout,*dest,*extra,secrets=secrets,ok=ok)
+                    if provider=="github" and mode=="normal":
+                        command(binary,"git","capture",vault,"git-only-lfs",server.source,"--work-root",work)
+                        legacy=json.loads(call("plan-new","git-only-lfs").stdout)
+                        call("execute-new",legacy["id"],ok=False)
+                        assert not server.exists and not server.pushes and not any(method=="POST" for method,_,_ in server.api_calls),"Incomplete old LFS snapshot created a destination"
                     if mode in ("bad-scope","existing"):
                         before=inventory(server.repository) if server.exists else None
                         call("plan-new","source",ok=False)
                         assert not server.pushes and not any(method=="POST" for method,_,_ in server.api_calls)
                         if before is not None:assert inventory(server.repository)==before
                         continue
+                    if mode.startswith("lfs-"):server.lfs_mode=mode.removeprefix("lfs-")
                     plan=json.loads(call("plan-new","source").stdout)
+                    assert plan["lfsObjects"]==2 and plan["lfsBytes"]>0
                     assert plan["visibility"]=="private" and plan["automation"]=="disabled"
                     outcome=json.loads(call("execute-new",plan["id"],ok=mode in ("normal","normal-main","normal-free"),timeout=1 if mode=="lost-create" else 30).stdout)
                     assert outcome["state"]==("verified" if mode in ("normal","normal-main","normal-free") else "needs_attention"),outcome
@@ -163,8 +173,9 @@ def main():
                         assert actual==expected
                         assert git(server.repository,"symbolic-ref","HEAD").strip()==b"refs/heads/main"
                         assert len(server.pushes)==2
+                        assert server.lfs_store==server.lfs_source_objects
                     if mode=="race-guard":assert git(server.repository,"rev-parse","HEAD").decode().strip()==server.race_oid
-                    if mode in ("public-response","hostile-clone","lost-create","create-conflict"):assert not server.pushes
+                    if mode in ("public-response","hostile-clone","lost-create","create-conflict","lfs-corrupt","lfs-missing"):assert not server.pushes
                     assert not any(method=="DELETE" and "protected_branches/" not in path for method,path,_ in server.api_calls)
         backup=root/"receipts.rsbackup";command(binary,"vault","backup",vault,backup)
         recovered=root/"recovered";command(binary,"vault","restore",backup,recovered)

@@ -15,8 +15,10 @@ pub const HELP: &str = "Git commands (installed Git 2.48+ required):
 Linux: ROOT must be on verified ext4/XFS LUKS storage (provision separately).
 Windows: init creates an EFS-encrypted directory; EFS support is required.
 Restore destinations must be direct children of ROOT and must not exist.
-Capture includes reachable Git objects, refs and HEAD. It excludes external LFS
-payloads, submodule repositories, working files and hosting issues/PR metadata.
+Capture includes reachable Git objects, refs and HEAD. --include-lfs archives all
+reachable canonical LFS v1 payloads (local cache or explicit HTTPS server). Restore
+automatically verifies/reinstalls archived LFS objects offline. Submodules and
+hosting metadata are excluded.
 Git commands accept --password-stdin and --timeout-seconds N (default 3600 per Git command).
 Remote credentials are prompted when --username is supplied; never put tokens in URLs/argv/env.
 Remote automation: --secrets-stdin reads JSON {\"vault_passphrase\":\"...\",\"token\":\"...\"}; token may be null for anonymous capture.
@@ -43,13 +45,16 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     let mut positional = Vec::new();
     let mut work = None;
     let mut stdin = false;
+    let mut include_lfs = false;
     let mut timeout = 3600;
     let mut username = None;
     let mut ca_file = None;
     let mut secrets_stdin = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
-        if arg == "--work-root" {
+        if arg == "--include-lfs" {
+            include_lfs = true;
+        } else if arg == "--work-root" {
             if work.is_some() {
                 return Err(HELP.into());
             }
@@ -130,7 +135,11 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         .map(|(username, token)| Credentials { username, token });
     let mut vault =
         Vault::open(Path::new(positional[1]), password).map_err(|e| format!("{e:#}"))?;
+    if include_lfs && positional[0] == "restore" {
+        return Err("Restore automatically includes archived LFS payloads".into());
+    }
     let options = Options {
+        include_lfs,
         timeout: Duration::from_secs(timeout),
         ..Options::default()
     };
@@ -162,7 +171,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         restore(&vault, name, path, &workspace, &options)
     };
     result.map_err(|e| format!("{e:#}"))?;
-    println!("Verified Git {} completed. Git object history/refs only; external LFS/submodule data and hosting metadata are not included.", positional[0].to_string_lossy());
+    println!("Verified Git {} completed. Archived LFS payloads are restored automatically; capture includes payloads only with --include-lfs. Submodules and hosting metadata are excluded.", positional[0].to_string_lossy());
     Ok(())
 }
 

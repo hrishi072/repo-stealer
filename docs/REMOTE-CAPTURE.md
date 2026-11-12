@@ -1,5 +1,7 @@
 # HTTPS repository capture
 
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+
 [Alpha.4](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) adds read-only acquisition from an explicit HTTPS Git clone URL. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283). This is Git transport, not a GitHub/GitLab API connection or destination migration.
 
 ## Desktop
