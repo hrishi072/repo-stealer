@@ -411,6 +411,14 @@ pub fn execute_new(
             && s.symbolic_head.as_deref() == Some(&format!("refs/heads/{}", plan.default_branch)),
         "Reviewed refs/default branch do not match source"
     );
+    ensure!(
+        plan.lfs_objects == s.lfs.as_ref().map_or(0, Vec::len)
+            && plan.lfs_bytes
+                == s.lfs
+                    .as_ref()
+                    .map_or(0, |objects| objects.iter().map(|o| o.size).sum()),
+        "Reviewed LFS counts do not match source snapshot"
+    );
     refuse_reflection(&plan, Some(&access))?;
     report(
         options,

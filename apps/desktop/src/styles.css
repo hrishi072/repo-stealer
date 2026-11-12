@@ -10,3 +10,9 @@
 .plan-details { padding: 0 24px 20px; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
 .plan-details summary { cursor: pointer; }
 .checkbox-field { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+
+/* Keep dialog actions reachable when optional capture fields grow. */
+.modal { display: flex; flex-direction: column; overflow: hidden; }
+.modal-heading, .modal-footer { flex-shrink: 0; }
+.modal > form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.modal-body { min-height: 0; overflow-y: auto; }

@@ -109,8 +109,8 @@ impl CaptureProvenance {
     }
 }
 
-/// Acquires advertised reachable Git history only. External LFS/submodule
-/// content, separate wiki repositories and hosting metadata are never fetched.
+/// Acquires advertised reachable Git history, with optional verified LFS payloads.
+/// Submodules, separate wikis and hosting metadata are never fetched.
 pub fn capture_remote(
     vault: &mut Vault,
     name: &str,

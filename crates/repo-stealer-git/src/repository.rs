@@ -191,7 +191,6 @@ pub(crate) fn capture_impl(
     if let Some((provenance, _)) = remote {
         manifest.version = 2;
         manifest.remote = Some(provenance.clone());
-        validate(&manifest)?;
     }
     if options.include_lfs {
         options.report("Verifying and staging all reachable LFS payloads");
@@ -217,6 +216,7 @@ pub(crate) fn capture_impl(
     if let Some((_, recheck)) = remote {
         recheck()?;
     }
+    validate(&manifest)?;
     workspace.verify_tree(session.path())?;
     options.check()?;
     let json = serde_json::to_vec(&manifest)?;
@@ -576,6 +576,17 @@ fn validate(manifest: &Manifest) -> Result<()> {
             remote.advertised_ref_count == manifest.refs.len(),
             "Remote ref count differs from snapshot"
         );
+    }
+    if let Some(remote) = &manifest.remote {
+        match (&manifest.lfs, &remote.lfs) {
+            (None, None) => {}
+            (Some(archive), Some(summary)) => ensure!(
+                summary.objects == archive.objects.len()
+                    && summary.bytes == archive.objects.iter().map(|o| o.size).sum::<u64>(),
+                "LFS provenance differs from archived inventory"
+            ),
+            _ => anyhow::bail!("Inconsistent LFS provenance"),
+        }
     }
     let len = match manifest.object_format.as_str() {
         "sha1" => 40,

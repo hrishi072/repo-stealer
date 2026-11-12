@@ -80,6 +80,14 @@ def main():
                 return False
             wait.until(attempt)
 
+        def submit_modal():
+            def attempt(d):
+                button=d.find_element(By.CSS_SELECTOR,'.modal-footer button:not([type]), .modal-footer button[type="submit"]')
+                d.execute_script("arguments[0].scrollIntoView({block:'center'});",button)
+                if button.is_enabled() and button.is_displayed():button.click();return True
+                return False
+            wait.until(attempt)
+
         def fill(label, value):
             # Set through the native prototype (not React's own value tracker)
             # and dispatch input/change, so controlled state receives the edit.
@@ -131,13 +139,13 @@ def main():
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             click("Unlock vault"); fill("Vault location", vault); fill("Vault passphrase", password)
             # The overview also has an Unlock vault action outside the dialog.
-            driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
+            submit_modal(); completed()
             click("Set up workspace"); click("Create workspace")
             fill("Encrypted workspace", work); click("Verify workspace"); completed()
             click("Capture repository"); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
             driver.find_element(By.CSS_SELECTOR,'input[aria-label="Include Git LFS payloads"]').click()
             # The background page action is obscured; select the dialog submit.
-            driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
+            submit_modal()
             completed()
             assert status()["vault"]["itemCount"] == 1
             click("Repositories")
@@ -151,7 +159,7 @@ def main():
                 fill("Snapshot name", "synthetic-remote-history"); fill("HTTPS clone URL", remote.url)
                 click("Username & token"); fill("Repository username", USERNAME); fill("Repository access token", TOKEN)
                 fill("Custom CA file (optional)", remote.certificate)
-                driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click()
+                submit_modal()
                 result = completed()
                 report = result["jobs"][0]["result"]
                 assert report["inventory"]["headSubmodules"] == report["inventory"]["headLfsPointers"] == 1
@@ -162,7 +170,7 @@ def main():
                 click("Repositories"); click("Capture repository"); click("HTTPS remote")
                 fill("Snapshot name", "cancelled-remote"); fill("HTTPS clone URL", remote.url.replace("/project.git", "/slow.git"))
                 fill("Custom CA file (optional)", remote.certificate)
-                driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click()
+                submit_modal()
                 wait.until(lambda _: any(path.startswith("/slow.git/") for _, path in remote.requests))
                 click("Cancel"); completed("cancelled")
                 assert status()["vault"]["itemCount"] == 2
@@ -210,10 +218,10 @@ def main():
             click("Backups"); click("Create backup")
             backup = root / "portable.rsbackup"
             fill("Backup destination", backup)
-            driver.find_element(By.CSS_SELECTOR, '.modal-footer button[type="submit"], .modal-footer button:not([type])').click()
+            submit_modal()
             completed(); assert backup.is_file()
             click("Verify backup"); fill("Encrypted backup", backup); fill("Original vault passphrase", password)
-            driver.find_element(By.CSS_SELECTOR, '.modal-footer button:not([type])').click(); completed()
+            submit_modal(); completed()
             assert status()["plan"] is not None, "Lock test must begin with a populated plan"
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             assert status()["plan"] is None, "Lock retained decrypted migration plan"
@@ -223,7 +231,7 @@ def main():
             assert status()["vault"]["itemCount"] == 2
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             click("Overview");click("Unlock vault");fill("Vault location",root / "restored-vault");fill("Vault passphrase",password)
-            driver.find_element(By.CSS_SELECTOR,'.modal-footer button:not([type])').click();completed()
+            submit_modal();completed()
             click("New migrations")
             from selenium.webdriver.support.ui import Select
             for provider_name in ("github","gitlab"):

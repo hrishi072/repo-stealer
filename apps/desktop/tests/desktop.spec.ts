@@ -186,3 +186,19 @@ test('LFS capture is explicit and sent through typed IPC', async ({ page }) => {
   const calls = await page.evaluate(() => (window as unknown as { __desktopTestCalls: { command: string; args: { action?: unknown } }[] }).__desktopTestCalls);
   expect(calls.find(call => call.command === 'start_job')?.args.action).toEqual({ kind:'capture_local',name:'lfs-history',source:'/synthetic/source',includeLfs:true });
 });
+
+test('private capture keeps submit visible in a short window', async ({ page }) => {
+  await mockDesktop(page, true, true);
+  await page.setViewportSize({width:900,height:620});
+  await page.goto('/');
+  await page.getByRole('button',{name:'Capture repository',exact:true}).first().click();
+  await page.getByRole('button',{name:'HTTPS remote',exact:true}).click();
+  await page.getByRole('button',{name:'Username & token',exact:true}).click();
+  const submit=page.getByRole('dialog').getByRole('button',{name:'Capture repository',exact:true});
+  const rect=await submit.boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect!.y).toBeGreaterThanOrEqual(0);
+  expect(rect!.y+rect!.height).toBeLessThanOrEqual(620);
+  await page.getByLabel('Include Git LFS payloads',{exact:true}).check();
+  await expect(submit).toBeInViewport();
+});
