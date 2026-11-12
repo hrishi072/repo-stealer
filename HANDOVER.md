@@ -1,5 +1,7 @@
 # Handover
 
+Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
+
 ## 2026-11-10 — guarded private migration accepted
 
 **Done:** Separate encrypted, expiring new plans and exact typed confirmation for GitHub/GitLab personal repositories, cloud/self-hosted. Scope/actor/namespace proofs, full offline source verification before exclusive private creation, disabled destination automation, unique guard and atomic exact ref leases, source-default configuration/protection, independent clone/fsck/ref verification, and immutable encrypted intent/result entries. Existing destinations cannot be adopted. Review binds instance, source SHA-256 and exact refs; metadata clears on lock. See [guarded migrations](docs/GUARDED-MIGRATIONS.md) for limits and administrative-race boundaries.
@@ -8,9 +10,11 @@
 
 **Safety/compatibility:** One-shot plans never retry/adopt uncertain creations or delete repositories. GitHub Free's exact private-ruleset subscription response is normalized separately from permission/rate-limit errors. The real API was queried read-only on this code repository to confirm that response. Native input replacement now uses the input prototype setter and input/change events to keep React state synchronized across both webviews; it still exercises real forms and Rust IPC. Compiler caches speed repeated/tagged checks without replacing tests.
 
-**Release:** Version remains `0.1.0-alpha.5`. Main acceptance is complete; the signed alpha.5 tag will repeat all release gates before publication. Vault/Git snapshot/backup formats and same-key recovery are unchanged.
+**Release:** Signed [v0.1.0-alpha.5](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5) was published on 2026-11-10 from `50039eb572a0b699624cbffea03ffea0d527c8b0`. The [tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed quality, native Linux/Windows engine and desktop, reciprocal recovery, release and staging-cleanup jobs. Four desktop and six CLI packages plus SHA256SUMS are available. Vault/Git snapshot/backup formats and same-key recovery are unchanged. Source commits/tag are SSH-signed; installers are not OS code-signed.
 
-**Next:** Broader namespaces and credential types, external payload fidelity, and resumable execution with explicit reconciliation. Existing-destination writes and automatic retries remain separate work.
+**Release verification:** Post-publication verification on 2026-11-12 downloaded all ten packages into ignored `dist/releases/v0.1.0-alpha.5/` and independently matched every SHA-256 digest in SHA256SUMS. GitHub reports the tagged source commit signature valid, and the tagged run left no temporary staging draft.
+
+**Next:** Encrypted LFS payload capture/restore and transfer, then broader namespaces/credential types and resumable execution with explicit reconciliation. Existing-destination writes and automatic retries remain separate work.
 
 ## 2026-11-10 — destination preflight accepted
 

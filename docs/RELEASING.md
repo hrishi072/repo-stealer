@@ -49,3 +49,9 @@ Published [v0.1.0-alpha.4](https://github.com/hrishi072/repo-stealer/releases/ta
 Before bundling, CI runs `python scripts/package_desktop.py --clean-bundle` to remove generated installer outputs restored from old build caches. Compilation caches remain reusable, while every installer is freshly bundled for the selected version. Native startup and each installed-package smoke test compare the backend version with desktop/package.json before accepting the app. Duplicate package types still fail packaging; old packages are never silently renamed as the new release.
 
 Native CLI jobs cache compiler/OS/lockfile-keyed release dependencies as desktop jobs do. Every restored build still runs the full tests and packaging; cached files do not substitute for acceptance. The signed-tag run can reuse compiled dependencies from main acceptance.
+
+## Guarded migration alpha.5 publication
+
+Signed [v0.1.0-alpha.5](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5) targets `50039eb572a0b699624cbffea03ffea0d527c8b0`. The [tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed every job, including native Linux/Windows guarded migration/UI acceptance, reciprocal recovery, fresh package/version checks, signature verification, publication and staging cleanup. The release contains four desktop and six CLI packages plus SHA256SUMS. Existing destinations are protected by the [new-private-only scope](GUARDED-MIGRATIONS.md). Source/tag signing is separate from OS installer signing; desktop RPM distro installation remains untested.
+
+Post-publication verification on 2026-11-12 downloaded all ten packages into ignored `dist/releases/v0.1.0-alpha.5/` and independently matched every SHA-256 digest in SHA256SUMS. GitHub reports the tagged source commit signature valid, and the tagged run left no temporary staging draft.
