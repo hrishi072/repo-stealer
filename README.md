@@ -72,7 +72,7 @@ repo-stealer git capture ./my-vault project-history ./source-repo --work-root /m
 repo-stealer git restore ./my-vault project-history /mnt/already-encrypted/rs-work/restored.git --work-root /mnt/already-encrypted/rs-work
 ```
 
-Restore creates a new bare reftable repository with verified refs, HEAD and complete reachable Git object history. LFS payloads, external submodule repositories and hosting metadata need separate capture. See [platform setup, fidelity and recovery behavior](docs/GIT-SNAPSHOTS.md).
+Restore creates a new bare reftable repository with verified refs, HEAD and complete reachable Git object history. Use explicit LFS capture to include payloads; external submodule repositories and hosting metadata need separate capture. See [platform setup, fidelity and recovery behavior](docs/GIT-SNAPSHOTS.md).
 
 ## HTTPS repository capture
 
@@ -83,3 +83,5 @@ Alpha.4 adds explicit HTTPS capture, username/token authentication, self-hosted 
 Alpha.5 adds reviewed, encrypted migration plans and one-shot creation of new private personal repositories on GitHub/GitLab cloud and self-hosted instances. Existing destinations are refused. Source authentication, disabled destination automation, atomic ref leases and independent history verification gate completion; partial outcomes retain encrypted receipts. [Supported credentials, source limits and recovery](docs/GUARDED-MIGRATIONS.md) are explicit. The [signed-tag Linux/Windows workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed before publication.
 
 LFS payload support is in the alpha.6 development build. Use `--include-lfs` or the desktop checkbox for capture; restore and guarded migration automatically verify archived payloads. See [LFS compatibility, limits and recovery](docs/GIT-LFS.md). Published alpha.5 does not read LFS manifest v3.
+
+[Alpha.6 native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed Linux/Windows engine, desktop, package and reciprocal LFS recovery checks.
