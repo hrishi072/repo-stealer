@@ -22,6 +22,7 @@ hosting metadata are excluded.
 Git commands accept --password-stdin and --timeout-seconds N (default 3600 per Git command).
 Remote credentials are prompted when --username is supplied; never put tokens in URLs/argv/env.
 Remote automation: --secrets-stdin reads JSON {\"vault_passphrase\":\"...\",\"token\":\"...\"}; token may be null for anonymous capture.
+--lfs-workers 1..4 bounds concurrent HTTPS LFS object transfers (default 1).
 HTTPS redirects are refused. Wiki repositories need their own explicit clone URL.";
 
 pub fn run_workspace(args: &[OsString]) -> Result<(), String> {
@@ -46,13 +47,25 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     let mut work = None;
     let mut stdin = false;
     let mut include_lfs = false;
+    let mut lfs_workers = None;
     let mut timeout = 3600;
     let mut username = None;
     let mut ca_file = None;
     let mut secrets_stdin = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
-        if arg == "--include-lfs" {
+        if arg == "--lfs-workers" {
+            if lfs_workers.is_some() {
+                return Err(HELP.into());
+            }
+            lfs_workers = Some(
+                iter.next()
+                    .and_then(|v| v.to_str())
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .filter(|v| (1..=4).contains(v))
+                    .ok_or(HELP)?,
+            );
+        } else if arg == "--include-lfs" {
             include_lfs = true;
         } else if arg == "--work-root" {
             if work.is_some() {
@@ -138,7 +151,11 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if include_lfs && positional[0] == "restore" {
         return Err("Restore automatically includes archived LFS payloads".into());
     }
+    if lfs_workers.is_some() && (!remote || !include_lfs) {
+        return Err("--lfs-workers requires HTTPS capture with --include-lfs".into());
+    }
     let options = Options {
+        lfs_workers: lfs_workers.unwrap_or(1),
         include_lfs,
         timeout: Duration::from_secs(timeout),
         ..Options::default()

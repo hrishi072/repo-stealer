@@ -17,3 +17,5 @@ pub use transfer::VerifiedTransfer;
 
 mod lfs;
 pub use lfs::LfsObject;
+
+mod lfs_pool;

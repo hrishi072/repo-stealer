@@ -1,8 +1,5 @@
 //! Explicit LFS payload support. Never reads .lfsconfig, hooks or Git LFS adapters.
-use crate::{
-    runner::{Cancellable, Runner},
-    Credentials, Options, RemoteUrl,
-};
+use crate::{runner::Runner, Credentials, Options, RemoteUrl};
 use anyhow::{ensure, Context, Result};
 use reqwest::{
     blocking::{Body, Client, Response},
@@ -18,6 +15,7 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
+    sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
 use url::Url;
@@ -267,6 +265,10 @@ impl Transport {
         ca: Option<&Path>,
         options: &Options,
     ) -> Result<Self> {
+        ensure!(
+            (1..=4).contains(&options.lfs_workers),
+            "LFS workers must be 1..4"
+        );
         let mut base = url.as_str().trim_end_matches('/').to_owned();
         if !base.ends_with(".git") {
             base.push_str(".git");
@@ -480,76 +482,119 @@ impl Transport {
     pub(crate) fn download(&self, repo: &Path, objects: &[LfsObject]) -> Result<()> {
         for chunk in objects.chunks(100) {
             let rows = self.batch("download", chunk)?;
-            for (object, row) in chunk.iter().zip(rows) {
-                let action = row
-                    .pointer("/actions/download")
-                    .context("LFS download action missing")?;
-                let (url, headers) = self.action(action)?;
-                let mut response = self.response(self.client.get(url).headers(headers), &[200])?;
-                if let Some(n) = response.content_length() {
-                    ensure!(n == object.size, "LFS download size mismatch");
-                }
-                let path = object_path(repo, object);
-                fs::create_dir_all(path.parent().unwrap())?;
-                let mut file = File::create(path)?;
-                copy_verified(&mut response, &mut file, object, &self.options)
-                    .map_err(|_| anyhow::anyhow!("LFS download size/hash verification failed"))?;
-                let mut extra = [0];
-                ensure!(
-                    response
-                        .read(&mut extra)
-                        .map_err(|_| anyhow::anyhow!("LFS download failed"))?
-                        == 0,
-                    "LFS download has trailing bytes"
-                );
-                file.sync_all()?;
-            }
+            let jobs: Vec<_> = chunk.iter().zip(rows.iter()).collect();
+            crate::lfs_pool::run(&jobs, &self.options, |(object, row), stopped| {
+                self.download_one(repo, object, row, stopped)
+            })?;
         }
+        self.options.check()
+    }
+    fn object_response(
+        &self,
+        request: reqwest::blocking::RequestBuilder,
+        expected: &[u16],
+        stopped: &AtomicBool,
+    ) -> Result<Response> {
+        crate::lfs_pool::check(&self.options, stopped)?;
+        let response = self.response(request, expected)?;
+        crate::lfs_pool::check(&self.options, stopped)?;
+        Ok(response)
+    }
+    fn download_one(
+        &self,
+        repo: &Path,
+        object: &LfsObject,
+        row: &Value,
+        stopped: &Arc<AtomicBool>,
+    ) -> Result<()> {
+        let action = row
+            .pointer("/actions/download")
+            .context("LFS download action missing")?;
+        let (url, headers) = self.action(action)?;
+        let response =
+            self.object_response(self.client.get(url).headers(headers), &[200], stopped)?;
+        if let Some(n) = response.content_length() {
+            ensure!(n == object.size, "LFS download size mismatch");
+        }
+        let path = object_path(repo, object);
+        fs::create_dir_all(path.parent().unwrap())?;
+        let mut file = File::create(path)?;
+        let mut reader = crate::lfs_pool::Reader {
+            inner: response,
+            options: self.options.clone(),
+            stopped: stopped.clone(),
+        };
+        copy_verified(&mut reader, &mut file, object, &self.options)
+            .map_err(|_| anyhow::anyhow!("LFS download size/hash verification failed"))?;
+        let mut extra = [0];
+        ensure!(
+            reader
+                .read(&mut extra)
+                .map_err(|_| anyhow::anyhow!("LFS download failed"))?
+                == 0,
+            "LFS download has trailing bytes"
+        );
+        crate::lfs_pool::check(&self.options, stopped)?;
+        file.sync_all()?;
         Ok(())
     }
     pub(crate) fn upload(&self, repo: &Path, objects: &[LfsObject]) -> Result<()> {
         for chunk in objects.chunks(100) {
             let rows = self.batch("upload", chunk)?;
-            for (object, row) in chunk.iter().zip(rows) {
-                let Some(actions) = row.get("actions") else {
-                    continue;
-                };
-                let (url, headers) =
-                    self.action(actions.get("upload").context("LFS upload action missing")?)?;
-                let path = object_path(repo, object);
-                regular_path(&path, repo)?;
-                let file = File::open(path)?;
-                ensure!(
-                    file.metadata()?.len() == object.size,
-                    "LFS upload size changed"
-                );
-                self.response(
-                    self.client
-                        .put(url)
-                        .headers(headers)
-                        .header(CONTENT_TYPE, "application/octet-stream")
-                        .body(Body::sized(
-                            Cancellable {
-                                inner: file,
-                                options: self.options.clone(),
-                            },
-                            object.size,
-                        )),
-                    &[200, 201, 202, 204],
-                )?;
-                if let Some(action) = actions.get("verify") {
-                    let (url, headers) = self.action(action)?;
-                    self.response(
-                        self.client
-                            .post(url)
-                            .headers(headers)
-                            .header(CONTENT_TYPE, "application/vnd.git-lfs+json")
-                            .header(ACCEPT, "application/vnd.git-lfs+json")
-                            .body(serde_json::to_vec(object)?),
-                        &[200],
-                    )?;
-                }
-            }
+            let jobs: Vec<_> = chunk.iter().zip(rows.iter()).collect();
+            crate::lfs_pool::run(&jobs, &self.options, |(object, row), stopped| {
+                self.upload_one(repo, object, row, stopped)
+            })?;
+        }
+        self.options.check()
+    }
+    fn upload_one(
+        &self,
+        repo: &Path,
+        object: &LfsObject,
+        row: &Value,
+        stopped: &Arc<AtomicBool>,
+    ) -> Result<()> {
+        let Some(actions) = row.get("actions") else {
+            return Ok(());
+        };
+        let (url, headers) =
+            self.action(actions.get("upload").context("LFS upload action missing")?)?;
+        let path = object_path(repo, object);
+        regular_path(&path, repo)?;
+        let file = File::open(path)?;
+        ensure!(
+            file.metadata()?.len() == object.size,
+            "LFS upload size changed"
+        );
+        self.object_response(
+            self.client
+                .put(url)
+                .headers(headers)
+                .header(CONTENT_TYPE, "application/octet-stream")
+                .body(Body::sized(
+                    crate::lfs_pool::Reader {
+                        inner: file,
+                        options: self.options.clone(),
+                        stopped: stopped.clone(),
+                    },
+                    object.size,
+                )),
+            &[200, 201, 202, 204],
+            stopped,
+        )?;
+        if let Some(action) = actions.get("verify") {
+            let (url, headers) = self.action(action)?;
+            self.object_response(
+                self.client
+                    .post(url)
+                    .headers(headers)
+                    .header(CONTENT_TYPE, "application/vnd.git-lfs+json")
+                    .header(ACCEPT, "application/vnd.git-lfs+json")
+                    .body(serde_json::to_vec(object)?),
+                &[200],
+                stopped,
+            )?;
         }
         Ok(())
     }

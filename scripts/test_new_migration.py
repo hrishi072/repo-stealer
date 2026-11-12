@@ -17,7 +17,7 @@ class CreationFixture(HTTPSFixture):
         self.repo_id=91;self.description="";self.private=True;self.actions=True;self.protections={}
         self.api_calls=[];self.pushes=[];self.created_guard=None;self.race_oid=None
         super().__init__(root,lfs=True)
-        self.lfs_store={}
+        self.lfs_store={};self.lfs_delay=0.025
         self.repository.rename(self.repository.with_name("source-mirror.git"))
         self.allow_receive=True
     @property
@@ -134,19 +134,22 @@ def main():
         root=pathlib.Path(tmp);work=pathlib.Path(encrypted)/"work";vault=root/"vault"
         command(binary,"workspace","init",work);command(binary,"vault","init",vault)
         secrets={"vault_passphrase":PASSWORD.decode().strip(),"token":TOKEN}
-        expected=None
+        expected=None;expected_lfs=None
         for provider in ("github","gitlab"):
-            modes=["normal","bad-scope","public-response","hostile-clone","race-guard","verify-change","lost-create","existing","create-conflict","no-atomic","lfs-corrupt","lfs-missing"]
+            modes=["normal","bad-scope","public-response","hostile-clone","race-guard","verify-change","lost-create","existing","create-conflict","no-atomic","lfs-corrupt","lfs-missing","lfs-upload-error"]
             if provider=="github":modes.extend(["normal-main","normal-free"])
             for mode in modes:
                 with CreationFixture(root/(provider+mode),provider,mode) as server:
                     if expected is None:
+                        from benchmark_lfs import seed_profile
+                        seed_profile(server,[64*1024]*8,update_mirror=False)
+                        expected_lfs=dict(server.lfs_source_objects);server.lfs_store={}
                         command(binary,"git","capture",vault,"source",server.source,"--work-root",work,"--include-lfs")
                         expected={line.split()[1]:line.split()[0] for line in git(server.source,"for-each-ref","--format=%(objectname) %(refname)","refs/heads","refs/tags").decode().splitlines()}
                     if mode=="existing":server.create({"name":"new-private","description":"existing unrelated","private":True,"auto_init":True,"namespace_id":100,"visibility":"private","initialize_with_readme":True,"builds_access_level":"disabled"})
                     def call(verb,item,*extra,ok=True,timeout=30):
                         dest=["--provider",provider,"--repository",server.project,"--instance",server.instance] if verb=="plan-new" else ["--confirm-repository",server.project]
-                        return command(binary,"migration",verb,vault,item,"--work-root",work,"--ca-file",server.certificate,"--timeout-seconds",timeout,*dest,*extra,secrets=secrets,ok=ok)
+                        return command(binary,"migration",verb,vault,item,"--work-root",work,"--ca-file",server.certificate,"--timeout-seconds",timeout,*dest,*extra,*( ["--lfs-workers",4] if verb=="execute-new" else []),secrets=secrets,ok=ok)
                     if provider=="github" and mode=="normal":
                         command(binary,"git","capture",vault,"git-only-lfs",server.source,"--work-root",work)
                         legacy=json.loads(call("plan-new","git-only-lfs").stdout)
@@ -160,7 +163,7 @@ def main():
                         continue
                     if mode.startswith("lfs-"):server.lfs_mode=mode.removeprefix("lfs-")
                     plan=json.loads(call("plan-new","source").stdout)
-                    assert plan["lfsObjects"]==2 and plan["lfsBytes"]>0
+                    assert plan["lfsObjects"]==len(expected_lfs) and plan["lfsBytes"]>0
                     assert plan["visibility"]=="private" and plan["automation"]=="disabled"
                     outcome=json.loads(call("execute-new",plan["id"],ok=mode in ("normal","normal-main","normal-free"),timeout=1 if mode=="lost-create" else 30).stdout)
                     assert outcome["state"]==("verified" if mode in ("normal","normal-main","normal-free") else "needs_attention"),outcome
@@ -173,9 +176,16 @@ def main():
                         assert actual==expected
                         assert git(server.repository,"symbolic-ref","HEAD").strip()==b"refs/heads/main"
                         assert len(server.pushes)==2
-                        assert server.lfs_store==server.lfs_source_objects
+                        assert server.lfs_store==expected_lfs
+                        server.wait_lfs_idle()
+                        assert 2<=server.lfs_peak<=4
+                        puts=[oid for method,oid in server.lfs_transfers if method=="PUT"]
+                        assert len(puts)==len(set(puts))==len(expected_lfs)
                     if mode=="race-guard":assert git(server.repository,"rev-parse","HEAD").decode().strip()==server.race_oid
-                    if mode in ("public-response","hostile-clone","lost-create","create-conflict","lfs-corrupt","lfs-missing"):assert not server.pushes
+                    if mode in ("public-response","hostile-clone","lost-create","create-conflict","lfs-corrupt","lfs-missing","lfs-upload-error"):assert not server.pushes
+                    if mode=="lfs-upload-error":
+                        server.wait_lfs_idle();assert len(server.lfs_transfers)<=4
+                        assert not server.lfs_store and not server.pushes
                     assert not any(method=="DELETE" and "protected_branches/" not in path for method,path,_ in server.api_calls)
         backup=root/"receipts.rsbackup";command(binary,"vault","backup",vault,backup)
         recovered=root/"recovered";command(binary,"vault","restore",backup,recovered)

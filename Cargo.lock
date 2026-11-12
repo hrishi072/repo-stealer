@@ -1499,7 +1499,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-app"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 dependencies = [
  "repo-stealer-git",
  "repo-stealer-migration",
@@ -1511,7 +1511,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-cli"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 dependencies = [
  "ctrlc",
  "repo-stealer-core",
@@ -1526,11 +1526,11 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-core"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 
 [[package]]
 name = "repo-stealer-git"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1550,7 +1550,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-migration"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 dependencies = [
  "anyhow",
  "getrandom 0.2.17",
@@ -1568,7 +1568,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-vault"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 dependencies = [
  "age",
  "anyhow",

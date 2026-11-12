@@ -98,6 +98,8 @@ jobs:
         run: python scripts/test_remote.py ${{ matrix.binary }} --fixture-out fixture/remote-portable.rsbackup
       - name: Encrypted historical LFS capture and offline restore
         run: python scripts/test_lfs.py ${{ matrix.binary }} --fixture-out fixture/lfs-portable.rsbackup
+      - name: Measure bounded LFS transfers and verify recovered payloads
+        run: python scripts/benchmark_lfs.py ${{ matrix.binary }} --output fixture/lfs-benchmark-${{ matrix.platform }}.json
       - name: Read-only GitHub and GitLab destination plans
         run: python scripts/test_migration.py ${{ matrix.binary }}
       - name: Guarded new private GitHub and GitLab migrations

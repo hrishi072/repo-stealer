@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import sys
 import urllib.request
 
 from selenium import webdriver
@@ -175,6 +176,23 @@ def main():
                 click("Cancel"); completed("cancelled")
                 assert status()["vault"]["itemCount"] == 2
                 encrypted_files(work)
+            cancellation_samples=[]
+            for stage in ("headers","body"):
+                with HTTPSFixture(root/("lfs-cancel-"+stage),lfs=True) as remote:
+                    if stage=="headers":remote.lfs_delay=2.0
+                    else:remote.lfs_body_delay=2.0
+                    click("Repositories");click("Capture repository");click("HTTPS remote")
+                    fill("Snapshot name","cancelled-lfs-"+stage);fill("HTTPS clone URL",remote.url)
+                    click("Username & token");fill("Repository username",USERNAME);fill("Repository access token",TOKEN)
+                    fill("Custom CA file (optional)",remote.certificate)
+                    driver.find_element(By.CSS_SELECTOR,'input[aria-label="Include Git LFS payloads"]').click()
+                    submit_modal();wait.until(lambda _:remote.lfs_active>0)
+                    started=time.perf_counter();click("Cancel");completed("cancelled")
+                    elapsed=time.perf_counter()-started
+                    remote.wait_lfs_idle();assert elapsed<10 and status()["vault"]["itemCount"]==2
+                    encrypted_files(work)
+                    cancellation_samples.append({"stage":stage,"injectedDelaySeconds":2,"cancelToCompletionSeconds":round(elapsed,6),"peakRequests":remote.lfs_peak,"published":False})
+            print("LFS_CANCELLATION_JSON="+json.dumps({"schema":1,"platform":sys.platform,"samples":cancellation_samples},separators=(",",":")),flush=True)
             with ProviderFixture(root / "provider-server") as provider_server:
                 click("Migration plans")
                 for provider_name in ("github", "gitlab"):

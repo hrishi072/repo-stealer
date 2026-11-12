@@ -14,6 +14,7 @@ New private personal-repository migrations:
   repo-stealer migration execute-new VAULT PLAN_ID --confirm-repository USER/NEW_NAME --work-root ROOT
 New plans are encrypted, expire after 15 minutes and are consumed once. GitHub requires
 classic PAT repo+workflow; GitLab requires personal api+write_repository scopes.
+execute-new accepts --lfs-workers 1..4 (default 1); this changes scheduling only.
 Creation disables destination automation. No existing repository is adopted or deleted.
 Cloud is the default; --instance selects GitHub Enterprise Server or self-hosted GitLab.
 Tokens are prompted or read from --secrets-stdin JSON with vault_passphrase and token.
@@ -41,6 +42,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
                 | "--work-root"
                 | "--timeout-seconds"
                 | "--confirm-repository"
+                | "--lfs-workers"
         ) {
             if values.insert(key, iter.next().ok_or(HELP)?).is_some() {
                 return Err(HELP.into());
@@ -60,7 +62,12 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         return Err(HELP.into());
     }
     let text = |key| values.get(key).and_then(|v| v.to_str());
-    for key in ["--instance", "--username", "--timeout-seconds"] {
+    for key in [
+        "--instance",
+        "--username",
+        "--timeout-seconds",
+        "--lfs-workers",
+    ] {
         if values.contains_key(key) && text(key).is_none() {
             return Err(HELP.into());
         }
@@ -110,6 +117,13 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if !(1..=86400).contains(&timeout) {
         return Err(HELP.into());
     }
+    let lfs_workers = text("--lfs-workers")
+        .unwrap_or("1")
+        .parse::<usize>()
+        .map_err(|_| HELP)?;
+    if !(1..=4).contains(&lfs_workers) || (values.contains_key("--lfs-workers") && !execute) {
+        return Err(HELP.into());
+    }
     let root = Workspace::open(Path::new(values.get("--work-root").ok_or(HELP)?))
         .map_err(|e| e.to_string())?;
     let (password, token) = if json {
@@ -136,6 +150,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     });
     let mut vault = Vault::open(Path::new(positional[1]), password).map_err(|e| e.to_string())?;
     let options = Options {
+        lfs_workers,
         timeout: Duration::from_secs(timeout),
         ..Options::default()
     };

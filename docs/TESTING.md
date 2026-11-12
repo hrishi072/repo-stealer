@@ -150,3 +150,7 @@ The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs
 Published [v0.1.0-alpha.6](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) from immutable signed tag source `a71d9cef42f35d43dee332f6526abfc36e733579`. Four desktop plus six CLI assets and SHA256SUMS are available; package signing and desktop RPM distro installation remain outside the tested scope.
 
 Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.
+
+## Bounded LFS measurement development
+
+Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/timing-only JSON plus job summaries for 1/4-worker capture/restore comparisons. Native desktop tests measure cancellation at delayed LFS headers/body with no publication. Parallel migration checks upload rejection, joined workers and no Git ref publication. Measurement/acceptance results are pending; see [performance methodology](LFS-PERFORMANCE.md).

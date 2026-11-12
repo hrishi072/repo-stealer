@@ -21,7 +21,7 @@ export type Action =
   | { kind: 'restore_backup'; path: string; destination: string; passphrase: string };
 
 export const desktop = '__TAURI_INTERNALS__' in window;
-export const emptyStatus: Status = { version: '0.1.0-alpha.6', platform: 'linux', vault: null, workspace: null, busy: false, jobs: [], remoteCapture: true };
+export const emptyStatus: Status = { version: '0.1.0-alpha.7', platform: 'linux', vault: null, workspace: null, busy: false, jobs: [], remoteCapture: true };
 export async function getStatus(): Promise<Status> { return desktop ? invoke<Status>('get_status') : emptyStatus; }
 function requireDesktop() { if (!desktop) throw new Error('Open the desktop app to access local vaults and encrypted working storage.'); }
 export async function startJob(action: Action): Promise<number> { requireDesktop(); return invoke<number>('start_job', { action }); }

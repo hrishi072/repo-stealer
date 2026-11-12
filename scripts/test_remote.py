@@ -38,6 +38,8 @@ class HTTPSFixture:
         self.root.mkdir()
         self.source = fixture(self.root / "project.git")
         self.lfs_store = {}; self.lfs_source_objects = {}; self.lfs_mode = "normal"; self.lfs_calls = []
+        self.lfs_delay=0.0;self.lfs_body_delay=0.0;self.lfs_metrics_lock=threading.Lock()
+        self.lfs_active=0;self.lfs_peak=0;self.lfs_first=None;self.lfs_last=None;self.lfs_transfers=[]
         if lfs:
             first=b"historical encrypted LFS payload\x00"*4096
             oid=hashlib.sha256(first).hexdigest(); self.lfs_source_objects[oid]=first
@@ -124,6 +126,32 @@ class HTTPSFixture:
         self.url = f"https://127.0.0.1:{self.server.server_port}/project.git"
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
+    def wait_lfs_idle(self,seconds=5):
+        deadline=time.monotonic()+seconds
+        while time.monotonic()<deadline:
+            with self.lfs_metrics_lock:
+                if self.lfs_active==0:return
+            time.sleep(0.01)
+        raise AssertionError("Synthetic LFS requests did not drain")
+
+    def reset_lfs_metrics(self):
+        with self.lfs_metrics_lock:
+            assert self.lfs_active==0
+            self.lfs_peak=0;self.lfs_first=None;self.lfs_last=None;self.lfs_transfers=[]
+
+    @contextlib.contextmanager
+    def lfs_transfer(self,method,oid):
+        with self.lfs_metrics_lock:
+            self.lfs_active+=1;self.lfs_peak=max(self.lfs_peak,self.lfs_active)
+            if self.lfs_first is None:self.lfs_first=time.perf_counter()
+            self.lfs_transfers.append((method,oid))
+        try:
+            time.sleep(self.lfs_delay)
+            yield
+        finally:
+            with self.lfs_metrics_lock:
+                self.lfs_active-=1;self.lfs_last=time.perf_counter()
+
     def handler(self):
         owner = self
 
@@ -190,15 +218,22 @@ class HTTPSFixture:
                         body=json.loads(self.rfile.read(int(self.headers.get("Content-Length","0"))))
                         assert oid in owner.lfs_store and body["size"]==len(owner.lfs_store[oid])
                         return self.send(200)
-                    if self.command=="PUT":
-                        assert not getattr(owner,"actions",False)
-                        body=self.rfile.read(int(self.headers["Content-Length"]));assert hashlib.sha256(body).hexdigest()==oid
-                        owner.lfs_store[oid]=body;return self.send(200)
-                    if owner.lfs_mode=="redirect":return self.send(302,headers={"Location":"https://external.invalid/never"})
-                    data=owner.lfs_store[oid]
-                    if owner.lfs_mode=="corrupt":data=b"x"*len(data)
-                    if owner.lfs_mode=="extra":data+=b"x"
-                    return self.send(200,data)
+                    with owner.lfs_transfer(self.command,oid):
+                        if self.command=="PUT":
+                            assert not getattr(owner,"actions",False)
+                            body=self.rfile.read(int(self.headers["Content-Length"]));assert hashlib.sha256(body).hexdigest()==oid
+                            if owner.lfs_mode=="upload-error":return self.send(503)
+                            owner.lfs_store[oid]=body;return self.send(200)
+                        if owner.lfs_mode=="redirect":return self.send(302,headers={"Location":"https://external.invalid/never"})
+                        data=owner.lfs_store[oid]
+                        if owner.lfs_mode=="corrupt":data=b"x"*len(data)
+                        if owner.lfs_mode=="extra":data+=b"x"
+                        if owner.lfs_body_delay:
+                            with contextlib.suppress(BrokenPipeError,ConnectionResetError,ssl.SSLError):
+                                self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Connection","close");self.end_headers();self.wfile.flush()
+                                time.sleep(owner.lfs_body_delay);self.wfile.write(data)
+                            return
+                        return self.send(200,data)
                 if path.startswith("/dumb.git/"):
                     oid = git(owner.repository, "rev-parse", "HEAD").strip()
                     if path.endswith("/info/refs"):

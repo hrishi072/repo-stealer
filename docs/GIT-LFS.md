@@ -2,6 +2,8 @@
 
 Alpha.6 adds explicit payload capture, offline restore and guarded new-private migration. [Alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) are published for Linux and Windows. LFS-aware snapshots use Git manifest v3 and require alpha.6 or newer to restore; existing v1/v2 snapshots and vault/same-key backup formats remain readable and unchanged.
 
+Development alpha.7 measures optional bounded transfers with a 1..4-worker pool; [methodology, controls and cancellation boundaries](LFS-PERFORMANCE.md). Alpha.6 release behavior and snapshot formats are unchanged.
+
 ## Capture and restore
 
 In the desktop capture dialog, check **Include Git LFS payloads**. CLI equivalents:

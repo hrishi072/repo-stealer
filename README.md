@@ -15,6 +15,7 @@ Download the [alpha.6 desktop installers and CLI packages](https://github.com/hr
 - [Existing script audit](docs/LEGACY-AUDIT.md)
 - [Encryption and backup design](docs/SECURITY.md)
 - [Encrypted Git snapshots and platform requirements](docs/GIT-SNAPSHOTS.md)
+- [LFS performance measurements](docs/LFS-PERFORMANCE.md)
 - [Encrypted LFS capture, restore and migration](docs/GIT-LFS.md)
 - [Guarded new private migrations](docs/GUARDED-MIGRATIONS.md)
 - [Read-only destination plans](docs/MIGRATION-PLANS.md)
@@ -87,3 +88,5 @@ LFS payload support is included in the alpha.6 installers. Use `--include-lfs` o
 [Alpha.6 native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed Linux/Windows engine, desktop, package and reciprocal LFS recovery checks.
 
 [Alpha.6 signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed before [installer publication](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6).
+
+Development alpha.7 evaluates bounded LFS transfers and measured cancellation; [benchmark scope and controls](docs/LFS-PERFORMANCE.md). Published alpha.6 installers are unchanged.
