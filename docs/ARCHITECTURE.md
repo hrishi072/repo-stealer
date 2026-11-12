@@ -1,6 +1,6 @@
 # Architecture
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 Design proposal, 2026-11-08. Implemented components are explicitly marked below.
 
@@ -12,7 +12,7 @@ Design proposal, 2026-11-08. Implemented components are explicitly marked below.
 | Desktop | Tauri 2 | Linux/Windows packaging and small shell using system webviews; Linux WebKitGTK and Windows WebView2 need explicit testing. |
 | UI | React + TypeScript + Vite | Implemented with bounded status polling and paginated catalog queries; no SSR/server. Query libraries and virtualized provider/bulk lists remain future options. |
 | Concurrency | Serialized Rust background worker now; bounded async provider queues later | Desktop operations run off the UI thread and serialize vault access; future network workers need separate limits. |
-| Git transport | Native Git + Git LFS, isolated child processes | Broad compatibility, mature pack negotiation and SSH; signed/versioned sidecars and licenses become release responsibilities. Evaluate libgit2/gix only if benchmarks justify replacing Git. |
+| Git transport | Native Git subprocesses + built-in Rust LFS Batch/Basic client | Mature Git pack negotiation; streaming LFS with explicit endpoint/auth/action isolation, without invoking hooks or custom adapters. Git executable trust and dependency licenses remain release responsibilities. Evaluate libgit2/gix only if benchmarks justify replacing Git. |
 | Provider APIs | reqwest + serde, explicit GitHub/GitLab adapters | Read-only explicit cloud/self-hosted roots, identity and policy observations implemented; versioned capability negotiation remains future work. |
 | Metadata | Encrypted JSON catalog now; indexed database later | 8 MiB bounded snapshot, atomically replaced under a lock; indexed queries can justify SQLCipher later. |
 | Vault and backup crypto | age 0.11.5, X25519 identity, age scrypt key envelope | Authenticated streaming via a maintained portable library; the application format remains experimental. |
@@ -39,7 +39,7 @@ flowchart TD
 
 Core owns validation, plans, conflict rules and job state. Providers own API paging, capabilities and field translation. Git worker owns object transfer and verification. Vault owns keys and persistence. Desktop owns presentation; vault identities stay in Rust, passphrases cross typed local IPC transiently, and the renderer cannot run arbitrary shell commands.
 
-**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. `repo-stealer-app` provides the shared desktop service, bounded catalog/status APIs and session jobs; `apps/desktop` contains the Tauri 2 shell and React renderer. The Git worker now provides isolated read-only HTTPS acquisition with scoped ephemeral credentials and authenticated provenance; provider APIs and destination writes remain planned. See [actual and proposed flow](FLOW.md).
+**Implemented:** `repo-stealer-core` parses/compares heads and tags; `repo-stealer-vault` stores an encrypted catalog and immutable streamed objects, verifies and restores same-key backups; `repo-stealer-cli` exposes these operations. `repo-stealer-git` adds verified encrypted workspaces and local Git snapshot capture/restore. `repo-stealer-app` provides the shared desktop service, bounded catalog/status APIs and session jobs; `apps/desktop` contains the Tauri 2 shell and React renderer. The Git worker now provides isolated read-only HTTPS acquisition with scoped ephemeral credentials and authenticated provenance; explicit GitHub/GitLab preflight and guarded new-private personal creation/push are implemented. Optional LFS payloads use authenticated manifest v3, offline cache restore and pre-ref independent download verification. See [actual and proposed flow](FLOW.md).
 
 ## Persistence and job model
 

@@ -1,6 +1,6 @@
 # Encrypted storage and backup security
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 Implemented in `repo-stealer-vault`, format version 1, experimental storage format; local Git snapshot increment published as `0.1.0-alpha.2`. This describes actual behavior; auto-lock UI, password changes, recovery codes and indexed metadata remain future work. The application has not had an independent security review.
 

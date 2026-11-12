@@ -1,8 +1,8 @@
 # Encrypted Git working storage and full-history snapshots
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
-Implemented commands capture a **local** ordinary or bare repository into the existing age-encrypted vault and restore it as a new bare repository. Installed Git **2.48+** is required. The app does not connect to hosting providers or execute repository hooks, checkouts, builds, credential helpers or submodule fetches.
+Implemented commands capture a **local** ordinary or bare repository into the existing age-encrypted vault and restore it as a new bare repository. Installed Git **2.48+** is required. Local capture/restore do not connect to hosting providers or execute repository hooks, checkouts, builds or submodule fetches. Explicit HTTPS acquisition and guarded migration use separate scoped network workers.
 
 ## Verified workspaces
 
@@ -40,7 +40,7 @@ Preserves every Git-enumerated ref and its object ID, symbolic refs, HEAD (inclu
 
 Empty repositories and SHA-1/SHA-256 repositories have explicit coverage. Shallow repositories, partial/promisor sources, missing object history, unresolved source config includes, `.git` indirection/shared worktrees, invalid/non-UTF-8 metadata, symbolic-ref inconsistencies and incremental bundles are rejected. Sources must be quiescent: pre/post inventories catch observed ref/HEAD changes, but this is not a global lock or an atomic filesystem snapshot of another process's repository. Source objects and refs are never intentionally mutated.
 
-Uncommitted/untracked files, source configuration/hooks, reflogs and unreachable/deleted history are not included. Git LFS pointer blobs and submodule gitlinks remain unchanged, but **external LFS payloads and submodule repositories are not captured**. Wikis are separate repositories; issues/PRs/reviews/releases and hosting settings require later provider adapters. This scope is recorded in the authenticated manifest and CLI completion message.
+Uncommitted/untracked files, source configuration/hooks, reflogs and unreachable objects are not included. Git LFS pointer blobs and submodule gitlinks remain unchanged. **LFS payloads are captured only when explicitly enabled** and restore automatically; external submodule repositories are not captured. Wikis are separate repositories; issues/PRs/reviews/releases and hosting settings require later provider adapters. This scope is recorded in the authenticated manifest and CLI completion message.
 
 ## Flow and verification
 

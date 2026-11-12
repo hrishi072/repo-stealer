@@ -15,9 +15,10 @@ def local_history(source):
     for index in (1,2):
         data=(b"RS_GIT_CONTENT_SENTINEL_01_LFS_"+str(index).encode())*4096
         oid=hashlib.sha256(data).hexdigest();objects[oid]=data
-        (source/"lfs.bin").write_text(f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(data)}\n")
+        (source/"lfs.bin").write_bytes((f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(data)}\n").encode("ascii"))
         path=source/".git/lfs/objects"/oid[:2]/oid[2:4]/oid;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
         git(source,"add","lfs.bin");git(source,"commit","-m",f"LFS history {index}")
+        assert b"\r" not in git(source,"show","HEAD:lfs.bin"),"Fixture pointer must use canonical LF bytes"
     return objects
 
 

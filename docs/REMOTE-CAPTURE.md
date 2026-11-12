@@ -1,6 +1,6 @@
 # HTTPS repository capture
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 [Alpha.4](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.4) adds read-only acquisition from an explicit HTTPS Git clone URL. [Native Linux/Windows acceptance passed](https://github.com/hrishi072/repo-stealer/actions/runs/42791025283). This is Git transport, not a GitHub/GitLab API connection or destination migration.
 
@@ -34,12 +34,12 @@ Only advertised accessible refs and their reachable object history are included.
 The capture report records the credential-free canonical URL, advertised ref count, HEAD observation and an authenticated inventory:
 
 - Submodule gitlink count at default HEAD. External submodule repositories are not fetched, and `.gitmodules` URLs are not followed.
-- LFS pointer candidates at default HEAD, scanning at most 4096 files of at most 1024 bytes each. The report flags a limited scan and reports how many candidate files were scanned. Historical LFS/submodule content is not inventoried or transferred.
+- LFS pointer candidates at default HEAD, scanning at most 4096 files of at most 1024 bytes each. The report flags a limited scan and reports how many candidate files were scanned. Without LFS opt-in, historical payloads are not inventoried or transferred. With `--include-lfs`, a separate all-reachable-history inventory verifies every supported LFS object and reports archived count/bytes; submodule payloads remain excluded.
 - Wiki repositories require a separate capture using their explicit clone URL. No wiki discovery or hosting metadata API is implemented.
 
 The default-HEAD tree is bounded to 100,000 entries and Git command output to 8 MiB; excessive or malformed inventories fail rather than reporting partial full-history success. External-content inventory is deliberately bounded, not an assertion that every external dependency was discovered.
 
-Remote snapshots use Git manifest version 2 inside the existing encrypted vault/backup format. The remote report is authenticated with that snapshot. Local captures retain version 1. Alpha.4 reads both; alpha.3 cannot restore version-2 Git snapshots. Portable vault backups retain the original age identity and passphrase recovery behavior. Restore still creates a new verified bare repository inside encrypted working storage and never overwrites a destination.
+Git-only remote snapshots use Git manifest version 2 inside the existing encrypted vault/backup format. Explicit LFS captures use manifest v3, including exact bundle length and sorted object IDs/sizes before the streamed payloads. The remote report is authenticated with that snapshot. Git-only local captures retain version 1. Alpha.4 reads both; alpha.3 cannot restore version-2 Git snapshots. Portable vault backups retain the original age identity and passphrase recovery behavior. Restore still creates a new verified bare repository inside encrypted working storage and never overwrites a destination.
 
 Current activity/report display is session-only, and locking clears remote reports from activity; the authenticated provenance remains inside the archived Git snapshot. No dedicated historical provenance browser exists yet. See [Git snapshot scope](GIT-SNAPSHOTS.md) and [security boundaries](SECURITY.md).
 

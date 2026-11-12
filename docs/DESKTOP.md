@@ -1,6 +1,6 @@
 # Desktop application
 
-Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable. The details below describing excluded LFS payloads apply to Git-only/older captures.
+Development alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
 The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git capture/restore, and same-key portable backups. Alpha.5 adds read-only destination preflight and guarded migration into new private personal repositories on GitHub/GitLab cloud and self-hosted instances. Existing destinations cannot be adopted. [Alpha.5 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) passed native Linux/Windows migration, recovery, privacy/cancellation, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
@@ -10,7 +10,7 @@ The Tauri 2/React desktop exposes encrypted vaults, local and explicit HTTPS Git
 
 Create a new vault or unlock an existing CLI vault using its path and passphrase. Set up a working directory on verified encrypted storage: ext4/XFS on mounted LUKS for Linux, EFS for Windows. The application cannot provision a Linux volume. Git 2.48+ must be installed and available in PATH.
 
-Capture a local ordinary/bare repository under a unique snapshot name. Restore creates a new bare repository directly inside the verified workspace; existing destinations are never replaced. All reachable Git history, refs and HEAD are preserved. Uncommitted files, unreachable history, LFS payloads, external submodule repositories and hosting metadata are excluded. See [Git fidelity and platform requirements](GIT-SNAPSHOTS.md).
+Capture a local ordinary/bare repository under a unique snapshot name. Restore creates a new bare repository directly inside the verified workspace; existing destinations are never replaced. All reachable Git history, refs and HEAD are preserved. Check Include Git LFS payloads to archive all supported historical payloads; restore automatically verifies and reinstalls them offline. Uncommitted files, unreachable history, external submodule repositories and hosting metadata are excluded. See [Git fidelity and platform requirements](GIT-SNAPSHOTS.md).
 
 Backups can be created, verified and restored from the Backups page. Recovery requires the original vault passphrase and a new destination, and restores the same wrapped vault identity. Lock the current vault before restoring another. There is no password reset. Operations never overwrite existing backup/vault paths.
 

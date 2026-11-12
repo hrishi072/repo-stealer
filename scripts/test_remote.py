@@ -41,16 +41,16 @@ class HTTPSFixture:
         if lfs:
             first=b"historical encrypted LFS payload\x00"*4096
             oid=hashlib.sha256(first).hexdigest(); self.lfs_source_objects[oid]=first
-            (self.source / "historical.bin").write_text(f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(first)}\n")
+            (self.source / "historical.bin").write_bytes((f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(first)}\n").encode("ascii"))
             git(self.source,"add",".");git(self.source,"commit","-m","historical LFS payload")
             (self.source / "historical.bin").unlink()
         # These are Git pointer/gitlink bytes only; neither external store is
         # available. Successful capture must never try to fetch either one.
-        (self.source / "large.bin").write_text("version https://git-lfs.github.com/spec/v1\noid sha256:" + "a" * 64 + "\nsize 10000000\n")
+        (self.source / "large.bin").write_bytes(("version https://git-lfs.github.com/spec/v1\noid sha256:" + "a" * 64 + "\nsize 10000000\n").encode("ascii"))
         if lfs:
             data=b"current encrypted LFS payload\x00"*2048
             oid=hashlib.sha256(data).hexdigest();self.lfs_source_objects[oid]=data
-            (self.source/"large.bin").write_text(f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(data)}\n")
+            (self.source/"large.bin").write_bytes((f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {len(data)}\n").encode("ascii"))
             (self.source/".lfsconfig").write_text("[lfs]\nurl = https://external.invalid/do-not-use\n")
             for oid,data in self.lfs_source_objects.items():
                 path=self.source/".git/lfs/objects"/oid[:2]/oid[2:4]/oid;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
@@ -60,6 +60,7 @@ class HTTPSFixture:
         head = git(self.source, "rev-parse", "HEAD").decode().strip()
         git(self.source, "update-index", "--add", "--cacheinfo", f"160000,{head},deps/component")
         git(self.source, "commit", "-m", "external-content pointers")
+        if lfs:assert b"\r" not in git(self.source,"show","HEAD:large.bin"),"Fixture pointer must use canonical LF bytes"
         # Export an ordinary repository over HTTP without changing its working
         # tree; the server backend needs the bare directory at this URL.
         self.export = self.root / "export"
