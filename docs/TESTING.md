@@ -162,3 +162,9 @@ Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/t
 New assertions cover no-replace/private payload allocation, first-error queue stop and joined workers, exact single requests per object, bounded safe failure codes, EFS-before-payload checks and no mutation retry. Raw timings and scoped cancellation are recorded in [LFS performance](LFS-PERFORMANCE.md).
 
 GitHub refused to start the cleanup job because recent payments failed or the account spending limit needed attention (provider annotation). No billing setting was changed. After the run ended, its verified private draft `ci-staging-43401806969-1` (release ID 444042258) was deleted manually and absence confirmed. The workflow conclusion is failure solely for that cleanup job; functional jobs are green.
+
+### Alpha.7 release retry (2026-11-13)
+
+[Run 43408484923](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923) was dispatched for the full release checks on `2bfbf92`. GitHub refused to start staging and quality because of the account payment/spending limit; all dependent acceptance jobs were skipped. No native test was executed in this retry. The staging draft was never created.
+
+Local rechecks passed both Rust formatting scopes, workspace Clippy, 28 release-mode Rust tests, production UI compilation and 12 browser tests. The local system Cargo cannot select Rust 1.88 and rustup is unavailable, so that check remains dependent on CI. Full native Linux/Windows checks, installer/version checks and reciprocal recovery must be rerun after Actions is unblocked; earlier functional acceptance is not a substitute for the tagged release matrix.

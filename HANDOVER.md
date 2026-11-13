@@ -2,6 +2,14 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-13 — alpha.7 release requested, Actions still blocked
+
+**Release gate:** A fresh manually dispatched [full release-check run](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923) on `2bfbf92a5ac3c0bca117e4e6b1ddde340e6cc037` ended before any runner steps started. Staging and quality both received GitHub's account payment/spending-limit annotation; native Linux/Windows, desktop, interoperability and release jobs were skipped. This is an infrastructure block, not a new application test failure. No temporary staging draft was created (confirmed through the releases API), and no alpha.7 tag or release was created. Alpha.6 remains the published installer release.
+
+**Local recheck:** Root and standalone desktop formatting, workspace Clippy, all 28 release-mode Rust tests, production UI compilation and all 12 browser tests passed. The local system Cargo has no rustup/toolchain selector, so the Rust 1.88 minimum-compiler check could not run locally; its previous native CI acceptance remains recorded below. These checks do not substitute for native EFS/LUKS, installed desktop or reciprocal recovery gates.
+
+**Resume:** After the account billing/spending-limit problem is resolved, dispatch the full main acceptance workflow again. Require all applicable jobs including cleanup to pass, then create a signed release-preparation commit without `[skip ci]` and a signed `v0.1.0-alpha.7` tag. The tagged workflow must repeat the complete matrix before publication. Download all ten resulting packages and verify SHA256SUMS before recording publication. Billing settings were not changed; publication remains pending.
+
 ## 2026-11-13 — bounded LFS transfers accepted
 
 **Done:** Development alpha.7 defaults to four bounded LFS workers, with `--lfs-workers 1..4` for HTTPS LFS capture and execute-new. Workers stop queued work on failure and join before staging cleanup; worker failures remain distinct from user cancellation. Serial batches, no retries, source/identity/policy checks, exact ref leases and pre-ref independent payload verification remain mandatory. Snapshot/backup formats and same-key recovery are unchanged.
