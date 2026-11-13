@@ -69,3 +69,11 @@ Signed [v0.1.0-alpha.6](https://github.com/hrishi072/repo-stealer/releases/tag/v
 Four desktop and six CLI package assets plus SHA256SUMS are available. LFS-aware Git manifest v3 requires alpha.6; existing v1/v2 and same-key backups remain supported. Source commits/tag are SSH-signed; installers are not OS code-signed. Desktop RPM packaging/digests passed; Fedora/openSUSE desktop RPM installation remains untested.
 
 Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.
+
+## Alpha.7 development acceptance and Actions account limit
+
+[Run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969) passed every application test/build/package job on `702500f94a1a55a6d42e754d16a0b0c51e0a8438`: quality/minimum Rust, native Linux/Windows engine and bounded LFS benchmarks, both-provider migration/failure checks, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, installed DEB/NSIS and extracted AppImage launch/version checks, RPM packaging/digests and reciprocal vault/Git/remote/LFS recovery.
+
+GitHub refused to start the cleanup job because recent payments failed or the account spending limit needed attention (provider annotation). No billing setting was changed. After the run ended, its verified private draft `ci-staging-43401806969-1` (release ID 444042258) was deleted manually and absence confirmed. The workflow conclusion is failure solely for that cleanup job; functional jobs are green.
+
+Version is `0.1.0-alpha.7` across Cargo/npm/Tauri; no alpha.7 tag or release was created. Alpha.6 remains published. Resolve the account billing/spending-limit condition before another installer release; this task did not modify billing, publish from an incomplete release matrix or move a signed tag.

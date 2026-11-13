@@ -12,7 +12,7 @@ python scripts/benchmark_lfs.py PATH_TO_CLI --output lfs-benchmark.json
 
 The script uses disposable synthetic TLS servers, standard Basic LFS transfers, real encrypted working storage and the complete CLI capture/age-encryption/offline-restore path. It compares one and four workers in three alternating-order repetitions for many small objects (16 × 64 KiB), fewer large objects (8 × 1 MiB) and a mixed profile (8 × 32 KiB, 4 × 256 KiB, 2 × 1 MiB). Two baseline historical/current payloads remain in each profile. Every object request has an injected 100 ms server delay. The output records object/byte counts, observed peak requests, object-request span, complete capture and restore times, and median ratios. Every restored payload is checked against source bytes and SHA-256, including deleted historical files.
 
-These measurements characterize latency hiding in a controlled loopback workload, not Internet bandwidth, maximum supported object sizes or representative performance for every repository. CI load, filesystem encryption, CPU, TLS handshakes and Git/archive work affect complete-operation timings. No universal speedup is promised. The comparison results below support the four-worker default; a second full native matrix checks that default.
+These measurements characterize latency hiding in a controlled loopback workload, not Internet bandwidth, maximum supported object sizes or representative performance for every repository. CI load, filesystem encryption, CPU, TLS handshakes and Git/archive work affect complete-operation timings. No universal speedup is promised. The comparison results below support the four-worker default; the selected-default native matrix checks that default.
 
 ## Scheduling and failure boundaries
 
@@ -53,4 +53,25 @@ Run 43182127015 identified a missing EFS attribute in the final verification tre
 
 The audit clone now starts inside an explicitly initialized, probed empty encrypted directory. Each batch allocates empty LFS target files serially before worker data writes; Windows requests FILE_ATTRIBUTE_ENCRYPTED at creation and checks the directory/file attributes before any payload bytes. Worker threads only open the prepared empty files, and the final whole-tree check remains mandatory. Local LFS capture and offline restore use the same no-replace payload allocator. No populated plaintext file is repaired after writing. See Microsoft's [file creation and attribute inheritance](https://learn.microsoft.com/en-us/windows/win32/fileio/creating-and-opening-files).
 
-Fixed entry-role codes distinguish audit/staging Git/LFS files/directories without recording arbitrary paths. Full Linux/Windows acceptance is pending; no encryption requirement has been relaxed.
+Fixed entry-role codes distinguish audit/staging Git/LFS files/directories without recording arbitrary paths. The final native results below accept this setup; no encryption requirement was relaxed.
+
+## Final staging/default acceptance — 2026-11-13
+
+[Run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969) passed every application test/build/package job on `702500f94a1a55a6d42e754d16a0b0c51e0a8438`: quality/minimum Rust, native Linux/Windows engine and bounded LFS benchmarks, both-provider migration/failure checks, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, installed DEB/NSIS and extracted AppImage launch/version checks, RPM packaging/digests and reciprocal vault/Git/remote/LFS recovery.
+
+Raw accepted-build samples: [Linux](benchmarks/lfs-43401806969-linux.json), [Windows](benchmarks/lfs-43401806969-windows.json). Each report preserves source commit, workflow link, all 18 transfer samples, exact request counts and both native cancellation samples.
+
+| Platform / profile | One-worker object span | Four-worker object span | Object speedup | Complete capture, one → four |
+| --- | ---: | ---: | ---: | ---: |
+| Linux, many-small | 1.859 s | 0.517 s | 3.59× | 3.131 → 1.794 s |
+| Linux, few-large | 1.101 s | 0.371 s | 2.97× | 2.543 → 1.818 s |
+| Linux, mixed | 1.674 s | 0.425 s | 3.94× | 3.008 → 1.760 s |
+| Windows, many-small | 1.997 s | 0.597 s | 3.34× | 4.570 → 3.068 s |
+| Windows, few-large | 1.162 s | 0.396 s | 2.93× | 3.647 → 2.782 s |
+| Windows, mixed | 1.773 s | 0.499 s | 3.55× | 4.142 → 2.901 s |
+
+Complete capture medians improved about 24–43% in this accepted-build controlled workload. The 100 ms/object delay, small synthetic profiles and runner variability still apply; no timing-ratio assertion or general bandwidth promise is made.
+
+Selected-default cancellation (two available payloads): Linux headers/body 1.990/1.907 s; Windows 2.226/2.238 s, with observed peak two in-flight requests and no publication. The blocking timeout bound remains unchanged.
+
+GitHub refused to start the cleanup job because recent payments failed or the account spending limit needed attention (provider annotation). No billing setting was changed. After the run ended, its verified private draft `ci-staging-43401806969-1` (release ID 444042258) was deleted manually and absence confirmed. The workflow conclusion is failure solely for that cleanup job; functional jobs are green.

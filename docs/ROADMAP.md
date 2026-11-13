@@ -16,9 +16,9 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: measure LFS throughput and add bounded transfer concurrency.** Alpha.6 encrypted payload capture, offline restore and guarded migration passed [native Linux/Windows and reciprocal recovery acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183). Keep all-history inventory completeness, source/identity/policy checks, independent payload downloads before ref publication, encrypted receipts and no-overwrite/no-retry gates.
+**Next: add an encrypted migration-history UI and read-only recovery/reconciliation reports.** Bounded four-worker LFS transfers, encrypted target preparation and Linux/Windows acceptance are complete in development alpha.7. Expose durable intent/result/failure-code records after restart, compare them to freshly observed destination identity/private state/refs, and show discrepancies without adopting or modifying existing repositories.
 
-Benchmark representative object counts/sizes and cancellation latency first. Introduce a small bounded worker pool only with evidence that it improves throughput without unbounded memory, disk or request growth. Broader namespaces, credential types, hosting metadata and explicit reconciliation remain separate work.
+Keep automatic retries, resume, rollback and sync writes outside that first recovery view. Separately improve cancellation of stalled HTTP calls without shortening valid-transfer deadlines. Representative real-link/load benchmarks, broader namespaces, token types and hosting metadata remain separate work.
 
 ## Compatibility and release matrix
 
@@ -69,3 +69,5 @@ Guarded new-private migration acceptance passed in [run 42834823523](https://git
 The alpha.6 LFS slice is accepted with explicit all-history capture, offline same-key recovery and before-ref independent payload verification. See [scope and limits](GIT-LFS.md). Next after acceptance: improve measured throughput and reconciliation, then broader namespaces/credential types.
 
 Encrypted LFS [v0.1.0-alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) are published after the [complete signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846). Four desktop plus six CLI packages are available.
+
+Bounded transfer acceptance: [run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969); [controlled measurements and limitations](LFS-PERFORMANCE.md). All functional jobs passed; GitHub blocked cleanup on account billing/spending limits, and the draft was removed manually. Future Actions runs need account billing attention.

@@ -153,4 +153,12 @@ Post-publication verification on 2026-11-12 downloaded all ten package assets in
 
 ## Bounded LFS measurement development
 
-Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/timing-only JSON plus job summaries for 1/4-worker capture/restore comparisons. Native desktop tests measure cancellation at delayed LFS headers/body with no publication. Parallel migration checks upload rejection, joined workers and no Git ref publication. Comparison run 43176013068 passed both OSes and reciprocal recovery; the selected four-worker default is pending the repeat matrix. Raw samples and interpretation are in [performance methodology](LFS-PERFORMANCE.md).
+Native jobs run `scripts/benchmark_lfs.py` on verified LUKS/EFS and emit count/timing-only JSON plus job summaries for 1/4-worker capture/restore comparisons. Native desktop tests measure cancellation at delayed LFS headers/body with no publication. Parallel migration checks upload rejection, joined workers and no Git ref publication. Comparison run 43176013068 passed both OSes and reciprocal recovery; the selected four-worker default and EFS preparation were subsequently accepted in run 43401806969. Raw samples and interpretation are in [performance methodology](LFS-PERFORMANCE.md).
+
+## Bounded LFS selected-default acceptance
+
+[Run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969) passed every application test/build/package job on `702500f94a1a55a6d42e754d16a0b0c51e0a8438`: quality/minimum Rust, native Linux/Windows engine and bounded LFS benchmarks, both-provider migration/failure checks, 12 browser tests per OS, real WebKitGTK/WebView2 workflows, installed DEB/NSIS and extracted AppImage launch/version checks, RPM packaging/digests and reciprocal vault/Git/remote/LFS recovery.
+
+New assertions cover no-replace/private payload allocation, first-error queue stop and joined workers, exact single requests per object, bounded safe failure codes, EFS-before-payload checks and no mutation retry. Raw timings and scoped cancellation are recorded in [LFS performance](LFS-PERFORMANCE.md).
+
+GitHub refused to start the cleanup job because recent payments failed or the account spending limit needed attention (provider annotation). No billing setting was changed. After the run ended, its verified private draft `ci-staging-43401806969-1` (release ID 444042258) was deleted manually and absence confirmed. The workflow conclusion is failure solely for that cleanup job; functional jobs are green.

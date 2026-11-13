@@ -89,4 +89,6 @@ LFS payload support is included in the alpha.6 installers. Use `--include-lfs` o
 
 [Alpha.6 signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed before [installer publication](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6).
 
-Development alpha.7 evaluates bounded LFS transfers and measured cancellation; [benchmark scope and controls](docs/LFS-PERFORMANCE.md). Published alpha.6 installers are unchanged.
+Development alpha.7 uses four bounded LFS workers by default, with a `--lfs-workers 1..4` control on HTTPS LFS capture and migration execution; [benchmark scope and controls](docs/LFS-PERFORMANCE.md). Published alpha.6 installers are unchanged.
+
+[Alpha.7 application/native checks](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969) passed on Linux and Windows, including encrypted staging and reciprocal recovery. The cleanup job was blocked by GitHub account billing/spending limits; its temporary draft was removed manually. Alpha.7 installers have not been released.

@@ -11,7 +11,7 @@ Design proposal, 2026-11-08. Implemented components are explicitly marked below.
 | Core and CLI | Rust workspace | Shared engine, native binaries, bounded memory; more learning/build effort than extending Python. |
 | Desktop | Tauri 2 | Linux/Windows packaging and small shell using system webviews; Linux WebKitGTK and Windows WebView2 need explicit testing. |
 | UI | React + TypeScript + Vite | Implemented with bounded status polling and paginated catalog queries; no SSR/server. Query libraries and virtualized provider/bulk lists remain future options. |
-| Concurrency | Serialized Rust background worker now; bounded async provider queues later | Desktop operations run off the UI thread and serialize vault access; future network workers need separate limits. |
+| Concurrency | Serialized Rust job worker with at most four scoped LFS object workers; bounded provider queues later | Desktop operations run off the UI thread and serialize vault access; future network workers need separate limits. |
 | Git transport | Native Git subprocesses + built-in Rust LFS Batch/Basic client | Mature Git pack negotiation; streaming LFS with explicit endpoint/auth/action isolation, without invoking hooks or custom adapters. Git executable trust and dependency licenses remain release responsibilities. Evaluate libgit2/gix only if benchmarks justify replacing Git. |
 | Provider APIs | reqwest + serde, explicit GitHub/GitLab adapters | Read-only explicit cloud/self-hosted roots, identity and policy observations implemented; versioned capability negotiation remains future work. |
 | Metadata | Encrypted JSON catalog now; indexed database later | 8 MiB bounded snapshot, atomically replaced under a lock; indexed queries can justify SQLCipher later. |

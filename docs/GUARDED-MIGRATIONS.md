@@ -52,3 +52,5 @@ Native CI exercises disposable synthetic GitHub/GitLab APIs and real Git smart-H
 Native implementation acceptance passed on both OSes in [run 42834823523](https://github.com/hrishi072/repo-stealer/actions/runs/42834823523), including real UI and installer checks. The [signed alpha.5 tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42837727670) repeated every release gate successfully and [published installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.5) on 2026-11-10.
 
 To inspect a receipt, lock the desktop vault first, list entries with `repo-stealer vault list VAULT`, then explicitly export the selected `migration-PLAN_ID-*` entry with `repo-stealer vault export VAULT ENTRY OUTPUT --plaintext`. The export is plaintext metadata; retain the encrypted vault/backup as the recovery record.
+
+Alpha.7 failure reports and encrypted needs-attention receipts include a bounded failureCode. Labels identify verification boundaries or safe OS/HTTP codes, without persisting arbitrary exception text or server responses. They help inspect the last durable intent; they do not authorize retry, adoption or rollback.
