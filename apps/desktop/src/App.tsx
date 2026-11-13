@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { Activity, ArrowDownLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, Database, Download, FileArchive, FolderGit2, FolderLock, FolderOpen, GitBranch, HardDrive, LayoutDashboard, LoaderCircle, LockKeyhole, Plus, Search, Settings2, ShieldCheck, Terminal, UnlockKeyhole, X } from 'lucide-react';
 import { cancelJob, choosePath, desktop, emptyStatus, getStatus, listItems, lockVault, startJob, type Action, type CaptureProvenance, type Item, type Job, type Status } from './api';
 
+import { MigrationHistoryView } from './MigrationHistory';
 import { NewMigrations } from './NewMigrations';
 import { MigrationPlans } from './MigrationPlans';
 
-type Page = 'migrate'|'plans'|'overview'|'repositories'|'backups'|'activity'|'settings';
+type Page = 'history'|'migrate'|'plans'|'overview'|'repositories'|'backups'|'activity'|'settings';
 type Modal = 'unlock'|'create'|'workspace'|'capture'|'restore'|'backup'|'verifyBackup'|'restoreBackup'|null;
-const titles: Record<Page, string> = { migrate: 'New migrations', plans: 'Migration plans', overview: 'Overview', repositories: 'Repositories', backups: 'Backups', activity: 'Activity', settings: 'Workspace settings' };
+const titles: Record<Page, string> = { history: 'Migration history', migrate: 'New migrations', plans: 'Migration plans', overview: 'Overview', repositories: 'Repositories', backups: 'Backups', activity: 'Activity', settings: 'Workspace settings' };
 const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KB` : bytes < 1024 ** 3 ? `${(bytes / 1024 ** 2).toFixed(1)} MB` : `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
@@ -53,7 +54,7 @@ export default function App() {
 
   return <div className="app-shell">
     <aside className="sidebar"><Brand/><div className="nav-label">WORKSPACE</div><nav aria-label="Main navigation">{([
-      ['overview', LayoutDashboard], ['repositories', FolderGit2], ['plans', GitBranch], ['migrate', ArrowUpRight], ['backups', FileArchive], ['activity', Activity],
+      ['overview', LayoutDashboard], ['repositories', FolderGit2], ['plans', GitBranch], ['migrate', ArrowUpRight], ['history', Clock3], ['backups', FileArchive], ['activity', Activity],
     ] as const).map(([name, Icon]) => <button key={name} aria-label={titles[name]} aria-current={page === name ? 'page' : undefined} className={`nav-item ${page === name ? 'active' : ''}`} onClick={() => setPage(name)}><Icon size={18}/>{titles[name]}{name === 'activity' && status.jobs.length > 0 && <span className="nav-count">{status.jobs.length}</span>}</button>)}</nav>
       <div className="sidebar-note"><div className="note-symbol"><ShieldCheck size={19}/><span>Built to keep it yours.</span></div><p>Your vault and backups stay encrypted and under your control.</p><button onClick={() => setPage('settings')}>Storage & security <ArrowUpRight size={13}/></button></div>
       <div className="sidebar-bottom"><button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => setPage('settings')}><Settings2 size={18}/> Settings</button><div className="version"><span className="status-dot"/>Repo Stealer <span>{status.version}</span></div></div>
@@ -62,7 +63,7 @@ export default function App() {
       <main>
         {connectionError && <div className="notice error" role="alert">{connectionError}</div>}
         {!status.busy && current?.state === 'failed' && <div className="notice error job-failure" role="alert"><CircleHelp size={18}/><div><strong>{current.label} failed</strong><p>{current.error || 'Open Activity for details.'}</p></div><button className="text-button" onClick={() => setPage('activity')}>Details <ArrowRight size={13}/></button></div>}
-        <div className="page-heading"><div><div className="eyebrow">YOUR LOCAL WORKSPACE</div><h1>{page === 'overview' ? 'Keep every commit. Own every copy.' : titles[page]}</h1><p>{page === 'overview' ? 'Capture, verify, and restore your repositories with confidence.' : page === 'migrate' ? 'Review and transfer into a new private repository in your personal namespace.' : page === 'plans' ? 'Preview a destination without changing repositories or your archive.' : page === 'repositories' ? 'A private archive of the code and history you choose to keep.' : page === 'backups' ? 'Portable recovery, protected by your vault’s original key.' : page === 'activity' ? 'Real operations and their results, for this session.' : 'Know where your data lives and how it is protected.'}</p></div>{(page === 'overview' || page === 'repositories') && <button className="button primary" disabled={!ready} title={!ready ? 'Unlock a vault and verify working storage first' : undefined} onClick={() => open('capture')}><Plus size={17}/> Capture repository</button>}</div>
+        <div className="page-heading"><div><div className="eyebrow">YOUR LOCAL WORKSPACE</div><h1>{page === 'overview' ? 'Keep every commit. Own every copy.' : titles[page]}</h1><p>{page === 'overview' ? 'Capture, verify, and restore your repositories with confidence.' : page === 'history' ? 'Inspect encrypted receipts and compare current destination state.' : page === 'migrate' ? 'Review and transfer into a new private repository in your personal namespace.' : page === 'plans' ? 'Preview a destination without changing repositories or your archive.' : page === 'repositories' ? 'A private archive of the code and history you choose to keep.' : page === 'backups' ? 'Portable recovery, protected by your vault’s original key.' : page === 'activity' ? 'Real operations and their results, for this session.' : 'Know where your data lives and how it is protected.'}</p></div>{(page === 'overview' || page === 'repositories') && <button className="button primary" disabled={!ready} title={!ready ? 'Unlock a vault and verify working storage first' : undefined} onClick={() => open('capture')}><Plus size={17}/> Capture repository</button>}</div>
         {status.busy && current && <div className="running-job" role="status"><span className="job-spinner"><LoaderCircle size={21} className="spin"/></span><div><strong>{current.label}</strong><span>{current.phase}</span></div><div className="running-meta"><Elapsed job={current}/>{current.cancellable && <button className="button ghost small-button" onClick={() => void cancel()}>Cancel</button>}</div><div className="indeterminate"/></div>}
 
         {page === 'overview' && <>
@@ -74,6 +75,7 @@ export default function App() {
           {itemTable(true)}
           <section className="panel recent-panel"><div className="panel-heading"><h2>Recent activity</h2><button className="text-button" onClick={() => setPage('activity')}>View all <ArrowUpRight size={14}/></button></div>{status.jobs.length ? status.jobs.slice(0, 3).map(job => <JobRow key={job.id} job={job}/>) : <div className="activity-empty"><Clock3 size={17}/><span>No operations yet. Your next capture will appear here.</span><span className="muted small">Ready when you are</span></div>}</section>
         </>}
+        {page === 'history' && <MigrationHistoryView status={status} onSubmit={submit}/>}
         {page === 'migrate' && <NewMigrations status={status} onSubmit={submit}/>}
         {page === 'plans' && <MigrationPlans status={status} onSubmit={submit}/>}
         {page === 'repositories' && itemTable()}

@@ -5,7 +5,7 @@ export type CaptureProvenance = { lfs?: {objects:number;bytes:number}|null; url:
 export type Job = { id: number; label: string; state: 'running'|'completed'|'failed'|'cancelled'; phase: string; startedAt: number; finishedAt: number|null; error: string|null; cancellable: boolean; result?: CaptureProvenance|null };
 export type Status = {
   version: string; platform: string; vault: { path: string; itemCount: number; totalBytes: number }|null;
-  workspace: { path: string; encryption: string }|null; busy: boolean; jobs: Job[]; remoteCapture: boolean; plan?: PlanSummary|null; newMigration?: NewMigration|null; migrationResult?: MigrationResult|null;
+  workspace: { path: string; encryption: string }|null; busy: boolean; jobs: Job[]; remoteCapture: boolean; plan?: PlanSummary|null; newMigration?: NewMigration|null; migrationResult?: MigrationResult|null; migrationHistory?: MigrationHistory|null;
 };
 export type Action =
   | { kind: 'create_vault'|'unlock_vault'; path: string; passphrase: string }
@@ -15,6 +15,8 @@ export type Action =
   | { kind: 'prepare_plan'; name: string; provider: 'github'|'gitlab'; instance: string|null; repository: string; token: string|null; username: string|null; caFile: string|null }
   | { kind:'prepare_new_migration'; name:string; provider:'github'|'gitlab'; instance:string|null; repository:string; token:string; username:string|null; caFile:string|null }
   | { kind:'execute_new_migration'; planId:string; confirmation:string; token:string; username:string|null; caFile:string|null }
+  | { kind: 'inspect_migration'; planId:string }
+  | { kind: 'reconcile_migration'; planId:string; token:string; username:string|null; caFile:string|null }
   | { kind: 'restore_git'; name: string; destination: string }
   | { kind: 'create_backup'; destination: string }
   | { kind: 'verify_backup'; path: string; passphrase: string }
@@ -37,3 +39,8 @@ export async function listPlanRows(query: string, offset: number, limit=20): Pro
 
 export type NewMigration = { id:string; expiresAt:number; provider:string; instance:string; deployment:string; repository:string; actor:{id:number;login:string}; sourceName:string; sourceSha256:string; defaultBranch:string; refCount:number; refs:Record<string,string>; excludedRefs:number; lfsObjects?:number; lfsBytes?:number; visibility:string; automation:string; scopeProof:string };
 export type MigrationResult = {id:string;repository:string;repositoryId:number|null;state:string;lastPhase:string;receiptPrefix:string;failureCode?:string|null};
+
+export type HistoryItem = {id:string;repository:string|null;createdAt:number|null;state:string};
+export type Reconciliation = {reportId?:string;schema:number;operation:string;observedAt:number;state:string;issues:string[];differenceCount?:number;differences:{name:string;expectedOid:string|null;observedOid:string|null}[]};
+export type MigrationHistory = {plan:NewMigration;state:string;lastPhase:string;repositoryId:number|null;receipts:{phase:string;time:number;repositoryId:number|null;failureCode:string|null}[];reconciliations:Reconciliation[]};
+export async function listMigrationHistory(offset:number,limit=20):Promise<{items:HistoryItem[];total:number}> {requireDesktop();return invoke('get_migration_history',{offset,limit});}

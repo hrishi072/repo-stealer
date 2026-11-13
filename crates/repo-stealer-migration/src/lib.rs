@@ -1,5 +1,9 @@
 //! Conservative existing-destination previews and a separate one-shot workflow
 //! for explicitly confirmed new private repositories. No existing-repo adoption.
+mod history;
+pub use history::{
+    history, inspect, reconcile, HistoryItem, HistoryPage, MigrationHistory, Reconciliation,
+};
 mod http;
 mod new;
 pub use new::{execute_new, prepare_new, ExecutionReport, NewPlan};

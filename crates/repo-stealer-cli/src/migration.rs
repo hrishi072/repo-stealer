@@ -9,6 +9,11 @@ pub const HELP:&str="Read-only migration preview (no create/push/delete):
   repo-stealer migration plan VAULT SNAPSHOT --provider github|gitlab --repository OWNER/REPO --work-root ROOT
   [--instance HTTPS_BASE] [--username GIT_USERNAME] [--ca-file PEM] [--anonymous]
   [--secrets-stdin | --password-stdin] [--timeout-seconds N]
+Encrypted history and read-only reconciliation:
+  repo-stealer migration history VAULT [--offset N] [--limit 1..20] [--password-stdin]
+  repo-stealer migration inspect VAULT PLAN_ID [--password-stdin]
+  repo-stealer migration reconcile VAULT PLAN_ID --work-root ROOT [--ca-file PEM] [--secrets-stdin]
+Reconciliation saves encrypted observations; matching refs do not reverify objects/LFS or authorize resume.
 New private personal-repository migrations:
   repo-stealer migration plan-new VAULT SNAPSHOT --provider github|gitlab --repository USER/NEW_NAME --work-root ROOT
   repo-stealer migration execute-new VAULT PLAN_ID --confirm-repository USER/NEW_NAME --work-root ROOT
@@ -22,6 +27,12 @@ Tokens are prompted or read from --secrets-stdin JSON with vault_passphrase and 
 repository metadata and refs. Plans are never authorization to write.";
 
 pub fn run(args: &[OsString]) -> Result<(), String> {
+    if args
+        .first()
+        .is_some_and(|a| a == "history" || a == "inspect")
+    {
+        return read_history(args);
+    }
     let mut values = BTreeMap::new();
     let mut flags = std::collections::BTreeSet::new();
     let mut positional = vec![];
@@ -56,7 +67,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if positional.len() != 3
         || !matches!(
             positional[0].to_str(),
-            Some("plan" | "plan-new" | "execute-new")
+            Some("plan" | "plan-new" | "execute-new" | "reconcile")
         )
     {
         return Err(HELP.into());
@@ -79,12 +90,16 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     {
         return Err(HELP.into());
     }
+    let reconcile = positional[0] == "reconcile";
     let execute = positional[0] == "execute-new";
     let new = positional[0] == "plan-new";
-    if (execute || new) && anonymous {
+    if (execute || new || reconcile) && anonymous {
         return Err("New migrations require authenticated personal tokens.".into());
     }
-    let destination = if execute {
+    let destination = if execute || reconcile {
+        if reconcile && values.contains_key("--confirm-repository") {
+            return Err(HELP.into());
+        }
         if ["--provider", "--instance", "--repository"]
             .iter()
             .any(|key| values.contains_key(key))
@@ -159,7 +174,21 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         .map_err(|_| "Cannot install cancellation handler")?;
     let ca = values.get("--ca-file").map(Path::new);
     let item = positional[2].to_str().ok_or(HELP)?;
-    if execute {
+    if reconcile {
+        let report = repo_stealer_migration::reconcile(
+            &mut vault,
+            item,
+            access.ok_or("Token required")?,
+            ca,
+            &root,
+            &options,
+        )
+        .map_err(|_| "Cannot reconcile migration; destination unchanged.".to_owned())?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).map_err(|_| "Cannot encode report")?
+        );
+    } else if execute {
         let report = execute_new(
             &mut vault,
             item,
@@ -207,5 +236,60 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
             serde_json::to_string_pretty(&plan).map_err(|_| "Cannot encode plan")?
         );
     }
+    Ok(())
+}
+
+fn read_history(args: &[OsString]) -> Result<(), String> {
+    let inspect = args[0] == "inspect";
+    let count = if inspect { 3 } else { 2 };
+    if args.len() < count {
+        return Err(HELP.into());
+    }
+    let mut stdin = false;
+    let mut offset = 0;
+    let mut limit = 20;
+    let mut seen = std::collections::BTreeSet::new();
+    let mut iter = args[count..].iter();
+    while let Some(arg) = iter.next() {
+        let key = arg.to_str().ok_or(HELP)?;
+        if !seen.insert(key) {
+            return Err(HELP.into());
+        }
+        match key {
+            "--password-stdin" => stdin = true,
+            "--offset" | "--limit" if !inspect => {
+                let value = iter
+                    .next()
+                    .and_then(|v| v.to_str())
+                    .ok_or(HELP)?
+                    .parse::<usize>()
+                    .map_err(|_| HELP)?;
+                if key == "--offset" {
+                    offset = value;
+                } else {
+                    limit = value;
+                }
+            }
+            _ => return Err(HELP.into()),
+        }
+    }
+    let vault = Vault::open(Path::new(&args[1]), crate::vault::password(stdin, false)?)
+        .map_err(|e| e.to_string())?;
+    let value = if inspect {
+        serde_json::to_value(
+            repo_stealer_migration::inspect(&vault, args[2].to_str().ok_or(HELP)?)
+                .map_err(|_| "Cannot read migration record")?,
+        )
+    } else {
+        serde_json::to_value(
+            repo_stealer_migration::history(&vault, offset, limit)
+                .map_err(|_| "Cannot read migration history")?,
+        )
+    }
+    .map_err(|_| "Cannot encode history")?;
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&value).map_err(|_| "Cannot encode history")?
+    );
     Ok(())
 }

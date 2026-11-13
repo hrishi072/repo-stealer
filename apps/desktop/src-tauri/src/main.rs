@@ -30,6 +30,14 @@ fn get_plan_rows(
     engine.plan_rows(&query, offset, limit)
 }
 #[tauri::command]
+fn get_migration_history(
+    engine: State<'_, Arc<Engine>>,
+    offset: usize,
+    limit: usize,
+) -> Result<repo_stealer_app::HistoryPage, String> {
+    engine.migration_history(offset, limit)
+}
+#[tauri::command]
 fn start_job(engine: State<'_, Arc<Engine>>, action: Action) -> Result<u64, String> {
     engine.inner().start(action)
 }
@@ -100,6 +108,7 @@ fn main() {
             get_status,
             get_items,
             get_plan_rows,
+            get_migration_history,
             start_job,
             lock_vault,
             cancel_job,

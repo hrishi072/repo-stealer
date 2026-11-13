@@ -2,6 +2,18 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-13 — migration history and read-only reconciliation implemented locally
+
+**Worker recovery:** The existing full acceptance run [43408484923](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923), retried at 10:34 UTC, completed successfully including cleanup. This accepts the previously pushed alpha.7 baseline; it does not validate the new local changes below. No billing settings were changed here.
+
+**Development:** Added a paginated Migration history page and CLI `migration history`, `inspect` and `reconcile`. Plans and bounded typed receipt records are recovered directly from the encrypted vault after restart or same-key backup recovery. Interrupted executions remain needs-attention; unavailable/corrupt records remain visible as unreadable. Lifecycle ordering is independent of equal receipt timestamps. Lock clears selected history and observations.
+
+**Observation boundary:** Reconciliation binds destination access to the saved plan and durable repository ID, checks existing private/owner/marker/automation safeguards before Git access, and compares two API/ref observations with recorded heads/tags/default. Missing durable ID is reported without contacting/adopting a destination. Reports are immutable encrypted vault entries, with ten recent observations shown and at most 200 ref differences rendered alongside the full discrepancy count. Matching refs never rewrite the original execution result or claim renewed object/LFS verification; no remote mutation, automatic retry, adoption, rollback or resume was added.
+
+**Local validation:** Workspace tests passed (29 Rust tests), frontend production build, all 13 browser tests, workspace Clippy and formatting. The history test covers interrupted/malformed evidence, restart, backup/restore, pagination and retaining needs-attention despite matching observations. Browser coverage includes typed read-only IPC, token clearing and lock privacy. Synthetic native CLI/desktop acceptance scripts now cover matching/drifting refs, identity/privacy refusal, unknown creation identity, GET-only provider access and lock clearing; these new integration cases have not run here because this workstation lacks a verified LUKS/EFS workspace. Native desktop compilation and Linux/Windows acceptance of this increment remain pending CI.
+
+**Next:** Run the updated full native matrix before publishing this increment. Alpha.6 remains the published installer release; no new tag/release was created. Promptly interruptible stalled HTTP requests remain the next separate development task. See [history scope and usage](docs/MIGRATION-HISTORY.md).
+
 ## 2026-11-13 — alpha.7 release requested, Actions still blocked
 
 **Release gate:** A fresh manually dispatched [full release-check run](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923) on `2bfbf92a5ac3c0bca117e4e6b1ddde340e6cc037` ended before any runner steps started. Staging and quality both received GitHub's account payment/spending-limit annotation; native Linux/Windows, desktop, interoperability and release jobs were skipped. This is an infrastructure block, not a new application test failure. No temporary staging draft was created (confirmed through the releases API), and no alpha.7 tag or release was created. Alpha.6 remains the published installer release.

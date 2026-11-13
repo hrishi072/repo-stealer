@@ -54,10 +54,10 @@ pub struct ExecutionReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failure_code: Option<String>,
 }
-fn now() -> Result<u64> {
+pub(super) fn now() -> Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())
 }
-fn id() -> Result<String> {
+pub(super) fn id() -> Result<String> {
     let mut bytes = [0; 16];
     getrandom::getrandom(&mut bytes).map_err(|_| anyhow::anyhow!("OS randomness unavailable"))?;
     Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
@@ -139,7 +139,7 @@ fn save(vault: &mut Vault, name: &str, value: &impl Serialize) -> Result<()> {
     let bytes = zeroize::Zeroizing::new(serde_json::to_vec(value)?);
     vault.put(name, Cursor::new(&*bytes))
 }
-fn load(vault: &Vault, id: &str) -> Result<NewPlan> {
+pub(super) fn load(vault: &Vault, id: &str) -> Result<NewPlan> {
     validate_id(id)?;
     struct Bounded(Vec<u8>);
     impl std::io::Write for Bounded {
@@ -169,7 +169,7 @@ fn load(vault: &Vault, id: &str) -> Result<NewPlan> {
     );
     Ok(plan)
 }
-fn destination(plan: &NewPlan) -> Result<Destination> {
+pub(super) fn destination(plan: &NewPlan) -> Result<Destination> {
     Destination::new(
         plan.provider,
         if plan.deployment == "cloud" {
@@ -292,7 +292,7 @@ fn created(
     }
     Ok(repo)
 }
-fn current(
+pub(super) fn current(
     api: &Api<'_>,
     d: &Destination,
     plan: &NewPlan,
@@ -656,7 +656,7 @@ pub fn execute_new(
     Ok(result)
 }
 
-fn validate_access(access: &Access) -> Result<()> {
+pub(super) fn validate_access(access: &Access) -> Result<()> {
     use secrecy::ExposeSecret;
     if let Some(username) = &access.git_username {
         ensure!(

@@ -186,6 +186,38 @@ def main():
                         assert 2<=server.lfs_peak<=4
                         puts=[oid for method,oid in server.lfs_transfers if method=="PUT"]
                         assert len(puts)==len(set(puts))==len(expected_lfs)
+                    saved=json.loads(command(binary,"migration","inspect",vault,plan["id"]).stdout)
+                    assert saved["state"]==outcome["state"]
+                    if mode in ("normal","lost-create"):
+                        api_start=len(server.api_calls);pushes_before=len(server.pushes)
+                        previous_reports=[]
+                        def observe():
+                            report=json.loads(command(binary,"migration","reconcile",vault,plan["id"],"--work-root",work,"--ca-file",server.certificate,secrets=secrets).stdout)
+                            assert report["state"]==saved["state"],"Observation rewrote execution result"
+                            reports=report["reconciliations"]
+                            # Identify the newly saved immutable report by its unique ID.
+                            fresh=[r for r in reports if r not in previous_reports]
+                            previous_reports[:]=reports
+                            assert len(fresh)==1,(fresh,reports)
+                            return fresh[0]
+                        report=observe()
+                        if mode=="lost-create":
+                            assert report["state"]=="unavailable" and report["issues"]==["no_durable_repository_id_do_not_adopt_destination"]
+                            assert len(server.api_calls)==api_start,"Unknown creation identity triggered network adoption"
+                        else:
+                            assert report["state"]=="matches_recorded_refs",report
+                            git(server.repository,"update-ref","refs/heads/concurrent-extra","HEAD")
+                            report=observe()
+                            assert report["state"]=="discrepancies" and any(row["name"]=="refs/heads/concurrent-extra" and row["expectedOid"] is None for row in report["differences"]),report
+                            git(server.repository,"update-ref","-d","refs/heads/concurrent-extra")
+                            server.private=False
+                            assert observe()["state"]=="unavailable"
+                            server.private=True
+                            server.repo_id+=1
+                            assert observe()["state"]=="unavailable"
+                            server.repo_id-=1
+                        assert len(server.pushes)==pushes_before,"Read-only report pushed Git refs"
+                        assert all(method=="GET" for method,_,_ in server.api_calls[api_start:]),"Reconciliation mutated provider API"
                     if mode=="race-guard":assert git(server.repository,"rev-parse","HEAD").decode().strip()==server.race_oid
                     if mode in ("public-response","hostile-clone","lost-create","create-conflict","lfs-corrupt","lfs-missing","lfs-upload-error"):assert not server.pushes
                     if mode=="lfs-upload-error":
@@ -195,6 +227,9 @@ def main():
         backup=root/"receipts.rsbackup";command(binary,"vault","backup",vault,backup)
         recovered=root/"recovered";command(binary,"vault","restore",backup,recovered)
         assert command(binary,"vault","list",recovered).stdout==command(binary,"vault","list",vault).stdout
+        history=json.loads(command(binary,"migration","history",recovered,"--limit",20).stdout)
+        assert history["total"]>=20 and len(history["items"])==20
+        assert any(item["state"]=="verified" for item in history["items"])
         for p in vault.rglob("*"):
             if p.is_file():assert TOKEN.encode() not in p.read_bytes()
         encrypted_files(work)

@@ -19,3 +19,6 @@ url = "2.5"
 zeroize = "1.8"
 
 getrandom = "0.2"
+
+[dev-dependencies]
+tempfile = "3.15"

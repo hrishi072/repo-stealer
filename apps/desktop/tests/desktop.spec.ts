@@ -9,10 +9,21 @@ async function mockDesktop(page: Page, unlocked = false, workspace = false, plan
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
       if (command === 'get_status') return state;
+      if (command === 'get_migration_history') {
+        const {offset,limit}=args as {offset:number;limit:number};
+        return {total:21,items:Array.from({length:Math.min(limit,21-offset)},(_,i)=>({id:(offset+i+1).toString(16).padStart(32,'0'),repository:'fixture/recovered-private',createdAt:1,state:'interrupted_needs_attention'}))};
+      }
       if (command === 'get_items') return { items: [{ name: '<img src=x onerror="window.untrustedRan=true">', size: 4096, sha256: 'a'.repeat(64) }], total: 1 };
       if (command === 'get_plan_rows') { const {offset,limit}=args as {offset:number;limit:number}; return {total:41,rows:Array.from({length:Math.min(limit,41-offset)},(_,n)=>({name:`refs/heads/branch-${offset+n}`,sourceOid:'c'.repeat(40),destinationOid:null,change:'create_candidate'}))}; }
-      if (command === 'lock_vault') { state.vault = null; state.plan = null; state.newMigration=null;state.migrationResult=null; return; }
-      if (command === 'start_job') return 1;
+      if (command === 'lock_vault') { state.vault = null; state.plan = null; state.newMigration=null;state.migrationResult=null;state.migrationHistory=null; return; }
+      if (command === 'start_job') {
+        const {action}=args as {action:{kind:string;planId:string}};
+        if(action.kind==='inspect_migration')state.migrationHistory={
+          plan:{id:action.planId,expiresAt:901,provider:'github',instance:'https://github.com/',deployment:'cloud',repository:'fixture/recovered-private',actor:{id:10,login:'fixture'},sourceName:'recovered-source',sourceSha256:'a'.repeat(64),defaultBranch:'main',refCount:1,refs:{'refs/heads/main':'b'.repeat(40)},excludedRefs:0,visibility:'private',automation:'disabled',scopeProof:'classic_repo_workflow'},
+          state:'interrupted_needs_attention',lastPhase:'transferred',repositoryId:91,receipts:[{phase:'intent',time:2,repositoryId:null,failureCode:null},{phase:'transferred',time:2,repositoryId:null,failureCode:null}],reconciliations:[]};
+        if(action.kind==='reconcile_migration' && state.migrationHistory)state.migrationHistory.reconciliations=[{schema:1,operation:action.planId,observedAt:10,state:'discrepancies',issues:['default_branch_differs'],differences:[{name:'refs/heads/main',expectedOid:'b'.repeat(40),observedOid:null}]}];
+        return 1;
+      }
       if (command === 'choose_path') return '/synthetic/chosen';
       throw new Error('Unexpected test command: ' + command);
     } } });
@@ -201,4 +212,35 @@ test('private capture keeps submit visible in a short window', async ({ page }) 
   expect(rect!.y+rect!.height).toBeLessThanOrEqual(620);
   await page.getByLabel('Include Git LFS payloads',{exact:true}).check();
   await expect(submit).toBeInViewport();
+});
+
+
+test('recovered migration receipts paginate, reconcile read-only and clear on lock', async ({page})=>{
+  await mockDesktop(page,true,true);
+  await page.goto('/');
+  await page.getByRole('button',{name:'Migration history',exact:true}).click();
+  const list=page.getByRole('region',{name:'Saved migrations'});
+  await expect(list.getByRole('button',{name:'Inspect migration',exact:false})).toHaveCount(20);
+  await page.getByRole('button',{name:'Next migrations',exact:true}).click();
+  await expect(list.getByRole('button',{name:'Inspect migration',exact:false})).toHaveCount(1);
+  const id=(21).toString(16).padStart(32,'0');
+  await page.getByRole('button',{name:`Inspect migration ${id}`,exact:true}).click();
+  const detail=page.getByRole('region',{name:'Saved migration details'});
+  await expect(detail).toContainText('recovered-source');
+  await expect(detail).toContainText('interrupted needs attention');
+  await page.getByLabel('Reconciliation token',{exact:true}).fill('synthetic-read-token');
+  await page.getByLabel('Reconciliation CA',{exact:true}).fill('/synthetic/ca.pem');
+  await page.getByRole('button',{name:'Observe destination and save encrypted report',exact:true}).click();
+  await expect(page.getByLabel('Reconciliation token',{exact:true})).toHaveValue('');
+  await expect(page.getByLabel('Saved reconciliation reports')).toContainText('default branch differs');
+  await expect(detail).toContainText('interrupted needs attention');
+  const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);
+  expect(calls.filter(c=>c.command==='start_job').map(c=>c.args.action)).toEqual([
+    {kind:'inspect_migration',planId:id},
+    {kind:'reconcile_migration',planId:id,token:'synthetic-read-token',username:null,caFile:'/synthetic/ca.pem'},
+  ]);
+  await page.getByRole('button',{name:'Lock vault',exact:true}).click();
+  await expect(detail).toHaveCount(0);
+  await expect(page.getByText('Unlock your vault to read migration history',{exact:true})).toBeVisible();
+  await expect(page.getByText('recovered-source',{exact:false})).toHaveCount(0);
 });

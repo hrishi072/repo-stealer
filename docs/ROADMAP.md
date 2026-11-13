@@ -16,7 +16,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: add an encrypted migration-history UI and read-only recovery/reconciliation reports.** Bounded four-worker LFS transfers, encrypted target preparation and Linux/Windows acceptance are complete in development alpha.7. Expose durable intent/result/failure-code records after restart, compare them to freshly observed destination identity/private state/refs, and show discrepancies without adopting or modifying existing repositories.
+**Current increment: encrypted migration-history UI and read-only recovery/reconciliation reports are implemented locally; native acceptance remains pending.** See [usage and observation limits](MIGRATION-HISTORY.md). Bounded four-worker LFS transfers, encrypted target preparation and Linux/Windows acceptance are complete in development alpha.7. Expose durable intent/result/failure-code records after restart, compare them to freshly observed destination identity/private state/refs, and show discrepancies without adopting or modifying existing repositories.
 
 Keep automatic retries, resume, rollback and sync writes outside that first recovery view. Separately improve cancellation of stalled HTTP calls without shortening valid-transfer deadlines. Representative real-link/load benchmarks, broader namespaces, token types and hosting metadata remain separate work.
 
@@ -70,4 +70,4 @@ The alpha.6 LFS slice is accepted with explicit all-history capture, offline sam
 
 Encrypted LFS [v0.1.0-alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) are published after the [complete signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846). Four desktop plus six CLI packages are available.
 
-Bounded transfer acceptance: [run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969); [controlled measurements and limitations](LFS-PERFORMANCE.md). All functional jobs passed; GitHub blocked cleanup on account billing/spending limits, and the draft was removed manually. Future Actions runs need account billing attention.
+Bounded transfer acceptance: [run 43401806969](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969); [controlled measurements and limitations](LFS-PERFORMANCE.md). All functional jobs passed; GitHub blocked cleanup on account billing/spending limits, and the draft was removed manually. The subsequent full retry [43408484923](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923) passed including cleanup; the account worker block has cleared.

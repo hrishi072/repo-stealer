@@ -274,8 +274,21 @@ def main():
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Private migration result"]'))
                     assert len(target.pushes)==2
                     assert target.lfs_store==lfs_objects
+                    api_start=len(target.api_calls)
+                    click("Migration history")
+                    click("Inspect migration "+review["newMigration"]["id"])
+                    saved=completed()
+                    assert saved["migrationHistory"]["state"]=="verified"
+                    wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Saved migration details"]'))
+                    fill("Reconciliation token",TOKEN);fill("Reconciliation username",USERNAME);fill("Reconciliation CA",target.certificate)
+                    click("Observe destination and save encrypted report")
+                    observed=completed()
+                    assert observed["migrationHistory"]["reconciliations"][0]["state"]=="matches_recorded_refs",observed["migrationHistory"]
+                    assert all(method=="GET" for method,_,_ in target.api_calls[api_start:])
+                    assert len(target.pushes)==2 and TOKEN not in json.dumps(observed)
+                    click("New migrations")
             click("Lock vault");wait.until(lambda _:status()["vault"] is None)
-            assert status()["newMigration"] is None and status()["migrationResult"] is None
+            assert status()["newMigration"] is None and status()["migrationResult"] is None and status()["migrationHistory"] is None
             print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")
     finally:
         if driver:

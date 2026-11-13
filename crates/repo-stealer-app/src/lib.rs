@@ -3,6 +3,7 @@
 use repo_stealer_git::{
     capture, capture_remote, restore, CaptureProvenance, Credentials, Options, RemoteUrl, Workspace,
 };
+pub use repo_stealer_migration::HistoryPage;
 use repo_stealer_vault::{SecretString, Vault};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -88,6 +89,15 @@ pub enum Action {
         username: Option<String>,
         ca_file: Option<String>,
     },
+    InspectMigration {
+        plan_id: String,
+    },
+    ReconcileMigration {
+        plan_id: String,
+        token: Passphrase,
+        username: Option<String>,
+        ca_file: Option<String>,
+    },
     RestoreGit {
         name: String,
         destination: String,
@@ -117,6 +127,8 @@ impl Action {
             Self::PreparePlan { .. } => "Prepare read-only migration plan",
             Self::PrepareNewMigration { .. } => "Review new private migration",
             Self::ExecuteNewMigration { .. } => "Migrate to new private repository",
+            Self::InspectMigration { .. } => "Read encrypted migration receipts",
+            Self::ReconcileMigration { .. } => "Observe migration destination",
             Self::RestoreGit { .. } => "Restore Git repository",
             Self::CreateBackup { .. } => "Create encrypted backup",
             Self::VerifyBackup { .. } => "Verify encrypted backup",
@@ -132,6 +144,7 @@ impl Action {
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
                 | Self::ExecuteNewMigration { .. }
+                | Self::ReconcileMigration { .. }
         )
     }
     fn needs_vault(&self) -> bool {
@@ -143,7 +156,9 @@ impl Action {
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
                 | Self::ExecuteNewMigration { .. }
+                | Self::ReconcileMigration { .. }
                 | Self::CreateBackup { .. }
+                | Self::InspectMigration { .. }
         )
     }
     fn needs_locked(&self) -> bool {
@@ -161,6 +176,7 @@ impl Action {
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
                 | Self::ExecuteNewMigration { .. }
+                | Self::ReconcileMigration { .. }
         )
     }
 }
@@ -217,6 +233,7 @@ pub struct Status {
     pub plan: Option<repo_stealer_migration::Summary>,
     pub new_migration: Option<repo_stealer_migration::NewPlan>,
     pub migration_result: Option<repo_stealer_migration::ExecutionReport>,
+    pub migration_history: Option<repo_stealer_migration::MigrationHistory>,
 }
 
 struct Inner {
@@ -230,6 +247,7 @@ struct Inner {
     plan: Option<repo_stealer_migration::Plan>,
     new_migration: Option<repo_stealer_migration::NewPlan>,
     migration_result: Option<repo_stealer_migration::ExecutionReport>,
+    migration_history: Option<repo_stealer_migration::MigrationHistory>,
 }
 
 pub struct Engine {
@@ -254,6 +272,7 @@ impl Engine {
                 plan: None,
                 new_migration: None,
                 migration_result: None,
+                migration_history: None,
             }),
         }
     }
@@ -273,6 +292,7 @@ impl Engine {
             plan: inner.plan.as_ref().map(|p| p.summary.clone()),
             new_migration: inner.new_migration.clone(),
             migration_result: inner.migration_result.clone(),
+            migration_history: inner.migration_history.clone(),
         })
     }
     pub fn lock(&self) -> Result<(), String> {
@@ -286,6 +306,7 @@ impl Engine {
         inner.plan = None;
         inner.new_migration = None;
         inner.migration_result = None;
+        inner.migration_history = None;
         inner.vault = None;
         inner.summary = None;
         // The generic activity trail can remain visible while locked, but
@@ -326,6 +347,22 @@ impl Engine {
                 })
                 .collect(),
         })
+    }
+    pub fn migration_history(
+        &self,
+        offset: usize,
+        limit: usize,
+    ) -> Result<repo_stealer_migration::HistoryPage, String> {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| "application state unavailable")?;
+        let vault = inner
+            .vault
+            .as_ref()
+            .ok_or("Unlock a vault and wait for the active job to finish.")?;
+        repo_stealer_migration::history(vault, offset, limit)
+            .map_err(|_| "Cannot read migration history.".into())
     }
     pub fn plan_rows(&self, query: &str, offset: usize, limit: usize) -> Result<PlanPage, String> {
         if query.len() > 256 || !(1..=100).contains(&limit) {
@@ -400,6 +437,12 @@ impl Engine {
             inner.new_migration = None;
             inner.migration_result = None;
         }
+        if matches!(
+            action,
+            Action::InspectMigration { .. } | Action::ReconcileMigration { .. }
+        ) {
+            inner.migration_history = None;
+        }
         let id = inner.next_id;
         inner.next_id += 1;
         let flag = Arc::new(AtomicBool::new(false));
@@ -461,11 +504,13 @@ impl Engine {
                     inner.plan = None;
                     inner.new_migration = None;
                     inner.migration_result = None;
+                    inner.migration_history = None;
                 }
                 inner.workspace = workspace;
                 inner.busy = false;
                 inner.cancelled = None;
                 let result = result.and_then(|outcome| match outcome {
+                    Outcome::History(record) => {inner.migration_history = Some(*record); Ok(None)},
                     Outcome::Done => Ok(None),
                     Outcome::Capture(report) => Ok(Some(report)),
                     Outcome::Plan(plan) => { inner.plan=Some(*plan);Ok(None) },
@@ -516,6 +561,7 @@ pub struct PlanPage {
     pub total: usize,
 }
 enum Outcome {
+    History(Box<repo_stealer_migration::MigrationHistory>),
     NewMigration(Box<repo_stealer_migration::NewPlan>),
     Migration(repo_stealer_migration::ExecutionReport),
     Done,
@@ -707,6 +753,37 @@ fn perform(
                     options,
                 )?));
             }
+            Action::InspectMigration { plan_id } => {
+                return Ok(Outcome::History(Box::new(repo_stealer_migration::inspect(
+                    vault.as_ref().ok_or("vault required")?,
+                    &plan_id,
+                )?)));
+            }
+            Action::ReconcileMigration {
+                plan_id,
+                token,
+                username,
+                ca_file,
+            } => {
+                let access = repo_stealer_migration::Access {
+                    token: secret(token)?,
+                    git_username: username,
+                };
+                let ca = ca_file.as_deref().map(checked_path).transpose()?;
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                return Ok(Outcome::History(Box::new(
+                    repo_stealer_migration::reconcile(
+                        vault.as_mut().ok_or("vault required")?,
+                        &plan_id,
+                        access,
+                        ca.as_deref(),
+                        &root,
+                        options,
+                    )?,
+                )));
+            }
             Action::RestoreGit { name, destination } => {
                 let root = Workspace::open(Path::new(
                     &workspace.as_ref().ok_or("workspace required")?.path,
@@ -792,6 +869,7 @@ mod tests {
     #[test]
     fn locked_operations_are_gated_and_passwords_are_not_status_data() {
         let engine = Arc::new(Engine::new());
+        assert!(engine.migration_history(0, 20).is_err());
         assert!(engine
             .start(Action::CreateBackup {
                 destination: "out".into()
@@ -823,6 +901,7 @@ mod tests {
             .is_err());
         engine.lock().unwrap();
         assert!(engine.status().unwrap().vault.is_none());
+        assert!(engine.migration_history(0, 20).is_err());
         engine
             .start(Action::UnlockVault {
                 path,
