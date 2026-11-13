@@ -1,5 +1,7 @@
 """Read-only API/Git preflight against synthetic TLS providers, on real LUKS/EFS."""
 import argparse
+import contextlib
+import ssl
 import io
 import json
 import os
@@ -44,6 +46,16 @@ class ProviderFixture(HTTPSFixture):
                 api = owner.prefix + ("/api/v3/" if owner.provider == "github" else "/api/v4/")
                 if path.startswith(api):
                     assert self.command == "GET", "Provider API mutation attempted"
+                    if owner.mode == "slow-api-body":
+                        with contextlib.suppress(BrokenPipeError, ConnectionResetError, ConnectionAbortedError, ssl.SSLError):
+                            self.send_response(200)
+                            self.send_header("Content-Length", "2")
+                            self.send_header("Connection", "close")
+                            self.end_headers()
+                            self.wfile.write(b"{"); self.wfile.flush()
+                            time.sleep(4)
+                            self.wfile.write(b"}")
+                        return
                     if owner.mode == "slow-api":
                         time.sleep(4)
                         return self.send(503)

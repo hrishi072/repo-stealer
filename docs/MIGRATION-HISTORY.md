@@ -1,6 +1,6 @@
 # Encrypted migration history
 
-This development increment adds **Migration history** to the desktop sidebar and three CLI commands. Local validation is complete; the updated Linux/Windows native acceptance cases remain pending CI. Published alpha.6 installers do not include this increment.
+This development increment adds **Migration history** to the desktop sidebar and three CLI commands. The [full Linux/Windows acceptance workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154) passed on signed commit `9804940`, including real desktop flows, installer checks, reciprocal recovery and cleanup. Published alpha.6 installers do not include this increment.
 
 Unlock the original or recovered vault to browse saved plans, then choose **Inspect receipts**. Inspection does not need network access or encrypted Git working storage. It shows the recorded source fingerprint, exact heads/tags, durable repository ID, receipt phases and bounded failure codes. Page size is 20; unreadable records remain visible rather than becoming apparently unattempted plans. Receipt ordering follows the execution lifecycle, including when timestamps are equal. A plan with intent but no final result is **interrupted needs attention**.
 

@@ -16,9 +16,9 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Current increment: encrypted migration-history UI and read-only recovery/reconciliation reports are implemented locally; native acceptance remains pending.** See [usage and observation limits](MIGRATION-HISTORY.md). Bounded four-worker LFS transfers, encrypted target preparation and Linux/Windows acceptance are complete in development alpha.7. Expose durable intent/result/failure-code records after restart, compare them to freshly observed destination identity/private state/refs, and show discrepancies without adopting or modifying existing repositories.
+**Encrypted migration history and read-only reconciliation are accepted on Linux/Windows in [run 43417766154](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154).** See [usage and observation limits](MIGRATION-HISTORY.md). Bounded four-worker LFS transfers, encrypted target preparation and Linux/Windows acceptance are complete in development alpha.7. Expose durable intent/result/failure-code records after restart, compare them to freshly observed destination identity/private state/refs, and show discrepancies without adopting or modifying existing repositories.
 
-Keep automatic retries, resume, rollback and sync writes outside that first recovery view. Separately improve cancellation of stalled HTTP calls without shortening valid-transfer deadlines. Representative real-link/load benchmarks, broader namespaces, token types and hosting metadata remain separate work.
+Keep automatic retries, resume, rollback and sync writes outside that first recovery view. Provider API cancellation is implemented locally with polling across header/body waits; native acceptance is pending. Prompt LFS Batch/Basic HTTP interruption remains the next separate transport task, preserving deadlines and joined-worker cleanup. Representative real-link/load benchmarks, broader namespaces, token types and hosting metadata remain separate work.
 
 ## Compatibility and release matrix
 

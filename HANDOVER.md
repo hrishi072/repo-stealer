@@ -2,7 +2,17 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-13 — migration history and read-only reconciliation implemented locally
+## 2026-11-13 — provider API cancellation implemented
+
+**Development:** Provider API requests now run on an owned async runtime behind the existing synchronous service interface. A single pinned request/body future survives 25 ms cancellation polls; cancellation drops the wait, with no retries and no shorter valid-request deadline. Header waits, successful JSON bodies and the narrowly classified ruleset error body are interruptible. HTTPS-only transport, certificate checks, selected origins, no redirects/proxies/retries, sensitive authorization headers and bounded response normalization are retained. Both workspace and standalone desktop lockfiles include the direct runtime dependency.
+
+**Mutation boundary:** Cancellation after a mutation starts can leave an unknown remote outcome. Existing immutable intent/checkpoint/one-shot-plan rules remain mandatory; no retry, adoption, rollback or resume was added. This increment covers provider APIs only. Git keeps process-tree cancellation; LFS Batch/Basic HTTP still has its existing blocking request-timeout boundary, so promptly interruptible LFS transport remains separate work.
+
+**Validation:** The 31-test local workspace run and the final six-test migration-library run passed, including real loopback-socket cancellation during headers, partial bodies and uncertain POST waits (controlled assertion under 500 ms), slow-successful wait preservation, unchanged request deadlines and pre-cancelled flags (32 total workspace tests after the added deadline regression). Clippy, formatting and Python fixture syntax checks passed. The native desktop TLS fixture now measures cancellation of four-second API header/body stalls within two seconds on each OS. Updated native acceptance is pending the next pushed workflow. A nondeterministic history-page assertion was replaced by an exact recovered-receipt comparison.
+
+**Next:** Require the full Linux/Windows native, desktop, package, reciprocal recovery and cleanup matrix for this increment before recording acceptance. No release tag or installer publication was requested by this task.
+
+## 2026-11-13 — migration history and read-only reconciliation accepted
 
 **Worker recovery:** The existing full acceptance run [43408484923](https://github.com/hrishi072/repo-stealer/actions/runs/43408484923), retried at 10:34 UTC, completed successfully including cleanup. This accepts the previously pushed alpha.7 baseline; it does not validate the new local changes below. No billing settings were changed here.
 
@@ -12,7 +22,9 @@ Sections are chronological milestone records, newest first; earlier pending stat
 
 **Local validation:** Workspace tests passed (29 Rust tests), frontend production build, all 13 browser tests, workspace Clippy and formatting. The history test covers interrupted/malformed evidence, restart, backup/restore, pagination and retaining needs-attention despite matching observations. Browser coverage includes typed read-only IPC, token clearing and lock privacy. Synthetic native CLI/desktop acceptance scripts now cover matching/drifting refs, identity/privacy refusal, unknown creation identity, GET-only provider access and lock clearing; these new integration cases have not run here because this workstation lacks a verified LUKS/EFS workspace. Native desktop compilation and Linux/Windows acceptance of this increment remain pending CI.
 
-**Next:** Run the updated full native matrix before publishing this increment. Alpha.6 remains the published installer release; no new tag/release was created. Promptly interruptible stalled HTTP requests remain the next separate development task. See [history scope and usage](docs/MIGRATION-HISTORY.md).
+**Native acceptance:** Signed commit `9804940` passed [run 43417766154](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154): quality/minimum Rust, Linux/Windows native CLI and real WebKitGTK/WebView2 history/reconciliation workflows, browser tests, installer/package checks, both reciprocal recovery directions and staging cleanup. GitHub verified the commit signature. These cases used synthetic providers and real LUKS/EFS, with GET-only reconciliation assertions.
+
+**Next:** Alpha.6 remains the published installer release; no new tag/release was created. Provider API cancellation follows as a separate increment above. See [history scope and usage](docs/MIGRATION-HISTORY.md).
 
 ## 2026-11-13 — alpha.7 release requested, Actions still blocked
 

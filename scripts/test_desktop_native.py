@@ -218,13 +218,16 @@ def main():
                     wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'section[aria-label="Migration plan result"]'))
                     assert driver.find_element(By.CSS_SELECTOR,'input[aria-label="Destination access token"]').get_attribute("value")==""
                     assert "Write authorization unproven" in driver.find_element(By.TAG_NAME,"body").text
-                provider_server.mode="slow-api"
-                provider_server.external_requests.clear()
-                fill("Destination access token",TOKEN)
-                click("Prepare read-only plan")
-                wait.until(lambda _:provider_server.external_requests)
-                click("Cancel"); completed("cancelled")
-                assert status()["plan"] is None, "Cancelled preparation retained an old plan"
+                for stall in ("slow-api", "slow-api-body"):
+                    provider_server.mode=stall
+                    provider_server.external_requests.clear()
+                    fill("Destination access token",TOKEN)
+                    click("Prepare read-only plan")
+                    wait.until(lambda _:provider_server.external_requests)
+                    cancel_started=time.monotonic()
+                    click("Cancel"); completed("cancelled")
+                    assert time.monotonic()-cancel_started<2.0, "Stalled provider API cancellation exceeded two seconds"
+                    assert status()["plan"] is None, "Cancelled preparation retained an old plan"
                 provider_server.mode="normal"
                 fill("Destination access token",TOKEN)
                 click("Prepare read-only plan"); completed()

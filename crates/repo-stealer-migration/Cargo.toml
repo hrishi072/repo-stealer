@@ -10,7 +10,7 @@ anyhow = "1.0"
 repo-stealer-core = { path = "../repo-stealer-core" }
 repo-stealer-git = { path = "../repo-stealer-git" }
 repo-stealer-vault = { path = "../repo-stealer-vault" }
-reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 secrecy = "0.10"
@@ -19,6 +19,7 @@ url = "2.5"
 zeroize = "1.8"
 
 getrandom = "0.2"
+tokio = { version = "1", features = ["rt", "time", "net"] }
 
 [dev-dependencies]
 tempfile = "3.15"

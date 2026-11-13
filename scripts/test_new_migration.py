@@ -229,7 +229,7 @@ def main():
         assert command(binary,"vault","list",recovered).stdout==command(binary,"vault","list",vault).stdout
         history=json.loads(command(binary,"migration","history",recovered,"--limit",20).stdout)
         assert history["total"]>=20 and len(history["items"])==20
-        assert any(item["state"]=="verified" for item in history["items"])
+        assert json.loads(command(binary,"migration","inspect",recovered,plan["id"]).stdout)==json.loads(command(binary,"migration","inspect",vault,plan["id"]).stdout),"Recovered receipt details changed"
         for p in vault.rglob("*"):
             if p.is_file():assert TOKEN.encode() not in p.read_bytes()
         encrypted_files(work)
