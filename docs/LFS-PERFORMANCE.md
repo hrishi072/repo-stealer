@@ -75,3 +75,22 @@ Complete capture medians improved about 24–43% in this accepted-build controll
 Selected-default cancellation (two available payloads): Linux headers/body 1.990/1.907 s; Windows 2.226/2.238 s, with observed peak two in-flight requests and no publication. The blocking timeout bound remains unchanged.
 
 GitHub refused to start the cleanup job because recent payments failed or the account spending limit needed attention (provider annotation). No billing setting was changed. After the run ended, its verified private draft `ci-staging-43401806969-1` (release ID 444042258) was deleted manually and absence confirmed. The workflow conclusion is failure solely for that cleanup job; functional jobs are green.
+
+## 2026-11-13 — prompt HTTP cancellation
+
+Signed commit `1a5baad` passed the [full Linux/Windows workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43421991963), including native desktop cancellation, CLI/installer checks, reciprocal recovery and cleanup. These cancellation samples supersede the earlier blocking-wait behavior; earlier throughput tables retain their original implementation/workload context.
+
+Each native UI stage injected a four-second stall into a synthetic TLS server. Timing runs from clicking Cancel to observing the cancelled job, including browser-driver/status polling. One sample per stage per OS was taken on real LUKS/EFS workspaces. These are controlled acceptance checks, not production-network latency or throughput guarantees. Local OS I/O and name resolution remain outside a strict bound.
+
+| Stage | Linux cancel to completion | Windows cancel to completion |
+| --- | ---: | ---: |
+| Batch headers | 1.199 s | 0.683 s |
+| Batch JSON body | 1.017 s | 0.689 s |
+| Object headers | 0.676 s | 0.686 s |
+| Object body | 1.060 s | 0.691 s |
+| Upload wait | 0.468 s | 0.676 s |
+| Upload verify callback | 1.050 s | 0.679 s |
+
+All samples passed the two-second native assertion. Captures published no snapshot; upload/verify cancellations retained cancelled-needs-attention with zero Git pushes. Remote payloads may remain: cancellation is not rollback. Raw normalized job-log samples: [Linux](benchmarks/lfs-cancellation-43421991963-linux.json), [Windows](benchmarks/lfs-cancellation-43421991963-windows.json).
+
+Separate real-socket Rust tests cover upload backpressure with a 128 MiB generated stream, 64 KiB read bounds, early server responses and release of the upload reader before request return. They also check sibling-stop distinction, controlled cancellation under 500 ms, slow-successful response bodies and unchanged deadlines. Each request owns its client/runtime, with no connection sharing across independently shut-down runtimes and no detached file readers; scoped workers join before staging cleanup.

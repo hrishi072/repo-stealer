@@ -1,0 +1,53 @@
+{
+  "run": "https://github.com/hrishi072/repo-stealer/actions/runs/43421991963",
+  "commit": "1a5baad95133dd158eb7ccb5852f9386fed4c2d9",
+  "platform": "linux",
+  "results": [
+    {
+      "schema": 1,
+      "platform": "linux",
+      "samples": [
+        {
+          "stage": "batch-headers",
+          "injectedDelaySeconds": 4,
+          "cancelToCompletionSeconds": 1.198732,
+          "peakRequests": 0,
+          "published": false
+        },
+        {
+          "stage": "batch-body",
+          "injectedDelaySeconds": 4,
+          "cancelToCompletionSeconds": 1.017123,
+          "peakRequests": 0,
+          "published": false
+        },
+        {
+          "stage": "headers",
+          "injectedDelaySeconds": 4,
+          "cancelToCompletionSeconds": 0.675866,
+          "peakRequests": 2,
+          "published": false
+        },
+        {
+          "stage": "body",
+          "injectedDelaySeconds": 4,
+          "cancelToCompletionSeconds": 1.059516,
+          "peakRequests": 2,
+          "published": false
+        }
+      ]
+    },
+    {
+      "stage": "upload",
+      "cancelToCompletionSeconds": 0.467538,
+      "gitPushes": 0,
+      "state": "cancelled_needs_attention"
+    },
+    {
+      "stage": "verify",
+      "cancelToCompletionSeconds": 1.050309,
+      "gitPushes": 0,
+      "state": "cancelled_needs_attention"
+    }
+  ]
+}
