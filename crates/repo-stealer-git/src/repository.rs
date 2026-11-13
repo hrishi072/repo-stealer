@@ -338,8 +338,7 @@ pub fn restore(
         );
         for object in &lfs.objects {
             let path = crate::lfs::object_path(&restored, object);
-            fs::create_dir_all(path.parent().unwrap())?;
-            let mut output = File::create(path)?;
+            let mut output = crate::lfs::create_payload_file(&path)?;
             crate::lfs::copy_verified(&mut input, &mut output, object, options)?;
             output.sync_all()?;
         }

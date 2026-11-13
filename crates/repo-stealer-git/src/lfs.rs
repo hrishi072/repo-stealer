@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     ffi::OsStr,
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{atomic::AtomicBool, Arc},
@@ -227,6 +227,30 @@ pub(crate) fn copy_verified(
     );
     Ok(())
 }
+// Allocate and verify empty targets before any plaintext payload is written.
+// Windows requests EFS at creation; it never repairs a populated plaintext file.
+pub(crate) fn create_payload_file(path: &Path) -> Result<File> {
+    fs::create_dir_all(path.parent().context("LFS parent missing")?)?;
+    #[cfg(windows)]
+    crate::workspace::verify_path(path.parent().unwrap()).context("prepare_lfs_directory")?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.attributes(windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_ENCRYPTED);
+    }
+    let file = options.open(path)?;
+    #[cfg(windows)]
+    crate::workspace::verify_path(path).context("prepare_lfs_file")?;
+    Ok(file)
+}
+
 pub(crate) fn copy_local(
     source: &Path,
     dest: &Path,
@@ -239,8 +263,7 @@ pub(crate) fn copy_local(
         let mut input = File::open(path)?;
         ensure!(input.metadata()?.len() == object.size, "LFS size mismatch");
         let target = object_path(dest, object);
-        fs::create_dir_all(target.parent().unwrap())?;
-        let mut output = File::create(target)?;
+        let mut output = create_payload_file(&target)?;
         copy_verified(&mut input, &mut output, object, options)?;
         output.sync_all()?;
         ensure!(
@@ -481,6 +504,11 @@ impl Transport {
     }
     pub(crate) fn download(&self, repo: &Path, objects: &[LfsObject]) -> Result<()> {
         for chunk in objects.chunks(100) {
+            // Allocate serially: workers only stream into distinct verified files.
+            for object in chunk {
+                self.options.check()?;
+                drop(create_payload_file(&object_path(repo, object))?);
+            }
             let rows = self.batch("download", chunk)?;
             let jobs: Vec<_> = chunk.iter().zip(rows.iter()).collect();
             crate::lfs_pool::run(&jobs, &self.options, |(object, row), stopped| {
@@ -517,8 +545,11 @@ impl Transport {
             ensure!(n == object.size, "LFS download size mismatch");
         }
         let path = object_path(repo, object);
-        fs::create_dir_all(path.parent().unwrap())?;
-        let mut file = File::create(path)?;
+        regular_path(&path, repo)?;
+        let mut file = OpenOptions::new().write(true).open(&path)?;
+        ensure!(file.metadata()?.len() == 0, "LFS target is no longer empty");
+        #[cfg(windows)]
+        crate::workspace::verify_path(&path).context("prepare_lfs_file")?;
         let mut reader = crate::lfs_pool::Reader {
             inner: response,
             options: self.options.clone(),
@@ -603,6 +634,22 @@ impl Transport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn allocated_payloads_are_private_and_never_replace_existing_files() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("aa/bb/object");
+        let mut file = create_payload_file(&path).unwrap();
+        file.write_all(b"synthetic verified payload").unwrap();
+        drop(file);
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert!(create_payload_file(&path).is_err());
+        assert_eq!(fs::read(path).unwrap(), b"synthetic verified payload");
+    }
     #[test]
     fn strict_pointers_and_integrity() {
         let data = b"LFS historical payload";

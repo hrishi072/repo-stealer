@@ -227,6 +227,8 @@ impl VerifiedTransfer {
             .report("Independently downloading and verifying destination history");
         let runner = self.runner.as_ref().context("Runner missing")?;
         let audit = self.session.path().join("audit.git");
+        // Clone only into an explicitly verified empty encrypted directory.
+        Workspace::init(&audit).context("verify_audit_directory")?;
         runner
             .run(
                 None,

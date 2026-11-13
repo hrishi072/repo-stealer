@@ -74,3 +74,5 @@ Destination API access is HTTPS GET only with sensitive in-memory Bearer headers
 ## Guarded new-repository writes
 
 Read-only preflight is separate from the one-shot private migration adapter. The latter authenticates/restores/fscks source data before exclusive creation, persists encrypted intents before writes, proves supported personal token scopes, disables destination CI, and gates atomic ref changes with creation guard and exact leases. It never adopts an existing destination or retries an uncertain mutation. API/Git/admin boundaries are not a distributed transaction. See [guarded migrations](GUARDED-MIGRATIONS.md).
+
+Development alpha.7 preallocates LFS targets without replacing existing files, requests EFS on Windows at creation, and verifies empty target attributes before plaintext writes. Independent migration audits start in a newly initialized/probed encrypted directory. Parallel workers stream only into those prepared files; full-tree verification remains mandatory before success. Failure receipts expose only fixed stage/entry-role labels and safe numeric OS/HTTP codes, never raw diagnostics or server bodies.

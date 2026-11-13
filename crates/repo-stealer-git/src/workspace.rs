@@ -104,6 +104,8 @@ impl Workspace {
             use std::os::unix::fs::MetadataExt;
             fs::metadata(&self.root)?.dev()
         };
+        #[cfg(windows)]
+        let inspection_root = canonical.clone();
         let mut queue = vec![canonical];
         let mut count = 0usize;
         while let Some(path) = queue.pop() {
@@ -123,7 +125,8 @@ impl Workspace {
                 ensure!(metadata.dev() == device, "nested filesystem in Git staging");
             }
             #[cfg(windows)]
-            verify_path(&path)?;
+            verify_path(&path)
+                .with_context(|| efs_entry_role(&path, &inspection_root, metadata.is_dir()))?;
             if metadata.is_dir() {
                 for child in fs::read_dir(&path)? {
                     queue.push(child?.path());
@@ -131,6 +134,23 @@ impl Workspace {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn efs_entry_role(path: &Path, root: &Path, directory: bool) -> &'static str {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    let audit = relative.components().any(|c| c.as_os_str() == "audit.git");
+    let lfs = relative.components().any(|c| c.as_os_str() == "lfs");
+    match (audit, lfs, directory) {
+        (true, true, true) => "efs_audit_lfs_directory",
+        (true, true, false) => "efs_audit_lfs_file",
+        (true, false, true) => "efs_audit_git_directory",
+        (true, false, false) => "efs_audit_git_file",
+        (false, true, true) => "efs_staging_lfs_directory",
+        (false, true, false) => "efs_staging_lfs_file",
+        (false, false, true) => "efs_staging_directory",
+        (false, false, false) => "efs_staging_file",
     }
 }
 
@@ -208,7 +228,7 @@ fn encrypt_new_directory(path: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn verify_path(path: &Path) -> Result<Encryption> {
+pub(crate) fn verify_path(path: &Path) -> Result<Encryption> {
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileAttributesW, FILE_ATTRIBUTE_ENCRYPTED, FILE_ATTRIBUTE_REPARSE_POINT,
         INVALID_FILE_ATTRIBUTES,

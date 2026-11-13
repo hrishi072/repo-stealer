@@ -58,6 +58,10 @@ impl Runner {
             (1..=86400).contains(&options.timeout.as_secs()),
             "Git timeout must be 1..86400 seconds"
         );
+        ensure!(
+            (1..=4).contains(&options.lfs_workers),
+            "LFS workers must be 1..4"
+        );
         fs::create_dir(root.join("home"))?;
         fs::create_dir(root.join("empty"))?;
         fs::write(root.join("empty-config"), b"")?;

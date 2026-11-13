@@ -680,6 +680,9 @@ fn validate_access(access: &Access) -> Result<()> {
 fn failure_code(error: &anyhow::Error) -> String {
     let messages: Vec<_> = error.chain().map(ToString::to_string).collect();
     let stage = [
+        "verify_audit_directory",
+        "prepare_lfs_directory",
+        "prepare_lfs_file",
         "verify_clone",
         "verify_fsck",
         "verify_refs",
@@ -729,6 +732,20 @@ fn failure_code(error: &anyhow::Error) -> String {
         .any(|m| m == "Destination changed during independent verification")
     {
         "refs_changed".into()
+    } else if let Some(role) = [
+        "efs_audit_lfs_directory",
+        "efs_audit_lfs_file",
+        "efs_audit_git_directory",
+        "efs_audit_git_file",
+        "efs_staging_lfs_directory",
+        "efs_staging_lfs_file",
+        "efs_staging_directory",
+        "efs_staging_file",
+    ]
+    .into_iter()
+    .find(|label| messages.iter().any(|m| m == label))
+    {
+        role.into()
     } else if messages
         .iter()
         .any(|m| m.contains("EFS") || m.contains("unencrypted"))
@@ -754,5 +771,9 @@ mod failure_tests {
         let error =
             anyhow::Error::new(std::io::Error::from_raw_os_error(5)).context("verify_encryption");
         assert_eq!(failure_code(&error), "verify_encryption:os_5");
+        let error = anyhow::anyhow!("private file name")
+            .context("efs_audit_lfs_file")
+            .context("verify_encryption");
+        assert_eq!(failure_code(&error), "verify_encryption:efs_audit_lfs_file");
     }
 }

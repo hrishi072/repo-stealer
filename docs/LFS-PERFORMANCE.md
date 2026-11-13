@@ -46,3 +46,11 @@ Object-request span medians (three repetitions, injected 100 ms per-object delay
 Observed peak object requests stayed within the selected bound, every restored object matched its source/hash, and corruption stopped queued work without archive publication. Complete capture medians improved about 15–41% in this controlled workload. This supports four as a small capped default, with `--lfs-workers 1` available for constrained hosts/links; it does not establish a universal throughput gain or maximum-volume performance. The benchmark is kept in native CI rather than gated on timing ratios that would fluctuate with runner load.
 
 With injected two-second header/body stalls, native Cancel-to-completion measured 2.033/2.028 s on Linux and 2.213/2.226 s on Windows, with no snapshot published. These initial cancellation samples used one worker; the selected-default acceptance run repeats them. The blocking request-timeout boundary described above is unchanged.
+
+## Windows staging investigation — 2026-11-13
+
+Run 43182127015 identified a missing EFS attribute in the final verification tree (`verify_encryption:encryption_check`), after successful LFS uploads/downloads and two Git pushes. The controlled anonymous clone probe succeeded. The previous run had also failed during independent verification. These were fail-closed needs-attention results, not verified migrations.
+
+The audit clone now starts inside an explicitly initialized, probed empty encrypted directory. Each batch allocates empty LFS target files serially before worker data writes; Windows requests FILE_ATTRIBUTE_ENCRYPTED at creation and checks the directory/file attributes before any payload bytes. Worker threads only open the prepared empty files, and the final whole-tree check remains mandatory. Local LFS capture and offline restore use the same no-replace payload allocator. No populated plaintext file is repaired after writing. See Microsoft's [file creation and attribute inheritance](https://learn.microsoft.com/en-us/windows/win32/fileio/creating-and-opening-files).
+
+Fixed entry-role codes distinguish audit/staging Git/LFS files/directories without recording arbitrary paths. Full Linux/Windows acceptance is pending; no encryption requirement has been relaxed.
