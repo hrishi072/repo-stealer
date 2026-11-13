@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-13 — LFS HTTP cancellation implemented locally
+
+**Development:** LFS Batch and Basic requests now use cancellable async header/body waits behind the existing synchronous transfer service. A single pinned future survives 25 ms polls without retrying or restarting the original deadline. Each request owns its client/runtime so shutting down one worker cannot terminate a pooled connection used by another. Uploads read at most 64 KiB at a time on that runtime; there are no detached file-I/O tasks. Request/response/runtime teardown releases streaming readers before the scoped worker joins and encrypted staging cleanup proceeds. Existing four-worker bounds, serial batches, pre-write encryption checks, size/SHA-256 checks, origin/credential policy, TLS and no-retry/no-redirect behavior remain mandatory.
+
+**Cancellation boundary:** Batch headers/JSON bodies, object headers/bodies, upload backpressure and verification callbacks are interruptible. Local OS filesystem/name-resolution work remains outside a strict latency guarantee. Uploaded bytes or completed remote effects may remain after cancellation; migrations keep immutable intent, consumed plans and cancelled-needs-attention receipts, and do not publish Git refs after incomplete LFS work. No automatic retry, resume, adoption or rollback was added.
+
+**Validation:** Local workspace tests and four transport socket regressions pass, including cancellation under 500 ms in controlled stalls, sibling-stop distinction, slow successful bodies, unchanged deadlines, bounded upload buffering, early responses and upload-reader release before return. Frontend build and all 13 browser tests pass; formatting/Clippy and fixture syntax checks pass. Native desktop fixtures now assert cancellation within two seconds for four-second Batch header/body, object header/body, upload and verification stalls, including no snapshot/Git-ref publication and needs-attention receipts. Native Linux/Windows acceptance of this increment remains pending CI.
+
+**Next:** Push signed changes and run the full Linux/Windows native, real desktop, installer, reciprocal recovery and cleanup matrix; fix any failures before recording acceptance. Alpha.6 remains the published installer release.
+
 ## 2026-11-13 — provider API cancellation accepted
 
 **Development:** Provider API requests now run on an owned async runtime behind the existing synchronous service interface. A single pinned request/body future survives 25 ms cancellation polls; cancellation drops the wait, with no retries and no shorter valid-request deadline. Header waits, successful JSON bodies and the narrowly classified ruleset error body are interruptible. HTTPS-only transport, certificate checks, selected origins, no redirects/proxies/retries, sensitive authorization headers and bounded response normalization are retained. Both workspace and standalone desktop lockfiles include the direct runtime dependency.

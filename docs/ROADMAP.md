@@ -16,7 +16,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 ## Best next task
 
-**Next: make stalled LFS Batch/Basic HTTP waits promptly interruptible.** Preserve bounded streaming, TLS/credential isolation, valid-transfer deadlines, no automatic retries and joining every worker before encrypted staging cleanup. Cover cancellation during batch requests, object headers/bodies and uploads on Linux and Windows, including uncertain remote effects.
+**Current increment: promptly interruptible LFS Batch/Basic waits are implemented locally; native acceptance remains pending.** Preserve bounded streaming, TLS/credential isolation, valid-transfer deadlines, no automatic retries and joining every worker before encrypted staging cleanup. Cover cancellation during batch requests, object headers/bodies and uploads on Linux and Windows, including uncertain remote effects.
 
 Encrypted migration history/read-only reconciliation passed [run 43417766154](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154); [scope and usage](MIGRATION-HISTORY.md). Provider API cancellation passed [run 43419501257](https://github.com/hrishi072/repo-stealer/actions/runs/43419501257), including timed native desktop TLS stalls. These are accepted development changes; alpha.6 remains the published installer release.
 

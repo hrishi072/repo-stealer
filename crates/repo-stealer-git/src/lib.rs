@@ -19,3 +19,5 @@ mod lfs;
 pub use lfs::LfsObject;
 
 mod lfs_pool;
+
+mod lfs_http;

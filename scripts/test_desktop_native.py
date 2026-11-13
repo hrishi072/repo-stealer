@@ -177,21 +177,24 @@ def main():
                 assert status()["vault"]["itemCount"] == 2
                 encrypted_files(work)
             cancellation_samples=[]
-            for stage in ("headers","body"):
+            for stage in ("batch-headers","batch-body","headers","body"):
                 with HTTPSFixture(root/("lfs-cancel-"+stage),lfs=True) as remote:
-                    if stage=="headers":remote.lfs_delay=2.0
-                    else:remote.lfs_body_delay=2.0
+                    if stage=="headers":remote.lfs_delay=4.0
+                    elif stage=="body":remote.lfs_body_delay=4.0
+                    elif stage=="batch-headers":remote.lfs_batch_delay=4.0
+                    else:remote.lfs_batch_body_delay=4.0
                     click("Repositories");click("Capture repository");click("HTTPS remote")
                     fill("Snapshot name","cancelled-lfs-"+stage);fill("HTTPS clone URL",remote.url)
                     click("Username & token");fill("Repository username",USERNAME);fill("Repository access token",TOKEN)
                     fill("Custom CA file (optional)",remote.certificate)
                     driver.find_element(By.CSS_SELECTOR,'input[aria-label="Include Git LFS payloads"]').click()
-                    submit_modal();wait.until(lambda _:remote.lfs_active>0)
+                    submit_modal();wait.until(lambda _:stage in remote.lfs_stalls)
                     started=time.perf_counter();click("Cancel");completed("cancelled")
                     elapsed=time.perf_counter()-started
-                    remote.wait_lfs_idle();assert elapsed<10 and status()["vault"]["itemCount"]==2
+                    remote.wait_lfs_idle();assert elapsed<2.0 and status()["vault"]["itemCount"]==2
+                    assert remote.lfs_peak<=4 and len(remote.lfs_transfers)<=4
                     encrypted_files(work)
-                    cancellation_samples.append({"stage":stage,"injectedDelaySeconds":2,"cancelToCompletionSeconds":round(elapsed,6),"peakRequests":remote.lfs_peak,"published":False})
+                    cancellation_samples.append({"stage":stage,"injectedDelaySeconds":4,"cancelToCompletionSeconds":round(elapsed,6),"peakRequests":remote.lfs_peak,"published":False})
             print("LFS_CANCELLATION_JSON="+json.dumps({"schema":1,"platform":sys.platform,"samples":cancellation_samples},separators=(",",":")),flush=True)
             with ProviderFixture(root / "provider-server") as provider_server:
                 click("Migration plans")
@@ -290,6 +293,30 @@ def main():
                     assert all(method=="GET" for method,_,_ in target.api_calls[api_start:])
                     assert len(target.pushes)==2 and TOKEN not in json.dumps(observed)
                     click("New migrations")
+            for stage in ("upload","verify"):
+                with CreationFixture(root/("lfs-cancel-"+stage),"github") as target:
+                    if stage=="upload":target.lfs_upload_delay=4.0
+                    else:target.lfs_verify_delay=4.0
+                    click("New migrations")
+                    Select(driver.find_element(By.CSS_SELECTOR,'select[aria-label="New migration provider"]')).select_by_value("github")
+                    fill("New migration source","synthetic-desktop-history");fill("New migration instance",target.instance)
+                    fill("New migration repository",target.project);fill("New migration token",TOKEN)
+                    fill("New migration username",USERNAME);fill("New migration CA",target.certificate)
+                    click("Prepare private migration");review=completed()
+                    fill("Execute migration token",TOKEN);fill("Confirm new repository",target.project)
+                    click("Create private repository and migrate")
+                    wait.until(lambda _:stage in target.lfs_stalls)
+                    started=time.perf_counter();click("Cancel");cancelled=completed("cancelled")
+                    elapsed=time.perf_counter()-started
+                    assert elapsed<2.0,(stage,elapsed)
+                    assert cancelled["migrationResult"]["state"]=="cancelled_needs_attention"
+                    assert cancelled["migrationResult"]["lastPhase"]=="lfs_transfer_outcome_unknown"
+                    assert not target.pushes,"LFS cancellation published Git refs"
+                    assert TOKEN not in json.dumps(cancelled)
+                    assert sum(method=="POST" and path.endswith("user/repos") for method,path,_ in target.api_calls)==1
+                    target.wait_lfs_idle()
+                    encrypted_files(work)
+                    print("LFS_MUTATION_CANCELLATION_JSON="+json.dumps({"stage":stage,"cancelToCompletionSeconds":round(elapsed,6),"gitPushes":0,"state":"cancelled_needs_attention"}),flush=True)
             click("Lock vault");wait.until(lambda _:status()["vault"] is None)
             assert status()["newMigration"] is None and status()["migrationResult"] is None and status()["migrationHistory"] is None
             print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")

@@ -3239,6 +3239,8 @@ version = "0.1.0-alpha.7"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
+ "bytes",
+ "futures-util",
  "libc",
  "process-wrap",
  "repo-stealer-vault",
@@ -3248,6 +3250,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+ "tokio",
  "url",
  "windows-sys 0.61.2",
  "zeroize",
@@ -3295,7 +3298,6 @@ checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
  "base64 0.23.1",
  "bytes",
- "futures-channel",
  "futures-core",
  "futures-util",
  "http",

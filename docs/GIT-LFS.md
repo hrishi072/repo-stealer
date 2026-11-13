@@ -47,3 +47,13 @@ The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs
 Post-publication verification on 2026-11-12 downloaded all ten package assets into ignored `dist/releases/v0.1.0-alpha.6/`; every SHA-256 matched the published SHA256SUMS. The tagged release workflow completed staging cleanup.
 
 Development alpha.7 bounded transfers and pre-write encrypted target preparation passed [native Linux/Windows and reciprocal recovery acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43401806969). The independent audit root is initialized/probed before cloning; new Windows payloads request/check EFS before writing. No populated plaintext file is repaired after the fact. Failure results/receipts may contain a bounded `failureCode` with fixed verification/entry-role labels and safe numeric OS/HTTP codes; lock still clears the UI report.
+
+## Cancellable LFS HTTP (development)
+
+LFS Batch and Basic transfer waits now poll cancellation every 25 ms across request headers and response chunks while preserving the original request deadline (up to 60 seconds). Each request owns its async client/runtime. Connection pools are not shared across those runtimes, so cancellation/shutdown of one worker cannot abort another worker's connection. Existing at-most-four scoped workers still join before staging cleanup.
+
+Uploads stream local reads in chunks of at most 64 KiB with explicit Content-Length. No detached file-I/O task may retain an encrypted staging file. Runtime shutdown releases pending upload readers before the request returns; tests cover cancellation under socket backpressure and servers returning early. Download bytes still pass exact size/hash verification before success; cancellation publishes no snapshot. A failed worker interrupts sibling HTTP waits without setting the user-cancellation flag.
+
+Cancellation of uploads or verify callbacks can leave remote payloads or uncertain effects. Guarded migrations retain their consumed plan and encrypted cancelled-needs-attention receipt, and incomplete LFS work publishes no Git refs. No automatic retry, adoption, resume or rollback occurs. OS-level file I/O/name resolution remain outside a strict latency guarantee.
+
+Local socket tests assert controlled cancellation under 500 ms and preserve slow-success and timeout behavior. Real desktop fixtures inject four-second Batch header/body, download header/body, upload and verify stalls with a two-second cancellation assertion. This increment is locally validated; native Linux/Windows acceptance is pending CI. Existing throughput tables describe their recorded implementation and workload, not a new production-network performance claim.

@@ -39,6 +39,7 @@ class HTTPSFixture:
         self.source = fixture(self.root / "project.git")
         self.lfs_store = {}; self.lfs_source_objects = {}; self.lfs_mode = "normal"; self.lfs_calls = []
         self.lfs_delay=0.0;self.lfs_body_delay=0.0;self.lfs_metrics_lock=threading.Lock()
+        self.lfs_batch_delay=0.0;self.lfs_batch_body_delay=0.0;self.lfs_upload_delay=0.0;self.lfs_verify_delay=0.0;self.lfs_stalls=[]
         self.lfs_active=0;self.lfs_peak=0;self.lfs_first=None;self.lfs_last=None;self.lfs_transfers=[]
         if lfs:
             first=b"historical encrypted LFS payload\x00"*4096
@@ -146,6 +147,7 @@ class HTTPSFixture:
             if self.lfs_first is None:self.lfs_first=time.perf_counter()
             self.lfs_transfers.append((method,oid))
         try:
+            if self.lfs_delay:self.lfs_stalls.append("headers")
             time.sleep(self.lfs_delay)
             yield
         finally:
@@ -198,6 +200,8 @@ class HTTPSFixture:
                     if path.endswith("/objects/batch"):
                         body=json.loads(self.rfile.read(int(self.headers.get("Content-Length","0"))))
                         assert body["transfers"]==["basic"] and body["operation"] in ("upload","download")
+                        if owner.lfs_batch_delay:
+                            owner.lfs_stalls.append("batch-headers");time.sleep(owner.lfs_batch_delay)
                         objects=[]
                         for obj in body["objects"]:
                             oid=obj["oid"];actions={}
@@ -212,16 +216,28 @@ class HTTPSFixture:
                             row={**obj}
                             if actions:row["actions"]=actions
                             objects.append(row)
-                        return self.send(200,json.dumps({"transfer":"basic","objects":objects}).encode())
+                        data=json.dumps({"transfer":"basic","objects":objects}).encode()
+                        if owner.lfs_batch_body_delay:
+                            with contextlib.suppress(BrokenPipeError,ConnectionResetError,ConnectionAbortedError,ssl.SSLError):
+                                self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Connection","close");self.end_headers()
+                                self.wfile.write(data[:1]);self.wfile.flush()
+                                owner.lfs_stalls.append("batch-body");time.sleep(owner.lfs_batch_body_delay);self.wfile.write(data[1:])
+                            return
+                        return self.send(200,data)
                     oid=path.rsplit("/",1)[-1]
                     if "/verify/" in path:
                         body=json.loads(self.rfile.read(int(self.headers.get("Content-Length","0"))))
                         assert oid in owner.lfs_store and body["size"]==len(owner.lfs_store[oid])
+                        if owner.lfs_verify_delay:
+                            owner.lfs_stalls.append("verify");time.sleep(owner.lfs_verify_delay)
                         return self.send(200)
                     with owner.lfs_transfer(self.command,oid):
                         if self.command=="PUT":
                             assert not getattr(owner,"actions",False)
+                            if owner.lfs_upload_delay:
+                                owner.lfs_stalls.append("upload");time.sleep(owner.lfs_upload_delay)
                             body=self.rfile.read(int(self.headers["Content-Length"]))
+                            if len(body)!=int(self.headers["Content-Length"]):return self.send(400)
                             if owner.lfs_mode=="upload-error":return self.send(503)
                             assert hashlib.sha256(body).hexdigest()==oid
                             owner.lfs_store[oid]=body;return self.send(200)
@@ -231,8 +247,8 @@ class HTTPSFixture:
                         if owner.lfs_mode=="extra":data+=b"x"
                         if owner.lfs_body_delay:
                             with contextlib.suppress(BrokenPipeError,ConnectionResetError,ConnectionAbortedError,ssl.SSLError):
-                                self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Connection","close");self.end_headers();self.wfile.flush()
-                                time.sleep(owner.lfs_body_delay);self.wfile.write(data)
+                                self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Connection","close");self.end_headers();self.wfile.write(data[:1]);self.wfile.flush()
+                                owner.lfs_stalls.append("body");time.sleep(owner.lfs_body_delay);self.wfile.write(data[1:])
                             return
                         return self.send(200,data)
                 if path.startswith("/dumb.git/"):

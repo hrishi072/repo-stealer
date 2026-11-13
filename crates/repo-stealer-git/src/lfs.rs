@@ -1,9 +1,10 @@
 //! Explicit LFS payload support. Never reads .lfsconfig, hooks or Git LFS adapters.
+use crate::lfs_http::{upload_body, Response};
 use crate::{runner::Runner, Credentials, Options, RemoteUrl};
 use anyhow::{ensure, Context, Result};
 use reqwest::{
-    blocking::{Body, Client, Response},
     header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE},
+    Client,
 };
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
@@ -275,7 +276,7 @@ pub(crate) fn copy_local(
 }
 
 pub(crate) struct Transport {
-    client: Client,
+    certificates: Vec<reqwest::Certificate>,
     endpoint: Url,
     repository_path: String,
     credentials: Option<Credentials>,
@@ -297,13 +298,7 @@ impl Transport {
             base.push_str(".git");
         }
         base.push_str("/info/lfs/objects/batch");
-        let mut builder = Client::builder()
-            .https_only(true)
-            .no_proxy()
-            .redirect(reqwest::redirect::Policy::none())
-            .retry(reqwest::retry::never())
-            .connect_timeout(Duration::from_secs(15))
-            .timeout(options.timeout.min(Duration::from_secs(60)));
+        let mut certificates = Vec::new();
         if let Some(path) = ca {
             ensure!(
                 fs::symlink_metadata(path)?.is_file(),
@@ -317,13 +312,11 @@ impl Transport {
             for cert in reqwest::Certificate::from_pem_bundle(&bytes)
                 .map_err(|_| anyhow::anyhow!("Invalid LFS CA certificates"))?
             {
-                builder = builder.add_root_certificate(cert);
+                certificates.push(cert);
             }
         }
         Ok(Self {
-            client: builder
-                .build()
-                .map_err(|_| anyhow::anyhow!("Cannot initialize LFS HTTPS"))?,
+            certificates,
             repository_path: Url::parse(&base)?
                 .path()
                 .trim_end_matches("/info/lfs/objects/batch")
@@ -333,17 +326,30 @@ impl Transport {
             options: options.clone(),
         })
     }
+    fn client(&self) -> Result<Client> {
+        // A client belongs to one request runtime. Sharing its connection pool
+        // across runtimes could abort a sibling request during runtime shutdown.
+        let mut builder = Client::builder()
+            .https_only(true)
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never())
+            .connect_timeout(Duration::from_secs(15))
+            .timeout(self.options.timeout.min(Duration::from_secs(60)));
+        for certificate in &self.certificates {
+            builder = builder.add_root_certificate(certificate.clone());
+        }
+        builder
+            .build()
+            .map_err(|_| anyhow::anyhow!("Cannot initialize LFS HTTPS"))
+    }
     fn response(
         &self,
-        request: reqwest::blocking::RequestBuilder,
+        request: reqwest::RequestBuilder,
         expected: &[u16],
+        stopped: Arc<AtomicBool>,
     ) -> Result<Response> {
-        self.options.check()?;
-        let response = request.send().map_err(|_| {
-            anyhow::anyhow!(
-                "LFS HTTPS request failed (TLS, timeout or transport); URLs/headers withheld"
-            )
-        })?;
+        let response = Response::send(request, &self.options, stopped)?;
         ensure!(
             expected.contains(&response.status().as_u16()),
             "LFS HTTP status {}; no redirect or retry",
@@ -352,12 +358,12 @@ impl Transport {
         Ok(response)
     }
     fn batch(&self, operation: &str, objects: &[LfsObject]) -> Result<Vec<Value>> {
-        let mut request=self.client.post(self.endpoint.clone()).header(ACCEPT,"application/vnd.git-lfs+json").header(CONTENT_TYPE,"application/vnd.git-lfs+json").body(serde_json::to_vec(&json!({"operation":operation,"transfers":["basic"],"hash_algo":"sha256","objects":objects}))?);
+        let mut request=self.client()?.post(self.endpoint.clone()).header(ACCEPT,"application/vnd.git-lfs+json").header(CONTENT_TYPE,"application/vnd.git-lfs+json").body(serde_json::to_vec(&json!({"operation":operation,"transfers":["basic"],"hash_algo":"sha256","objects":objects}))?);
         if let Some(c) = &self.credentials {
             request = request.basic_auth(&c.username, Some(c.token.expose_secret()));
         }
         let mut bytes = Vec::new();
-        self.response(request, &[200])?
+        self.response(request, &[200], Arc::new(AtomicBool::new(false)))?
             .take(2 * 1024 * 1024 + 1)
             .read_to_end(&mut bytes)
             .map_err(|_| anyhow::anyhow!("Cannot read LFS batch response"))?;
@@ -519,12 +525,12 @@ impl Transport {
     }
     fn object_response(
         &self,
-        request: reqwest::blocking::RequestBuilder,
+        request: reqwest::RequestBuilder,
         expected: &[u16],
-        stopped: &AtomicBool,
+        stopped: &Arc<AtomicBool>,
     ) -> Result<Response> {
         crate::lfs_pool::check(&self.options, stopped)?;
-        let response = self.response(request, expected)?;
+        let response = self.response(request, expected, stopped.clone())?;
         crate::lfs_pool::check(&self.options, stopped)?;
         Ok(response)
     }
@@ -540,7 +546,7 @@ impl Transport {
             .context("LFS download action missing")?;
         let (url, headers) = self.action(action)?;
         let response =
-            self.object_response(self.client.get(url).headers(headers), &[200], stopped)?;
+            self.object_response(self.client()?.get(url).headers(headers), &[200], stopped)?;
         if let Some(n) = response.content_length() {
             ensure!(n == object.size, "LFS download size mismatch");
         }
@@ -599,17 +605,18 @@ impl Transport {
             "LFS upload size changed"
         );
         self.object_response(
-            self.client
+            self.client()?
                 .put(url)
                 .headers(headers)
                 .header(CONTENT_TYPE, "application/octet-stream")
-                .body(Body::sized(
+                .header(reqwest::header::CONTENT_LENGTH, object.size)
+                .body(upload_body(
                     crate::lfs_pool::Reader {
                         inner: file,
                         options: self.options.clone(),
                         stopped: stopped.clone(),
-                    },
-                    object.size,
+                    }
+                    .take(object.size),
                 )),
             &[200, 201, 202, 204],
             stopped,
@@ -617,7 +624,7 @@ impl Transport {
         if let Some(action) = actions.get("verify") {
             let (url, headers) = self.action(action)?;
             self.object_response(
-                self.client
+                self.client()?
                     .post(url)
                     .headers(headers)
                     .header(CONTENT_TYPE, "application/vnd.git-lfs+json")
