@@ -348,6 +348,9 @@ pub(crate) fn configure(root: &Path, identity: &SshIdentity, options: &Options) 
         opened.take(1024 * 1024 + 1).read_to_end(&mut key)?;
         ensure!(key.len() <= 1024 * 1024, "SSH key exceeds size limit");
         let staged = root.join("ssh-identity");
+        #[cfg(windows)]
+        crate::ssh_windows::write_key(&staged, &key)?;
+        #[cfg(not(windows))]
         private_write(&staged, &key)?;
         config.push_str(&format!(
             " IdentitiesOnly yes\n IdentityAgent none\n IdentityFile {}\n",

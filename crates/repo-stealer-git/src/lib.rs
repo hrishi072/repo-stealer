@@ -24,3 +24,6 @@ mod lfs_http;
 
 mod ssh;
 pub use ssh::{inspect_ssh_host, SshHostKey, SshIdentity, SshUrl};
+
+#[cfg(windows)]
+mod ssh_windows;
