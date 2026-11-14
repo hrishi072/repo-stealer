@@ -244,3 +244,55 @@ test('recovered migration receipts paginate, reconcile read-only and clear on lo
   await expect(page.getByText('Unlock your vault to read migration history',{exact:true})).toBeVisible();
   await expect(page.getByText('recovered-source',{exact:false})).toHaveCount(0);
 });
+
+test('repository cards open restore and preselect a migration source',async({page})=>{
+ await mockDesktop(page,true,true);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Repositories',exact:true}).click();
+ const library=page.getByRole('region',{name:'Repository library'});
+ await expect(library.getByRole('article')).toHaveCount(1);
+ await library.getByRole('button',{name:'Restore',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ await page.keyboard.press('Escape');
+ await library.getByRole('button',{name:'Migrate',exact:true}).click();
+ await expect(page.getByLabel('New migration source',{exact:true})).toHaveValue('<img src=x onerror="window.untrustedRan=true">');
+ await expect(page.locator('img')).toHaveCount(0);
+});
+
+test('snapshot browser selects an archived name and clears suggestions on lock',async({page})=>{
+ await mockDesktop(page,true,true);
+ await page.goto('/');
+ await page.getByRole('button',{name:'New migrations',exact:true}).click();
+ await page.getByRole('button',{name:'Browse saved snapshots',exact:true}).click();
+ const suggestions=page.getByLabel('Saved snapshot suggestions',{exact:true});
+ await expect(suggestions).toContainText('1 archived items');
+ await suggestions.getByRole('button',{name:'<img src=x',exact:false}).click();
+ await expect(page.getByLabel('New migration source',{exact:true})).toHaveValue('<img src=x onerror="window.untrustedRan=true">');
+ await expect(suggestions).toHaveCount(0);
+ await page.getByRole('button',{name:'Browse saved snapshots',exact:true}).click();
+ await expect(suggestions).toBeVisible();
+ await page.getByRole('button',{name:'Lock vault',exact:true}).click();
+ await expect(suggestions).toHaveCount(0);
+ await expect(page.getByLabel('New migration source',{exact:true})).toHaveValue('');
+});
+
+test('first-run home offers vault setup without enabling capture',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Create your vault',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Create an encrypted vault'})).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('button',{name:'Capture repository',exact:true}).first()).toBeDisabled();
+});
+
+test('capture suggests a repository name and preserves a custom label',async({page})=>{
+ await mockDesktop(page,true,true);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Capture repository',exact:true}).first().click();
+ await page.getByLabel('Local repository',{exact:true}).fill('/synthetic/my-project.git');
+ await page.getByLabel('Snapshot name',{exact:true}).focus();
+ await expect(page.getByLabel('Snapshot name',{exact:true})).toHaveValue(/^my-project-\d{14}$/);
+ await page.getByLabel('Snapshot name',{exact:true}).fill('my-release-archive');
+ await page.getByLabel('Local repository',{exact:true}).fill('/synthetic/another.git');
+ await page.getByLabel('Snapshot name',{exact:true}).focus();
+ await expect(page.getByLabel('Snapshot name',{exact:true})).toHaveValue('my-release-archive');
+});

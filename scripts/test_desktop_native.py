@@ -134,7 +134,7 @@ def main():
             from test_lfs import local_history
             lfs_objects=local_history(source)
             password = "synthetic desktop passphrase"
-            click("Create new")
+            click("Create your vault")
             fill("Vault location", vault); fill("Vault passphrase", password); fill("Confirm passphrase", password)
             click("Create vault"); completed()
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
@@ -150,7 +150,15 @@ def main():
             completed()
             assert status()["vault"]["itemCount"] == 1
             click("Repositories")
-            click("Restore Git")
+            wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,'.repository-card'))==1)
+            click("Migrate")
+            wait.until(lambda d:d.find_element(By.CSS_SELECTOR,'input[aria-label="New migration source"]').get_attribute("value")=="synthetic-desktop-history")
+            click("Browse saved snapshots")
+            wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'.snapshot-option'))
+            driver.find_element(By.CSS_SELECTOR,'.snapshot-option').click()
+            assert driver.find_element(By.CSS_SELECTOR,'input[aria-label="New migration source"]').get_attribute("value")=="synthetic-desktop-history"
+            click("Repositories")
+            click("Restore")
             destination = work / "restored.git"
             fill("New bare repository", destination); click("Restore repository"); completed()
             assert inventory(source) == inventory(destination)

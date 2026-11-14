@@ -1,7 +1,9 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {type Action,type Status} from './api';
-export function NewMigrations({status,onSubmit}:{status:Status;onSubmit:(action:Action)=>Promise<void>}) {
- const [name,setName]=useState(''),[provider,setProvider]=useState<'github'|'gitlab'>('github'),[instance,setInstance]=useState(''),[repository,setRepository]=useState(''),[token,setToken]=useState(''),[username,setUsername]=useState(''),[ca,setCa]=useState(''),[confirmation,setConfirmation]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+import {SnapshotPicker} from './SnapshotPicker';
+export function NewMigrations({status,onSubmit,initialSource=''}:{status:Status;onSubmit:(action:Action)=>Promise<void>;initialSource?:string}) {
+ const [name,setName]=useState(initialSource),[provider,setProvider]=useState<'github'|'gitlab'>('github'),[instance,setInstance]=useState(''),[repository,setRepository]=useState(''),[token,setToken]=useState(''),[username,setUsername]=useState(''),[ca,setCa]=useState(''),[confirmation,setConfirmation]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+ useEffect(()=>{if(status.vault)setName(initialSource);},[initialSource,status.vault?.path]);
  const plan=status.newMigration,result=status.migrationResult;
  const ready=!!status.vault && !!status.workspace && !status.busy && !loading;
  useEffect(()=>{setToken('');setConfirmation('');if(!status.vault){setName('');setRepository('');setInstance('');setUsername('');setCa('');setError('');}},[!!status.vault]);
@@ -11,9 +13,9 @@ export function NewMigrations({status,onSubmit}:{status:Status;onSubmit:(action:
   if(execute && plan) await onSubmit({kind:'execute_new_migration',planId:plan.id,confirmation,...auth});
   else await onSubmit({kind:'prepare_new_migration',name,provider,instance:instance||null,repository,...auth});
  }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setToken('');setLoading(false);}}
- return <div className="migration-plans"><div className="notice"><div><strong>New private repositories only</strong><p>Existing destinations are refused. This workflow uses your personal namespace, disables destination automation, and transfers branches and tags with guarded atomic pushes. Archived LFS payloads are uploaded and independently verified before Git refs. Notes, hosting metadata and submodule repositories stay outside this transfer.</p></div></div>
- <section className="panel"><div className="panel-heading"><h2>Review a new migration</h2></div><form className="plan-form" onSubmit={e=>void submit(e)}>
- <label className="field"><span>Source snapshot</span><input aria-label="New migration source" required value={name} onChange={e=>setName(e.target.value)}/></label>
+ return <div className="migration-plans migration-composer"><div className="notice"><div><strong>New private repositories only</strong><p>Existing destinations are refused. This workflow uses your personal namespace, disables destination automation, and transfers branches and tags with guarded atomic pushes. Archived LFS payloads are uploaded and independently verified before Git refs. Notes, hosting metadata and submodule repositories stay outside this transfer.</p></div></div>
+ <section className="panel"><div className="panel-heading"><div><span className="mini-eyebrow">A SAFE MOVE, ONE STEP AT A TIME</span><h2>Where should your repository go?</h2><p>Choose an archived snapshot, connect a destination, then review every change.</p></div></div><form className="plan-form" onSubmit={e=>void submit(e)}>
+ <SnapshotPicker status={status} value={name} onChange={setName} label="New migration source"/>
  <label className="field"><span>Provider</span><select aria-label="New migration provider" value={provider} onChange={e=>setProvider(e.target.value as 'github'|'gitlab')}><option value="github">GitHub</option><option value="gitlab">GitLab</option></select></label>
  <label className="field"><span>Self-hosted HTTPS instance (optional)</span><input aria-label="New migration instance" type="url" value={instance} onChange={e=>setInstance(e.target.value)}/><small>Leave empty for GitHub.com or GitLab.com.</small></label>
  <label className="field"><span>Your username / new repository name</span><input aria-label="New migration repository" required value={repository} onChange={e=>setRepository(e.target.value)} placeholder="your-user/new-private-project"/><small>Organizations and groups are excluded from this first write workflow.</small></label>

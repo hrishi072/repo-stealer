@@ -2,6 +2,18 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-14 — desktop usability refresh implemented
+
+**User direction:** Feature development and a usable native GUI take priority over further performance benchmarking. No new benchmark work was added.
+
+**GUI:** A redesigned mint/dark home screen provides direct setup/capture/migration/backup actions, an illustrated private-vault panel and clearer status hierarchy. Repository cards expose restore/migrate actions; selecting Migrate carries the archived source into the destination form. A searchable, paginated snapshot picker replaces the need to remember names in both migration screens, while manual entry remains available and backend validation remains authoritative. Capture starts with source selection and suggests an editable timestamped snapshot name. The table remains available for detailed archive metadata. Migration record names are presentation hints, never write authorization or proof of snapshot validity.
+
+**Privacy:** Archive cards and snapshot suggestions are gated on vault unlock. Lock clears the selected source and picker data, including asynchronous result cancellation. No browser preferences or credential persistence was added. Existing encryption, exact review/confirmation, backend validation and cancellation gates remain mandatory.
+
+**Validation:** Production frontend build and 16 browser regressions plus the new capture-name test pass, covering card actions, source preselection, snapshot browsing, lock privacy, custom-name preservation and minimum-window layout. Native Linux/Windows flows now exercise the new home, card and picker actions. Native acceptance remains pending CI. A browser-only visual preview is saved in `docs/screenshots/desktop-home-alpha7.jpg`; it is clearly marked as a preview and cannot perform local operations.
+
+**Delivery:** Native build dependencies were installed from the system package repositories on the developer's openSUSE machine so a real desktop binary/installer can be delivered for direct testing. Local native compilation is in progress. Vault create/backup operations work without a Git workspace; actual Git capture/migration still requires verified ext4/XFS-on-LUKS (Linux) or EFS (Windows). No encryption bypass or automatic disk formatting was introduced.
+
 ## 2026-11-13 — LFS HTTP cancellation accepted
 
 **Development:** LFS Batch and Basic requests now use cancellable async header/body waits behind the existing synchronous transfer service. A single pinned future survives 25 ms polls without retrying or restarting the original deadline. Each request owns its client/runtime so shutting down one worker cannot terminate a pooled connection used by another. Uploads read at most 64 KiB at a time on that runtime; there are no detached file-I/O tasks. Request/response/runtime teardown releases streaming readers before the scoped worker joins and encrypted staging cleanup proceeds. Existing four-worker bounds, serial batches, pre-write encryption checks, size/SHA-256 checks, origin/credential policy, TLS and no-retry/no-redirect behavior remain mandatory.

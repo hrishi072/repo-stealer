@@ -18,7 +18,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 **LFS HTTP cancellation is accepted on Linux/Windows in [run 43421991963](https://github.com/hrishi072/repo-stealer/actions/runs/43421991963).** Batch header/body, object header/body, upload and verify stalls passed timed native tests while preserving bounded streaming, TLS/credential isolation, deadlines, no retries and joined-worker cleanup.
 
-**Next:** Measure representative real-link throughput and cancellation, then define the next provider/credential increment. Keep uncertain remote effects explicit and require reviewed recovery evidence before any future resume/write support.
+**Current priority:** Improve the native desktop experience and deliver a GUI build the user can test. The home/library/source-picker refresh is implemented; finish native acceptance and installer delivery. Further performance benchmarking is deferred at the user’s request. Keep uncertain remote effects explicit and require reviewed recovery evidence before any future resume/write support.
 
 Encrypted migration history/read-only reconciliation passed [run 43417766154](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154); [scope and usage](MIGRATION-HISTORY.md). Provider API cancellation passed [run 43419501257](https://github.com/hrishi072/repo-stealer/actions/runs/43419501257), including timed native desktop TLS stalls. These are accepted development changes; alpha.6 remains the published installer release.
 

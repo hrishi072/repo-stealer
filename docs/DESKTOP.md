@@ -4,7 +4,7 @@ Alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migrati
 
 The Tauri 2/React desktop exposes encrypted vaults, local/HTTPS Git and optional LFS capture, offline restore, same-key portable backups, read-only destination plans and guarded new-private personal migration for GitHub/GitLab cloud/self-hosted instances. Existing destinations cannot be adopted. [Alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed native Linux/Windows LFS migration/recovery/privacy, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
-![Browser preview of the desktop overview](screenshots/desktop-overview.png)
+![Updated desktop home preview](screenshots/desktop-home-alpha7.jpg)
 
 ## Use the application
 
@@ -56,3 +56,13 @@ Guarded new-private migration acceptance passed in [run 42834823523](https://git
 ## Alpha.6 LFS acceptance
 
 The [complete native matrix](https://github.com/hrishi072/repo-stealer/actions/runs/43167395183) passed LFS capture from the real checkbox, offline same-key recovery and both-provider migration of the recovered snapshot on Linux and Windows. Fresh installer/version checks passed. The [alpha.6 signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) repeated the complete matrix and published the installers linked above.
+
+## GUI usability refresh (development)
+
+The home screen now offers **Create your vault** or **Open existing vault**, followed by encrypted working-storage setup and capture. Native folder/file dialogs are available on path fields. Capture suggests a snapshot name from the chosen folder/HTTPS repository; the label stays editable and existing snapshots are never overwritten.
+
+**Repositories** opens a card library with **Restore** and **Migrate** actions. Migrate preselects that archive entry in **New migrations**. Both destination screens include **Browse saved snapshots**, with catalog search and pagination, so names need not be remembered. Use **Table** for detailed hashes/sizes. Migration records route to History; entry names are presentation hints only, and every operation still authenticates and validates the selected source in Rust.
+
+To test the native app, open the installed **Repo Stealer Desktop** launcher or the native desktop executable. Create an empty vault first; its create/unlock/lock and backup flows do not need Git working storage. Git capture/migration needs verified encrypted storage: ext4/XFS on an already mounted LUKS volume on Linux, or an EFS-capable folder on Windows. The app does not format/mount disks or bypass encryption verification. The browser preview demonstrates appearance only and cannot operate on local vaults.
+
+The updated native CI flows exercise the home, repository-card restore/migrate and snapshot picker before the existing real provider/backup/recovery checks. Native acceptance and installer delivery for this refresh remain pending.

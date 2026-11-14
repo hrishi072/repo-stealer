@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import {SnapshotPicker} from './SnapshotPicker';
 import { FolderOpen, GitBranch, ShieldCheck } from 'lucide-react';
 import { choosePath, listPlanRows, type Action, type PlanRow, type Status } from './api';
 
@@ -45,7 +46,7 @@ export function MigrationPlans({ status, onSubmit }: { status: Status; onSubmit:
     <div className="notice"><ShieldCheck size={20}/><div><strong>Read-only destination preflight</strong><p>No repository creation, pushes, deletions or default-branch changes. Plans stay in this session and clear when you lock the vault. Roles and policy listings cannot prove write authorization.</p></div></div>
     <section className="panel"><div className="panel-heading"><div><h2>Prepare a migration plan</h2><p>Unlock a vault and verify encrypted working storage first. Enter an existing destination’s canonical repository path.</p></div></div>
       <form onSubmit={event => void submit(event)} className="plan-form">
-        <label className="field"><span>Source snapshot name</span><input aria-label="Plan source snapshot" required maxLength={120} value={name} onChange={event => setName(event.target.value)} autoComplete="off"/></label>
+        <SnapshotPicker status={status} value={name} onChange={setName} label="Plan source snapshot"/>
         <label className="field"><span>Provider</span><select aria-label="Destination provider" value={provider} onChange={event => setProvider(event.target.value as 'github'|'gitlab')}><option value="github">GitHub</option><option value="gitlab">GitLab</option></select></label>
         <label className="checkbox-field"><input type="checkbox" checked={selfHosted} onChange={event => setSelfHosted(event.target.checked)}/> Self-hosted instance</label>
         {selfHosted && <label className="field"><span>Instance HTTPS URL</span><input aria-label="Destination instance" type="url" required value={instance} onChange={event => setInstance(event.target.value)} placeholder="https://git.example.com/platform"/><small>Web instance root, including any relative URL prefix. API paths are added automatically.</small></label>}
