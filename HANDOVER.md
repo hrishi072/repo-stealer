@@ -2,7 +2,7 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-14 — desktop usability refresh implemented
+## 2026-11-14 — desktop usability refresh installed and accepted
 
 **User direction:** Feature development and a usable native GUI take priority over further performance benchmarking. No new benchmark work was added.
 
@@ -10,9 +10,11 @@ Sections are chronological milestone records, newest first; earlier pending stat
 
 **Privacy:** Archive cards and snapshot suggestions are gated on vault unlock. Lock clears the selected source and picker data, including asynchronous result cancellation. No browser preferences or credential persistence was added. Existing encryption, exact review/confirmation, backend validation and cancellation gates remain mandatory.
 
-**Validation:** Production frontend build and 16 browser regressions plus the new capture-name test pass, covering card actions, source preselection, snapshot browsing, lock privacy, custom-name preservation and minimum-window layout. Native Linux/Windows flows now exercise the new home, card and picker actions. Native acceptance remains pending CI. A browser-only visual preview is saved in `docs/screenshots/desktop-home-alpha7.jpg`; it is clearly marked as a preview and cannot perform local operations.
+**Validation:** Production frontend build and all 17 browser regressions pass, covering card actions, source preselection, snapshot browsing, lock privacy, custom-name preservation and minimum-window layout. Native Linux/Windows flows now exercise the new home, card and picker actions. Signed commit `7d168f8` passed [full acceptance run 43587289308](https://github.com/hrishi072/repo-stealer/actions/runs/43587289308): native Linux/Windows CLI and real WebKitGTK/WebView2 GUI, card restore/migrate, source preselection/picker, installers, reciprocal recovery and cleanup. A browser-only visual preview is saved in `docs/screenshots/desktop-home-alpha7.jpg`; it is clearly marked as a preview and cannot perform local operations.
 
-**Delivery:** Native build dependencies were installed from the system package repositories on the developer's openSUSE machine so a real desktop binary/installer can be delivered for direct testing. Local native compilation is in progress. Vault create/backup operations work without a Git workspace; actual Git capture/migration still requires verified ext4/XFS-on-LUKS (Linux) or EFS (Windows). No encryption bypass or automatic disk formatting was introduced.
+**Delivery:** Native build dependencies were installed from the system package repositories on the developer's openSUSE machine so a real desktop binary/installer can be delivered for direct testing. Local native compilation completed successfully. The CI-tested Linux DEB/RPM/AppImage and Windows setup EXE were downloaded before staging cleanup into ignored `dist-desktop/preview-7d168f8/`, with local SHA256SUMS and BUILD.json provenance. The RPM was installed on this openSUSE machine, its installed-file integrity verified with `rpm -V`, and `/usr/bin/repo-stealer-desktop` launched successfully; the application-menu name is **Repo Stealer**. Local AppImage packaging hit tool-download stalls, so the tested CI packages are the delivered installers and the unused local toolchain was stopped. Vault create/backup operations work without a Git workspace; actual Git capture/migration still requires verified ext4/XFS-on-LUKS (Linux) or EFS (Windows). No encryption bypass or automatic disk formatting was introduced.
+
+**Next:** User GUI testing and feedback on onboarding/library/migration flows. Performance benchmark work remains deferred. No new release tag was published; the locally installed alpha.7 preview is distinct from published alpha.6 installers.
 
 ## 2026-11-13 — LFS HTTP cancellation accepted
 
