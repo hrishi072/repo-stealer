@@ -250,20 +250,36 @@ fn bounded_public_output(mut command: Command, timeout: Duration) -> Result<Vec<
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
-fn config_path(path: &Path) -> Result<String> {
-    let value = git_arg(path.as_os_str())
+fn argument_path(path: &Path) -> Result<String> {
+    let native = git_arg(path.as_os_str());
+    let value = native
         .to_str()
         .context("SSH paths must be UTF-8")?
-        .replace('\\', "/");
+        .to_owned();
+    #[cfg(windows)]
+    let value = value.replace('\\', "/");
     ensure!(
-        !value.chars().any(|c| c.is_control()) && !value.contains('~'),
+        !value.chars().any(|c| c.is_control()),
         "Unsupported SSH path"
     );
-    // OpenSSH expands percent tokens and environment references in file paths.
+    Ok(value)
+}
+fn config_path(path: &Path) -> Result<String> {
+    ensure!(
+        path.is_absolute(),
+        "SSH configuration paths must be absolute"
+    );
+    let value = argument_path(path)?;
+    // Absolute paths cannot trigger leading-tilde expansion; embedded tildes
+    // are ordinary characters, including Windows 8.3 names such as RUNNER~1.
+    // Escape percent tokens and refuse environment expansion in OpenSSH paths.
     ensure!(!value.contains("${"), "Unsupported SSH path");
     Ok(format!(
         "\"{}\"",
-        value.replace('%', "%%").replace('"', "\\\"")
+        value
+            .replace('\\', "\\\\")
+            .replace('%', "%%")
+            .replace('"', "\\\"")
     ))
 }
 pub(crate) fn configure(root: &Path, identity: &SshIdentity, options: &Options) -> Result<String> {
@@ -341,14 +357,12 @@ pub(crate) fn configure(root: &Path, identity: &SshIdentity, options: &Options) 
         config.push_str(" IdentitiesOnly no\n IdentityFile none\n");
     }
     private_write(&root.join("ssh-config"), config.as_bytes())?;
-    let executable = executable("ssh");
-    let program = git_arg(executable.as_os_str());
-    let program = program.to_str().context("Invalid OpenSSH path")?;
-    let path = git_arg(root.join("ssh-config").as_os_str());
+    let program = argument_path(&executable("ssh"))?;
+    let path = argument_path(&root.join("ssh-config"))?;
     Ok(format!(
         "{} -F {}",
-        shell_quote(program),
-        shell_quote(path.to_str().context("Invalid SSH configuration path")?)
+        shell_quote(&program),
+        shell_quote(&path)
     ))
 }
 
@@ -391,6 +405,10 @@ mod tests {
         let key = SshHostKey::parse("ssh-ed25519", &STANDARD.encode(bytes)).unwrap();
         key.validate().unwrap();
         let temp = tempfile::tempdir().unwrap();
+        let short_name = temp.path().join("RUNNER~1").join("100% workspace");
+        let quoted = config_path(&short_name).unwrap();
+        assert!(quoted.contains("RUNNER~1") && quoted.contains("100%% workspace"));
+
         let command = configure(
             temp.path(),
             &SshIdentity {
