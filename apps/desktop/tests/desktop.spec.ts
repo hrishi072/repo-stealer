@@ -9,6 +9,7 @@ async function mockDesktop(page: Page, unlocked = false, workspace = false, plan
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
       if (command === 'get_status') return state;
+      if (command === 'inspect_ssh_host') return [{algorithm:'ssh-ed25519',key:'synthetic-public-key',fingerprint:'SHA256:synthetic-reviewed-host-key'}];
       if (command === 'get_workspace_setup') return {recommendedImage:'/synthetic/working-storage.rsworkspace',serviceAvailable:true,containerExists:false};
       if (command === 'get_migration_history') {
         const {offset,limit}=args as {offset:number;limit:number};
@@ -352,4 +353,37 @@ test('JetBrains Mono is bundled and the storage wizard fits a short window',asyn
  await expect(submit).toBeVisible();
  const box=await submit.boundingBox();expect((box?.y??0)+(box?.height??0)).toBeLessThanOrEqual(700);
  await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+
+test('SSH capture requires reviewed host identity and sends only the selected key path', async ({page})=>{
+ await mockDesktop(page,true,true);await page.goto('/');
+ await page.getByRole('button',{name:'Capture repository',exact:true}).first().click();
+ await page.getByRole('button',{name:'SSH remote',exact:true}).click();
+ await page.getByLabel('SSH clone URL',{exact:true}).fill('git@github.com:org/project.git');
+ await page.getByLabel('SSH clone URL',{exact:true}).blur();
+ await page.getByLabel('Snapshot name',{exact:true}).fill('ssh-history');
+ await expect(page.getByLabel('Include Git LFS payloads',{exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Capture repository',exact:true}).last().click();
+ await expect(page.getByRole('alert')).toContainText('verify the SSH host fingerprint');
+ await page.getByRole('button',{name:'Private key file',exact:true}).click();
+ await page.getByLabel('SSH private key',{exact:true}).fill('/synthetic/private key');
+ await page.getByRole('button',{name:'Inspect host key',exact:true}).click();
+ await expect(page.locator('.ssh-fingerprint')).toHaveText('SHA256:synthetic-reviewed-host-key');
+ await page.getByLabel('Confirm SSH host fingerprint',{exact:true}).check();
+ await page.getByRole('button',{name:'Capture repository',exact:true}).last().click();
+ const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);
+ expect(calls.find(c=>c.command==='start_job')?.args.action).toEqual({kind:'capture_ssh',name:'ssh-history',url:'git@github.com:org/project.git',privateKey:'/synthetic/private key',hostKey:{algorithm:'ssh-ed25519',key:'synthetic-public-key',fingerprint:'SHA256:synthetic-reviewed-host-key'}});
+});
+
+test('editing the SSH URL invalidates host approval and agent mode needs no key file',async({page})=>{
+ await mockDesktop(page,true,true);await page.goto('/');await page.getByRole('button',{name:'Capture repository',exact:true}).first().click();await page.getByRole('button',{name:'SSH remote',exact:true}).click();
+ await page.getByLabel('SSH clone URL',{exact:true}).fill('ssh://git@example.com:2222/repo.git');
+ await page.getByRole('button',{name:'Inspect host key',exact:true}).click();await page.getByLabel('Confirm SSH host fingerprint',{exact:true}).check();
+ await page.getByLabel('SSH clone URL',{exact:true}).fill('git@other.example:repo.git');
+ await expect(page.getByLabel('Confirm SSH host fingerprint',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspect host key',exact:true}).click();await page.getByLabel('Confirm SSH host fingerprint',{exact:true}).check();
+ await page.getByLabel('Snapshot name',{exact:true}).fill('agent-history');await page.getByRole('button',{name:'Capture repository',exact:true}).last().click();
+ const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:{privateKey:string|null;kind:string}}}[]}).__desktopTestCalls);
+ expect(calls.find(c=>c.command==='start_job')?.args.action).toMatchObject({kind:'capture_ssh',privateKey:null});
 });

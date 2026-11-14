@@ -14,6 +14,7 @@ export type Action =
   | {kind:'open_protected_workspace';imagePath:string;passphrase:string}
   | {kind:'close_protected_workspace'|'create_default_workspace'}
   | { kind: 'capture_local'; name: string; source: string; includeLfs: boolean }
+  | { kind:'capture_ssh';name:string;url:string;privateKey:string|null;hostKey:SshHostKey }
   | { kind: 'capture_remote'; name: string; url: string; username: string|null; token: string|null; caFile: string|null; includeLfs: boolean }
   | { kind: 'prepare_plan'; name: string; provider: 'github'|'gitlab'; instance: string|null; repository: string; token: string|null; username: string|null; caFile: string|null }
   | { kind:'prepare_new_migration'; name:string; provider:'github'|'gitlab'; instance:string|null; repository:string; token:string; username:string|null; caFile:string|null }
@@ -50,3 +51,6 @@ export async function listMigrationHistory(offset:number,limit=20):Promise<{item
 
 export type WorkspaceSetupInfo={recommendedImage:string|null;serviceAvailable:boolean;containerExists:boolean};
 export async function getWorkspaceSetup():Promise<WorkspaceSetupInfo>{return desktop?invoke('get_workspace_setup'):{recommendedImage:null,serviceAvailable:false,containerExists:false};}
+
+export type SshHostKey={algorithm:string;key:string;fingerprint:string};
+export async function inspectSshHost(url:string):Promise<SshHostKey[]>{requireDesktop();return invoke('inspect_ssh_host',{url});}

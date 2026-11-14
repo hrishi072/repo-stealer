@@ -38,6 +38,14 @@ fn get_migration_history(
     engine.migration_history(offset, limit)
 }
 #[tauri::command]
+async fn inspect_ssh_host(url: String) -> Result<Vec<repo_stealer_app::SshHostKey>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        repo_stealer_app::inspect_ssh_host(&url).map_err(|e| format!("{e:#}"))
+    })
+    .await
+    .map_err(|_| "SSH host inspection stopped".to_owned())?
+}
+#[tauri::command]
 async fn get_workspace_setup() -> Result<repo_stealer_app::WorkspaceSetup, String> {
     tauri::async_runtime::spawn_blocking(repo_stealer_app::workspace_setup)
         .await
@@ -123,6 +131,7 @@ fn main() {
             get_plan_rows,
             get_migration_history,
             get_workspace_setup,
+            inspect_ssh_host,
             start_job,
             lock_vault,
             cancel_job,

@@ -17,6 +17,7 @@ from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
 
+from test_ssh import SSHFixture
 from test_git import encrypted_files, fixture, inventory
 from test_remote import HTTPSFixture, TOKEN, USERNAME
 from test_migration import ProviderFixture
@@ -331,6 +332,33 @@ def main():
                     target.wait_lfs_idle()
                     encrypted_files(work)
                     print("LFS_MUTATION_CANCELLATION_JSON="+json.dumps({"stage":stage,"cancelToCompletionSeconds":round(elapsed,6),"gitPushes":0,"state":"cancelled_needs_attention"}),flush=True)
+            click("Overview")
+            with SSHFixture(root/"ssh-server") as ssh:
+                click("Capture repository");click("SSH remote")
+                fill("SSH clone URL",ssh.url);fill("Snapshot name","synthetic-ssh-history")
+                click("Private key file");fill("SSH private key",ssh.private_key)
+                click("Inspect host key")
+                wait.until(lambda d: d.find_element(By.CSS_SELECTOR,".ssh-fingerprint").text==ssh.fingerprint)
+                driver.find_element(By.CSS_SELECTOR,'input[aria-label="Confirm SSH host fingerprint"]').click()
+                submit_modal();ssh_result=completed()
+                assert ssh_result["jobs"][0]["result"]["url"]==ssh.url
+                assert str(ssh.private_key) not in json.dumps(ssh_result)
+                click("Repositories");fill("Search repository library","synthetic-ssh-history")
+                wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".repository-card"))==1)
+                click("Restore");fill("New bare repository",work/"ssh-restored.git");submit_modal();completed()
+                assert inventory(ssh.repository)==inventory(work/"ssh-restored.git")
+                encrypted_files(work)
+                ssh.mode="stall";ssh.executing.clear();before_ssh=status()["vault"]["itemCount"]
+                click("Capture repository");click("SSH remote")
+                fill("SSH clone URL",ssh.url);fill("Snapshot name","cancelled-ssh")
+                click("Private key file");fill("SSH private key",ssh.private_key);click("Inspect host key")
+                wait.until(lambda d:d.find_element(By.CSS_SELECTOR,".ssh-fingerprint").text==ssh.fingerprint)
+                driver.find_element(By.CSS_SELECTOR,'input[aria-label="Confirm SSH host fingerprint"]').click()
+                submit_modal();wait.until(lambda _:ssh.executing.is_set())
+                started=time.perf_counter();click("Cancel");completed("cancelled")
+                assert time.perf_counter()-started<2 and status()["vault"]["itemCount"]==before_ssh
+                assert not list(work.glob(".rs-git-*"))
+
             click("Lock vault");wait.until(lambda _:status()["vault"] is None)
             assert status()["newMigration"] is None and status()["migrationResult"] is None and status()["migrationHistory"] is None
             print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")

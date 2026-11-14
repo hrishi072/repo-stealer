@@ -51,6 +51,7 @@ pub(crate) struct Runner {
     root: PathBuf,
     options: Options,
     https: bool,
+    ssh: Option<(String, bool)>,
 }
 impl Runner {
     pub(crate) fn new(root: &Path, options: &Options) -> Result<Self> {
@@ -69,11 +70,16 @@ impl Runner {
             root: root.into(),
             options: options.clone(),
             https: false,
+            ssh: None,
         })
     }
 
     pub(crate) fn enable_https(&mut self) {
         self.https = true;
+    }
+
+    pub(crate) fn enable_ssh(&mut self, command: String, agent: bool) {
+        self.ssh = Some((command, agent));
     }
 
     pub(crate) fn run(&self, repository: Option<&Path>, args: &[&OsStr]) -> Result<Vec<u8>> {
@@ -229,6 +235,19 @@ impl Runner {
             "fetch.fsckObjects=true",
         ] {
             command.arg("-c").arg(setting);
+        }
+        if let Some((ssh, agent)) = &self.ssh {
+            command
+                .arg("-c")
+                .arg("protocol.ssh.allow=always")
+                .env("GIT_SSH_COMMAND", ssh)
+                .env("GIT_SSH_VARIANT", "ssh")
+                .env("SSH_ASKPASS_REQUIRE", "never");
+            if *agent {
+                if let Some(socket) = std::env::var_os("SSH_AUTH_SOCK") {
+                    command.env("SSH_AUTH_SOCK", socket);
+                }
+            }
         }
         if self.https {
             command.arg("-c").arg("protocol.https.allow=always");

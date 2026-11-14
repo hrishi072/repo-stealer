@@ -3,8 +3,10 @@
 #[cfg(target_os = "linux")]
 mod protected_storage;
 use repo_stealer_git::{
-    capture, capture_remote, restore, CaptureProvenance, Credentials, Options, RemoteUrl, Workspace,
+    capture, capture_remote, capture_ssh, restore, CaptureProvenance, Credentials, Options,
+    RemoteUrl, Workspace,
 };
+pub use repo_stealer_git::{inspect_ssh_host, SshHostKey};
 pub use repo_stealer_migration::HistoryPage;
 use repo_stealer_vault::{SecretString, Vault};
 use serde::{Deserialize, Serialize};
@@ -67,6 +69,12 @@ pub enum Action {
         source: String,
         #[serde(default)]
         include_lfs: bool,
+    },
+    CaptureSsh {
+        name: String,
+        url: String,
+        private_key: Option<String>,
+        host_key: repo_stealer_git::SshHostKey,
     },
     CaptureRemote {
         name: String,
@@ -141,6 +149,7 @@ impl Action {
             Self::CreateDefaultWorkspace => "Create encrypted working folder",
             Self::CaptureLocal { .. } => "Capture repository",
             Self::CaptureRemote { .. } => "Capture HTTPS repository",
+            Self::CaptureSsh { .. } => "Capture SSH repository",
             Self::PreparePlan { .. } => "Prepare read-only migration plan",
             Self::PrepareNewMigration { .. } => "Review new private migration",
             Self::ExecuteNewMigration { .. } => "Migrate to new private repository",
@@ -157,6 +166,7 @@ impl Action {
             self,
             Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
+                | Self::CaptureSsh { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
@@ -169,6 +179,7 @@ impl Action {
             self,
             Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
+                | Self::CaptureSsh { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
@@ -189,6 +200,7 @@ impl Action {
             self,
             Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
+                | Self::CaptureSsh { .. }
                 | Self::RestoreGit { .. }
                 | Self::PreparePlan { .. }
                 | Self::PrepareNewMigration { .. }
@@ -759,6 +771,29 @@ fn perform(
                     &root,
                     options,
                 )?;
+            }
+            Action::CaptureSsh {
+                name,
+                url,
+                private_key,
+                host_key,
+            } => {
+                let url = repo_stealer_git::SshUrl::parse(&url)?;
+                let identity = repo_stealer_git::SshIdentity {
+                    private_key: private_key.as_deref().map(checked_path).transpose()?,
+                    host_key,
+                };
+                let root = Workspace::open(Path::new(
+                    &workspace.as_ref().ok_or("workspace required")?.path,
+                ))?;
+                return Ok(Outcome::Capture(capture_ssh(
+                    vault.as_mut().ok_or("vault required")?,
+                    &name,
+                    &url,
+                    &identity,
+                    &root,
+                    options,
+                )?));
             }
             Action::CaptureRemote {
                 name,

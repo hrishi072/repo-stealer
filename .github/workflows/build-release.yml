@@ -100,6 +100,9 @@ jobs:
           python scripts/ci_workspace.py create
       - name: Full-history Git on verified encrypted storage
         run: python scripts/test_git.py ${{ matrix.binary }} --fixture-out fixture/git-portable.rsbackup
+      - run: python -m pip install paramiko==5.0.0
+      - name: SSH clone, host pinning, authentication and offline restore
+        run: python scripts/test_ssh.py ${{ matrix.binary }}
       - name: HTTPS capture, authentication, trust and source mutation
         run: python scripts/test_remote.py ${{ matrix.binary }} --fixture-out fixture/remote-portable.rsbackup
       - name: Encrypted historical LFS capture and offline restore
@@ -210,7 +213,7 @@ jobs:
       - run: cargo install tauri-driver --version 2.0.6 --locked
         env:
           CARGO_TARGET_DIR: apps/desktop/src-tauri/target/driver
-      - run: python -m pip install selenium==4.52.0
+      - run: python -m pip install selenium==4.52.0 paramiko==5.0.0
       - if: runner.os == 'Windows'
         name: Match automation driver to installed WebView2 runtime
         run: python scripts/prepare_webview_driver.py

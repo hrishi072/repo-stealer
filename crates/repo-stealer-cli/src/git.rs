@@ -1,5 +1,5 @@
 use repo_stealer_git::{
-    capture, capture_remote, restore, Credentials, Options, RemoteUrl, Workspace,
+    capture, capture_remote, capture_ssh, restore, Credentials, Options, RemoteUrl, Workspace,
 };
 use repo_stealer_vault::{SecretString, Vault};
 use serde::Deserialize;
@@ -10,6 +10,7 @@ pub const HELP: &str = "Git commands (installed Git 2.48+ required):
   repo-stealer workspace check ROOT
   repo-stealer git capture VAULT NAME LOCAL_REPOSITORY --work-root ROOT
   repo-stealer git capture-remote VAULT NAME HTTPS_URL --work-root ROOT [--username NAME] [--ca-file PEM]
+  repo-stealer git capture-ssh VAULT NAME SSH_URL --work-root ROOT --ssh-host-key PUBLIC_KEY_FILE [--ssh-key PRIVATE_KEY]
   repo-stealer git restore VAULT NAME NEW_BARE_REPOSITORY --work-root ROOT
 
 Linux: ROOT must be on verified ext4/XFS LUKS storage (provision separately).
@@ -23,6 +24,7 @@ Git commands accept --password-stdin and --timeout-seconds N (default 3600 per G
 Remote credentials are prompted when --username is supplied; never put tokens in URLs/argv/env.
 Remote automation: --secrets-stdin reads JSON {\"vault_passphrase\":\"...\",\"token\":\"...\"}; token may be null for anonymous capture.
 --lfs-workers 1..4 bounds concurrent HTTPS LFS object transfers (default 4; use 1 for serial transfers).
+SSH needs OpenSSH and a verified server public key. Private key files must be unencrypted; use an unlocked SSH agent for protected keys. No user SSH config or host trust files are changed.
 HTTPS redirects are refused. Wiki repositories need their own explicit clone URL.";
 
 pub fn run_workspace(args: &[OsString]) -> Result<(), String> {
@@ -51,6 +53,8 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     let mut timeout = 3600;
     let mut username = None;
     let mut ca_file = None;
+    let mut ssh_key = None;
+    let mut ssh_host_key = None;
     let mut secrets_stdin = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -81,6 +85,16 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
                 return Err(HELP.into());
             }
             username = Some(iter.next().and_then(|s| s.to_str()).ok_or(HELP)?.to_owned());
+        } else if arg == "--ssh-key" {
+            if ssh_key.is_some() {
+                return Err(HELP.into());
+            }
+            ssh_key = Some(Path::new(iter.next().ok_or(HELP)?).to_owned());
+        } else if arg == "--ssh-host-key" {
+            if ssh_host_key.is_some() {
+                return Err(HELP.into());
+            }
+            ssh_host_key = Some(Path::new(iter.next().ok_or(HELP)?));
         } else if arg == "--ca-file" {
             if ca_file.is_some() {
                 return Err(HELP.into());
@@ -101,13 +115,47 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if positional.len() != 4
         || !matches!(
             positional[0].to_str(),
-            Some("capture" | "restore" | "capture-remote")
+            Some("capture" | "restore" | "capture-remote" | "capture-ssh")
         )
         || !(1..=86400).contains(&timeout)
     {
         return Err(HELP.into());
     }
     let remote = positional[0] == "capture-remote";
+    let ssh = positional[0] == "capture-ssh";
+    if (ssh && (include_lfs || lfs_workers.is_some() || ssh_host_key.is_none()))
+        || (!ssh && (ssh_key.is_some() || ssh_host_key.is_some()))
+    {
+        return Err("SSH capture needs --ssh-host-key and currently supports Git history only; SSH key options require capture-ssh.".into());
+    }
+    let ssh_url = if ssh {
+        Some(
+            repo_stealer_git::SshUrl::parse(positional[3].to_str().ok_or("SSH URL must be UTF-8")?)
+                .map_err(|e| e.to_string())?,
+        )
+    } else {
+        None
+    };
+    let ssh_identity = if let Some(path) = ssh_host_key {
+        let mut text = String::new();
+        std::fs::File::open(path)
+            .and_then(|f| f.take(65537).read_to_string(&mut text))
+            .map_err(|_| "Cannot read SSH host public key")?;
+        if text.len() > 65536 {
+            return Err("SSH host public key is too large".into());
+        }
+        let fields: Vec<_> = text.split_whitespace().collect();
+        if fields.len() < 2 {
+            return Err("Invalid SSH host public key".into());
+        }
+        Some(repo_stealer_git::SshIdentity {
+            private_key: ssh_key,
+            host_key: repo_stealer_git::SshHostKey::parse(fields[0], fields[1])
+                .map_err(|e| e.to_string())?,
+        })
+    } else {
+        None
+    };
     if (secrets_stdin && stdin)
         || (!remote && (username.is_some() || ca_file.is_some() || secrets_stdin))
         || (remote && stdin && username.is_some())
@@ -164,7 +212,14 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     ctrlc::set_handler(move || cancelled.store(true, Ordering::Relaxed))
         .map_err(|_| "cannot install cancellation handler")?;
     let path = Path::new(positional[3]);
-    let result = if let Some(url) = &url {
+    let result = if let (Some(url), Some(identity)) = (&ssh_url, &ssh_identity) {
+        capture_ssh(&mut vault, name, url, identity, &workspace, &options).map(|report| {
+            println!(
+                "{}",
+                serde_json::to_string(&report).expect("serializable provenance")
+            )
+        })
+    } else if let Some(url) = &url {
         capture_remote(
             &mut vault,
             name,

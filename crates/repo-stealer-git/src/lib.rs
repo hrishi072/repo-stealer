@@ -5,7 +5,7 @@ mod runner;
 mod workspace;
 
 pub use remote::{
-    capture_remote, observe_remote, Advertisement, CaptureProvenance, Credentials,
+    capture_remote, capture_ssh, observe_remote, Advertisement, CaptureProvenance, Credentials,
     ExternalInventory, RemoteUrl,
 };
 pub use repository::{capture, restore, snapshot_refs, SnapshotRefs};
@@ -21,3 +21,6 @@ pub use lfs::LfsObject;
 mod lfs_pool;
 
 mod lfs_http;
+
+mod ssh;
+pub use ssh::{inspect_ssh_host, SshHostKey, SshIdentity, SshUrl};

@@ -42,7 +42,7 @@ Release: {"0." + suffix if suffix else "1"}
 Summary: Encrypted repository capture and recovery desktop
 License: LicenseRef-Proprietary
 BuildArch: x86_64
-Requires: udisks2, cryptsetup, e2fsprogs
+Requires: udisks2, cryptsetup, e2fsprogs, openssh-clients
 Source0: repo-stealer-desktop
 Source1: repo-stealer.png
 Source2: com.hrishi072.repostealer.desktop

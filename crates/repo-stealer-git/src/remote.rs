@@ -85,7 +85,10 @@ pub struct CaptureProvenance {
 impl CaptureProvenance {
     pub(crate) fn validate(&self) -> Result<()> {
         ensure!(
-            RemoteUrl::parse(&self.url)?.as_str() == self.url
+            (RemoteUrl::parse(&self.url)
+                .map(|u| u.as_str().to_owned())
+                .or_else(|_| crate::SshUrl::parse(&self.url).map(|u| u.as_str().to_owned()))?
+                == self.url)
                 && self.advertised_ref_count <= 100_000,
             "Invalid remote snapshot provenance"
         );
@@ -120,28 +123,79 @@ pub fn capture_remote(
     workspace: &Workspace,
     options: &Options,
 ) -> Result<CaptureProvenance> {
+    capture_from(
+        vault,
+        name,
+        Source::Https(url, credentials, ca_file),
+        workspace,
+        options,
+    )
+}
+
+pub fn capture_ssh(
+    vault: &mut Vault,
+    name: &str,
+    url: &crate::SshUrl,
+    identity: &crate::SshIdentity,
+    workspace: &Workspace,
+    options: &Options,
+) -> Result<CaptureProvenance> {
+    ensure!(
+        !options.include_lfs,
+        "SSH capture currently archives Git history only. Use HTTPS to include LFS payloads."
+    );
+    capture_from(vault, name, Source::Ssh(url, identity), workspace, options)
+}
+
+enum Source<'a> {
+    Https(&'a RemoteUrl, Option<Credentials>, Option<&'a Path>),
+    Ssh(&'a crate::SshUrl, &'a crate::SshIdentity),
+}
+impl Source<'_> {
+    fn url(&self) -> &str {
+        match self {
+            Self::Https(url, _, _) => url.as_str(),
+            Self::Ssh(url, _) => url.as_str(),
+        }
+    }
+}
+fn capture_from(
+    vault: &mut Vault,
+    name: &str,
+    source: Source<'_>,
+    workspace: &Workspace,
+    options: &Options,
+) -> Result<CaptureProvenance> {
     ensure!(
         !vault.entries().iter().any(|e| e.name == name),
         "Snapshot name already exists"
     );
-    options.report("Preparing verified encrypted HTTPS working storage");
+    options.report("Preparing verified encrypted remote working storage");
     let session = workspace.session()?;
     let mut runner = Runner::new(session.path(), options)?;
     runner.check_version()?;
-    configure_https(session.path(), url, credentials.clone(), ca_file)?;
+    match &source {
+        Source::Https(url, credentials, ca_file) => {
+            configure_https(session.path(), url, credentials.clone(), *ca_file)?;
+            runner.enable_https();
+        }
+        Source::Ssh(_, identity) => {
+            let command = crate::ssh::configure(session.path(), identity, options)?;
+            runner.enable_ssh(command, identity.private_key.is_none());
+        }
+    }
     workspace.verify_tree(session.path())?;
-    runner.enable_https();
     options.report("Reading advertised remote refs");
-    let before = advertised(&runner, url)?;
+    let before = advertised_url(&runner, source.url())?;
     let acquired = session.path().join("acquired.git");
-    options.report("Acquiring full Git history over HTTPS");
+    options.report("Acquiring full Git history from remote");
     runner.run(None, &[
         OsStr::new("clone"), OsStr::new("--mirror"), OsStr::new("--no-local"),
         OsStr::new("--no-hardlinks"), OsStr::new("--no-checkout"),
         OsStr::new("--ref-format=reftable"),
         &std::ffi::OsString::from(format!("--template={}", git_arg(session.path().join("empty").as_os_str()).to_string_lossy())),
-        OsStr::new("--"), OsStr::new(url.as_str()), acquired.as_os_str(),
-    ]).context("HTTPS acquisition failed; check URL, credentials and certificate trust; redirects are refused")?;
+        OsStr::new("--"), OsStr::new(source.url()), acquired.as_os_str(),
+    ]).context("Remote acquisition failed; check URL, credentials, SSH host key or HTTPS certificate trust")?;
     // Some servers advertise only an OID for a detached HEAD. Preserve that
     // observation rather than accepting clone's branch-name inference.
     if before.symbolic_head.is_none() {
@@ -164,8 +218,13 @@ pub fn capture_remote(
         options.report("Downloading and verifying all reachable LFS payloads");
         let objects =
             crate::lfs::inventory(&runner, &acquired, session.path(), before.head.is_some())?;
-        crate::lfs::Transport::new(url, credentials, ca_file, options)?
-            .download(&acquired, &objects)?;
+        match &source {
+            Source::Https(url, credentials, ca_file) => {
+                crate::lfs::Transport::new(url, credentials.clone(), *ca_file, options)?
+                    .download(&acquired, &objects)?
+            }
+            Source::Ssh(..) => anyhow::bail!("SSH LFS payload transfer is not supported"),
+        }
         lfs_summary = Some(LfsSummary {
             objects: objects.len(),
             bytes: objects.iter().map(|o| o.size).sum(),
@@ -174,7 +233,7 @@ pub fn capture_remote(
     options.report("Inventorying external content at default HEAD");
     let provenance = CaptureProvenance {
         lfs: lfs_summary,
-        url: url.as_str().into(),
+        url: source.url().into(),
         advertised_ref_count: before.refs.len(),
         head_advertised: before.head.is_some() || before.symbolic_head.is_some(),
         inventory: inventory(&runner, &acquired, &manifest, session.path())?,
@@ -183,7 +242,7 @@ pub fn capture_remote(
     let recheck = || {
         options.report("Rechecking remote refs before archive publication");
         ensure!(
-            before == advertised(&runner, url)?,
+            before == advertised_url(&runner, source.url())?,
             "Remote refs or HEAD changed during acquisition; no snapshot was published"
         );
         workspace.verify_tree(session.path())?;
@@ -275,7 +334,7 @@ pub(crate) fn configure_https(
     private_write(&root.join("https-config"), config.as_bytes())
 }
 
-fn private_write(path: &Path, contents: &[u8]) -> Result<()> {
+pub(crate) fn private_write(path: &Path, contents: &[u8]) -> Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -331,8 +390,11 @@ pub fn observe_remote(
     Ok(observed)
 }
 pub(crate) fn advertised(runner: &Runner, url: &RemoteUrl) -> Result<Advertisement> {
-    let bytes = runner.run(None, &[OsStr::new("ls-remote"), OsStr::new("--symref"), OsStr::new("--"), OsStr::new(url.as_str())])
-        .context("Cannot read HTTPS refs; check URL, credentials and certificate trust; redirects are refused")?;
+    advertised_url(runner, url.as_str())
+}
+fn advertised_url(runner: &Runner, url: &str) -> Result<Advertisement> {
+    let bytes = runner.run(None, &[OsStr::new("ls-remote"), OsStr::new("--symref"), OsStr::new("--"), OsStr::new(url)])
+        .context("Cannot read remote refs; check authentication and the selected host key or HTTPS trust")?;
     parse_advertisement(&bytes)
 }
 fn parse_advertisement(bytes: &[u8]) -> Result<Advertisement> {

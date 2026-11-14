@@ -52,3 +52,9 @@ Git behavior references: [credential-store](https://git-scm.com/docs/git-credent
 Published after the [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/42792675341) repeated all native, reciprocal recovery, packaging, version/signature and cleanup gates successfully. All ten downloaded release packages matched SHA256SUMS.
 
 The synthetic TLS fixture uses a separate CA and server leaf plus a signed CRL at a disposable loopback HTTP endpoint. This satisfies both strict Rustls end-entity validation and Windows Schannel revocation checks without changing production TLS settings. `python scripts/test_remote.py --probe-https` diagnoses only this anonymous fixture before compilation. Production private-CA servers must satisfy the installed Git TLS backend's normal revocation policy as well as chain/name verification.
+
+## SSH capture
+
+The desktop now offers a separate SSH clone method; see [SSH GUI setup and limits](DESKTOP.md#ssh-clone-access-development). The HTTPS URL/parser, HTTP credential scoping and migration transports remain HTTPS-only. SSH acquisition shares the verified remote-capture publication pipeline, with explicit per-job host-key pinning and isolated OpenSSH configuration. It never converts SSH credentials into HTTP credentials or invokes `git-lfs-authenticate`.
+
+CLI equivalent: `repo-stealer git capture-ssh VAULT NAME git@host:group/repo.git --work-root ROOT --ssh-host-key SERVER_PUBLIC_KEY_FILE [--ssh-key PRIVATE_KEY]`. The public-key file contains `algorithm base64-key` (e.g. a server `.pub` key verified independently). Without `--ssh-key`, use an unlocked OpenSSH agent. `--password-stdin` supplies only the vault passphrase. `--include-lfs` is rejected for SSH before network acquisition.
