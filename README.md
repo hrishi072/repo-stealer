@@ -65,7 +65,7 @@ Automation can supply the passphrase through stdin using `--password-stdin` (one
 
 ## Full-history local Git snapshots
 
-Installed Git 2.48+ and verified encrypted working storage are required. Linux currently accepts ext4/XFS on an already mounted LUKS volume; Windows `workspace init` creates an EFS-encrypted directory. Unsupported or unverified storage is rejected.
+Installed Git 2.48+ and verified encrypted working storage are required. The desktop provides guided Linux LUKS2/ext4 container creation/unlock and one-click Windows EFS folder setup. Linux CLI users supply mounted ext4/XFS on LUKS; Windows `workspace init` creates an EFS-encrypted directory. See [GUI setup](docs/DESKTOP.md#guided-protected-storage-development). Unsupported or unverified storage is rejected.
 
 ```sh
 repo-stealer workspace init /mnt/already-encrypted/rs-work

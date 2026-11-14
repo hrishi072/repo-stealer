@@ -1,14 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Status } from '../src/api';
 
-async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false, migration = false) {
-  await page.addInitScript(({ unlocked, workspace, plan, migration }) => {
-    const state:Status = { version: '0.1.0-alpha.5', platform: 'linux', vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true, plan: plan ? {schema:1,observedAt:10,provider:'gitlab',deployment:'self_hosted',instance:'https://git.example/platform/',requestedRepository:'group/sub/repo',sourceName:'history',sourceSha256:'a'.repeat(64),sourceVerification:'authenticated_manifest',actor:{id:1,login:'fixture'},repository:null,policies:[{endpoint:'protected_branches',complete:false,count:0,issue:{code:'access_denied',status:403,retryAfterSeconds:null}}],blockers:[],warnings:['policy_coverage_incomplete_never_assume_unprotected'],apiIssues:[],destinationFingerprint:'b'.repeat(64),destinationHead:null,sourceExcludedRefs:2,destinationExcludedRefs:1,rows:41,counts:{create_candidate:41},executionSupported:false,writeAuthorization:'unproven'} : null };
+async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false, migration = false, platform = 'linux') {
+  await page.addInitScript(({ unlocked, workspace, plan, migration, platform }) => {
+    const state:Status = { version: '0.1.0-alpha.5', platform, vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true, plan: plan ? {schema:1,observedAt:10,provider:'gitlab',deployment:'self_hosted',instance:'https://git.example/platform/',requestedRepository:'group/sub/repo',sourceName:'history',sourceSha256:'a'.repeat(64),sourceVerification:'authenticated_manifest',actor:{id:1,login:'fixture'},repository:null,policies:[{endpoint:'protected_branches',complete:false,count:0,issue:{code:'access_denied',status:403,retryAfterSeconds:null}}],blockers:[],warnings:['policy_coverage_incomplete_never_assume_unprotected'],apiIssues:[],destinationFingerprint:'b'.repeat(64),destinationHead:null,sourceExcludedRefs:2,destinationExcludedRefs:1,rows:41,counts:{create_candidate:41},executionSupported:false,writeAuthorization:'unproven'} : null };
     state.newMigration=migration ? {id:'1'.repeat(32),expiresAt:Math.floor(Date.now()/1000)+900,provider:'github',instance:'https://github.com/',deployment:'cloud',repository:'fixture/new-private',actor:{id:10,login:'fixture'},sourceName:'history',sourceSha256:'a'.repeat(64),defaultBranch:'main',refCount:5,refs:{'refs/heads/main':'b'.repeat(40)},excludedRefs:2,visibility:'private',automation:'disabled',scopeProof:'classic_repo_workflow'} : null;
     const calls: { command: string; args: unknown }[] = [];
     Object.assign(window, { __desktopTestCalls: calls, __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
       calls.push({ command, args });
       if (command === 'get_status') return state;
+      if (command === 'get_workspace_setup') return {recommendedImage:'/synthetic/working-storage.rsworkspace',serviceAvailable:true,containerExists:false};
       if (command === 'get_migration_history') {
         const {offset,limit}=args as {offset:number;limit:number};
         return {total:21,items:Array.from({length:Math.min(limit,21-offset)},(_,i)=>({id:(offset+i+1).toString(16).padStart(32,'0'),repository:'fixture/recovered-private',createdAt:1,state:'interrupted_needs_attention'}))};
@@ -27,7 +28,7 @@ async function mockDesktop(page: Page, unlocked = false, workspace = false, plan
       if (command === 'choose_path') return '/synthetic/chosen';
       throw new Error('Unexpected test command: ' + command);
     } } });
-  }, { unlocked, workspace, plan, migration });
+  }, { unlocked, workspace, plan, migration, platform });
 }
 
 test('browser preview is honest and capture stays gated', async ({ page }) => {
@@ -295,4 +296,60 @@ test('capture suggests a repository name and preserves a custom label',async({pa
  await page.getByLabel('Local repository',{exact:true}).fill('/synthetic/another.git');
  await page.getByLabel('Snapshot name',{exact:true}).focus();
  await expect(page.getByLabel('Snapshot name',{exact:true})).toHaveValue('my-release-archive');
+});
+
+
+test('guided Linux setup creates a new encrypted container with transient passphrases',async({page})=>{
+ await mockDesktop(page,true);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Set up workspace',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'A protected place to work'})).toBeVisible();
+ await expect(page.getByLabel('Protected storage file',{exact:true})).toHaveValue('/synthetic/working-storage.rsworkspace');
+ await page.getByLabel('Storage passphrase',{exact:true}).fill('synthetic storage passphrase');
+ await page.getByLabel('Confirm storage passphrase',{exact:true}).fill('different synthetic secret');
+ await page.getByRole('button',{name:'Create and use protected storage',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('do not match');
+ await page.getByLabel('Confirm storage passphrase',{exact:true}).fill('synthetic storage passphrase');
+ await page.getByLabel('Protected storage capacity',{exact:true}).selectOption('8');
+ await page.getByRole('button',{name:'Create and use protected storage',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);
+ expect(calls.find(c=>c.command==='start_job')?.args.action).toEqual({kind:'create_protected_workspace',imagePath:'/synthetic/working-storage.rsworkspace',capacityGib:8,passphrase:'synthetic storage passphrase'});
+});
+
+test('guided setup reopens images and keeps existing-folder setup available',async({page})=>{
+ await mockDesktop(page,true);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Set up workspace',exact:true}).click();
+ await page.getByRole('button',{name:'Unlock an existing container',exact:false}).click();
+ await page.getByLabel('Storage passphrase',{exact:true}).fill('synthetic existing secret');
+ await expect(page.getByLabel('Confirm storage passphrase',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Use an existing encrypted folder',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Set up Git working storage'})).toBeVisible();
+ await page.getByRole('button',{name:'Create workspace',exact:true}).click();
+ await expect(page.getByLabel('Encrypted workspace',{exact:true})).toBeVisible();
+});
+
+test('Windows offers one-click EFS setup without a container password',async({page})=>{
+ await mockDesktop(page,true,false,false,false,'windows');
+ await page.goto('/');
+ await page.getByRole('button',{name:'Set up workspace',exact:true}).click();
+ await expect(page.getByText('Let Windows protect the folder',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Storage passphrase',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Create encrypted working folder',exact:true}).click();
+ const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:unknown}}[]}).__desktopTestCalls);
+ expect(calls.find(c=>c.command==='start_job')?.args.action).toEqual({kind:'create_default_workspace'});
+});
+
+test('JetBrains Mono is bundled and the storage wizard fits a short window',async({page})=>{
+ await mockDesktop(page,true);
+ await page.setViewportSize({width:900,height:700});
+ await page.goto('/');
+ await expect.poll(()=>page.evaluate(()=>document.fonts.check('14px "JetBrains Mono"'))).toBe(true);
+ expect(await page.evaluate(()=>getComputedStyle(document.body).fontFamily)).toContain('JetBrains Mono');
+ await page.getByRole('button',{name:'Set up workspace',exact:true}).click();
+ const submit=page.getByRole('button',{name:'Create and use protected storage',exact:true});
+ await expect(submit).toBeVisible();
+ const box=await submit.boundingBox();expect((box?.y??0)+(box?.height??0)).toBeLessThanOrEqual(700);
+ await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
 });

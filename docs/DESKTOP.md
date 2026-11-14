@@ -8,7 +8,7 @@ The Tauri 2/React desktop exposes encrypted vaults, local/HTTPS Git and optional
 
 ## Use the application
 
-Create a new vault or unlock an existing CLI vault using its path and passphrase. Set up a working directory on verified encrypted storage: ext4/XFS on mounted LUKS for Linux, EFS for Windows. The application cannot provision a Linux volume. Git 2.48+ must be installed and available in PATH.
+Create a new vault or unlock an existing CLI vault using its path and passphrase. Choose **Set up workspace**. On Linux, create a new encrypted container file or unlock an existing one; on Windows, create the EFS working folder with one click. The advanced option accepts a folder on existing verified encrypted storage. Git 2.48+ must be installed and available in PATH.
 
 Capture a local ordinary/bare repository under a unique snapshot name. Restore creates a new bare repository directly inside the verified workspace; existing destinations are never replaced. All reachable Git history, refs and HEAD are preserved. Check Include Git LFS payloads to archive all supported historical payloads; restore automatically verifies and reinstalls them offline. Uncommitted files, unreachable history, external submodule repositories and hosting metadata are excluded. See [Git fidelity and platform requirements](GIT-SNAPSHOTS.md).
 
@@ -63,8 +63,20 @@ The home screen now offers **Create your vault** or **Open existing vault**, fol
 
 **Repositories** opens a card library with **Restore** and **Migrate** actions. Migrate preselects that archive entry in **New migrations**. Both destination screens include **Browse saved snapshots**, with catalog search and pagination, so names need not be remembered. Use **Table** for detailed hashes/sizes. Migration records route to History; entry names are presentation hints only, and every operation still authenticates and validates the selected source in Rust.
 
-To test the native app, open the installed **Repo Stealer Desktop** launcher or the native desktop executable. Create an empty vault first; its create/unlock/lock and backup flows do not need Git working storage. Git capture/migration needs verified encrypted storage: ext4/XFS on an already mounted LUKS volume on Linux, or an EFS-capable folder on Windows. The app does not format/mount disks or bypass encryption verification. The browser preview demonstrates appearance only and cannot operate on local vaults.
+To test the native app, open the installed **Repo Stealer Desktop** launcher or the native desktop executable. Create an empty vault first; its create/unlock/lock and backup flows do not need Git working storage. Use **Set up workspace** to create/unlock protected storage before Git capture/migration. The original encryption verification still gates every operation. The browser preview demonstrates appearance only and cannot operate on local vaults.
 
 The updated native CI flows exercise the home, repository-card restore/migrate and snapshot picker before the existing real provider/backup/recovery checks. The [full native workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43587289308) passed on signed commit `7d168f8`, including all 17 browser tests, real Linux/Windows GUI flows, installed-package checks, reciprocal recovery and cleanup.
 
 On the development openSUSE machine, the tested RPM is installed and the application-menu entry is **Repo Stealer**. The native executable is `/usr/bin/repo-stealer-desktop`. All four CI installer files, checksums and provenance are retained locally under ignored `dist-desktop/preview-7d168f8/`; these are preview builds, not a new published release. Local native compilation also succeeded; local AppImage-tool download stalls were avoided for delivery by retaining the tested CI packages.
+
+## Guided protected storage (development)
+
+![Guided protected storage with bundled JetBrains Mono](screenshots/protected-storage-setup.png)
+
+On Linux, **Set up workspace → Create protected storage** suggests a private `.rsworkspace` file in your local app data. Choose a capacity (default 4 GiB), enter and confirm a separate storage passphrase, then choose **Create and use protected storage**. Your system may show a normal authorization dialog. UDisks2 creates LUKS2 and ext4 only inside the newly created file, mounts it, gives your account ownership, and the app verifies the resulting encrypted workspace. Existing files and physical drives are never formatted. A sparse file grows as data is written; leave free disk space for its selected capacity.
+
+Keep the container and its passphrase. After restarting, choose **Unlock an existing container**, select the same file and enter its passphrase. Existing containers are only unlocked, never formatted. Use **Lock protected storage** when finished; close repository files/folders first because busy unmounts are refused. Vault lock and storage lock are separate. Closing the app does not automatically unmount storage. Failed setup keeps the container for inspection/recovery; retry unlock rather than overwriting it. Linux needs UDisks2, cryptsetup and ext4 tools; DEB/RPM packages declare these dependencies. AppImage users need the system packages installed. System authorization policy remains unchanged.
+
+Windows offers **Create encrypted working folder** in local app data. This enables and verifies EFS with your Windows account; no storage passphrase is needed. Existing folders must already pass encryption checks. EFS availability and recovery keys remain Windows prerequisites. **Use an existing encrypted folder** remains available on both platforms.
+
+The interface bundles [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) in regular, medium, semibold and bold weights under the SIL Open Font License. No font network request is made; the license is included in `apps/desktop/public/fonts/OFL.txt`.

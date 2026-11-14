@@ -5,11 +5,14 @@ export type CaptureProvenance = { lfs?: {objects:number;bytes:number}|null; url:
 export type Job = { id: number; label: string; state: 'running'|'completed'|'failed'|'cancelled'; phase: string; startedAt: number; finishedAt: number|null; error: string|null; cancellable: boolean; result?: CaptureProvenance|null };
 export type Status = {
   version: string; platform: string; vault: { path: string; itemCount: number; totalBytes: number }|null;
-  workspace: { path: string; encryption: string }|null; busy: boolean; jobs: Job[]; remoteCapture: boolean; plan?: PlanSummary|null; newMigration?: NewMigration|null; migrationResult?: MigrationResult|null; migrationHistory?: MigrationHistory|null;
+  workspace: { path: string; encryption: string; container?:string|null }|null; busy: boolean; jobs: Job[]; remoteCapture: boolean; plan?: PlanSummary|null; newMigration?: NewMigration|null; migrationResult?: MigrationResult|null; migrationHistory?: MigrationHistory|null;
 };
 export type Action =
   | { kind: 'create_vault'|'unlock_vault'; path: string; passphrase: string }
   | { kind: 'check_workspace'; path: string; create: boolean }
+  | {kind:'create_protected_workspace';imagePath:string;capacityGib:number;passphrase:string}
+  | {kind:'open_protected_workspace';imagePath:string;passphrase:string}
+  | {kind:'close_protected_workspace'|'create_default_workspace'}
   | { kind: 'capture_local'; name: string; source: string; includeLfs: boolean }
   | { kind: 'capture_remote'; name: string; url: string; username: string|null; token: string|null; caFile: string|null; includeLfs: boolean }
   | { kind: 'prepare_plan'; name: string; provider: 'github'|'gitlab'; instance: string|null; repository: string; token: string|null; username: string|null; caFile: string|null }
@@ -30,7 +33,7 @@ export async function startJob(action: Action): Promise<number> { requireDesktop
 export async function lockVault() { requireDesktop(); return invoke('lock_vault'); }
 export async function cancelJob() { requireDesktop(); return invoke('cancel_job'); }
 export async function listItems(query: string, offset: number, limit = 20): Promise<{ items: Item[]; total: number }> { requireDesktop(); return invoke('get_items', { query, offset, limit }); }
-export async function choosePath(purpose: 'directory'|'backup_open'|'backup_save'|'key_open'): Promise<string|null> { requireDesktop(); return invoke<string|null>('choose_path', { purpose }); }
+export async function choosePath(purpose: 'directory'|'backup_open'|'backup_save'|'key_open'|'workspace_save'|'workspace_open'): Promise<string|null> { requireDesktop(); return invoke<string|null>('choose_path', { purpose }); }
 
 export type PlanRow = { name: string; sourceOid: string|null; destinationOid: string|null; change: string };
 export type ApiIssue = { code: string; status: number|null; retryAfterSeconds: number|null };
@@ -44,3 +47,6 @@ export type HistoryItem = {id:string;repository:string|null;createdAt:number|nul
 export type Reconciliation = {reportId?:string;schema:number;operation:string;observedAt:number;state:string;issues:string[];differenceCount?:number;differences:{name:string;expectedOid:string|null;observedOid:string|null}[]};
 export type MigrationHistory = {plan:NewMigration;state:string;lastPhase:string;repositoryId:number|null;receipts:{phase:string;time:number;repositoryId:number|null;failureCode:string|null}[];reconciliations:Reconciliation[]};
 export async function listMigrationHistory(offset:number,limit=20):Promise<{items:HistoryItem[];total:number}> {requireDesktop();return invoke('get_migration_history',{offset,limit});}
+
+export type WorkspaceSetupInfo={recommendedImage:string|null;serviceAvailable:boolean;containerExists:boolean};
+export async function getWorkspaceSetup():Promise<WorkspaceSetupInfo>{return desktop?invoke('get_workspace_setup'):{recommendedImage:null,serviceAvailable:false,containerExists:false};}

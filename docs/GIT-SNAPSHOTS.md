@@ -6,14 +6,14 @@ Implemented commands capture a **local** ordinary or bare repository into the ex
 
 ## Verified workspaces
 
-Every operation requires a verified encrypted workspace. There is no `--trust-encrypted`, marker-file or test bypass. The application does not format disks, mount volumes or install drivers on user systems.
+Every operation requires a verified encrypted workspace. There is no `--trust-encrypted`, marker-file or test bypass. The CLI requires existing encrypted storage. The desktop can create and mount a new encrypted container through the system disk service; it never formats existing files or physical drives. See [guided setup](DESKTOP.md#guided-protected-storage-development).
 
 | Platform | Supported working storage | Verification |
 | --- | --- | --- |
 | Linux | ext4 or XFS whose backing device paths all pass through LUKS1/LUKS2 dm-crypt | Kernel filesystem/device IDs and sysfs device-mapper UUID/slave graph. Nested filesystems and special files are rejected. |
 | Windows | EFS-capable local filesystem and Windows edition | `EncryptFileW` encrypts the newly created root; encryption/reparse attributes are checked on the root, a real child-file probe and staged files. |
 
-Linux users must supply an already mounted LUKS-backed filesystem. Btrfs, fscrypt, FUSE, network shares and ordinary temp directories are not yet verified and are rejected, even if their underlying configuration might be secure. Windows requires EFS support and access to the current user's EFS key; BitLocker-only directories and editions without EFS are not currently accepted. Keep the OS encryption key recoverable separately from the vault passphrase. The portable backup still carries its original age identity and needs no OS workspace key to restore the vault itself.
+Linux CLI users must supply an already mounted LUKS-backed filesystem. Desktop users can create/unlock a LUKS2/ext4 container from the GUI. Btrfs, fscrypt, FUSE, network shares and ordinary temp directories are not yet verified and are rejected, even if their underlying configuration might be secure. Windows requires EFS support and access to the current user's EFS key; BitLocker-only directories and editions without EFS are not currently accepted. Keep the OS encryption key recoverable separately from the vault passphrase. The portable backup still carries its original age identity and needs no OS workspace key to restore the vault itself.
 
 Linux example (the mount already exists):
 

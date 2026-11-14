@@ -141,8 +141,14 @@ def main():
             click("Unlock vault"); fill("Vault location", vault); fill("Vault passphrase", password)
             # The overview also has an Unlock vault action outside the dialog.
             submit_modal(); completed()
-            click("Set up workspace"); click("Create workspace")
-            fill("Encrypted workspace", work); click("Verify workspace"); completed()
+            click("Set up workspace")
+            if os.name=="nt":
+                click("Create encrypted working folder")
+                storage=completed();work=pathlib.Path(storage["workspace"]["path"])
+                assert storage["workspace"]["encryption"]=="WindowsEfs"
+            else:
+                click("Use an existing encrypted folder");click("Create workspace")
+                fill("Encrypted workspace", work);click("Verify workspace");completed()
             click("Capture repository"); fill("Snapshot name", "synthetic-desktop-history"); fill("Local repository", source)
             driver.find_element(By.CSS_SELECTOR,'input[aria-label="Include Git LFS payloads"]').click()
             # The background page action is obscured; select the dialog submit.

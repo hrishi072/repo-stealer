@@ -1,5 +1,7 @@
 //! Platform-independent desktop service. No renderer access to vault keys,
 //! arbitrary shell execution, or implicit filesystem exports.
+#[cfg(target_os = "linux")]
+mod protected_storage;
 use repo_stealer_git::{
     capture, capture_remote, restore, CaptureProvenance, Credentials, Options, RemoteUrl, Workspace,
 };
@@ -49,6 +51,17 @@ pub enum Action {
         path: String,
         create: bool,
     },
+    CreateProtectedWorkspace {
+        image_path: String,
+        capacity_gib: u64,
+        passphrase: Passphrase,
+    },
+    OpenProtectedWorkspace {
+        image_path: String,
+        passphrase: Passphrase,
+    },
+    CloseProtectedWorkspace,
+    CreateDefaultWorkspace,
     CaptureLocal {
         name: String,
         source: String,
@@ -122,6 +135,10 @@ impl Action {
             Self::CreateVault { .. } => "Create encrypted vault",
             Self::UnlockVault { .. } => "Unlock vault",
             Self::CheckWorkspace { .. } => "Verify encrypted workspace",
+            Self::CreateProtectedWorkspace { .. } => "Create protected working storage",
+            Self::OpenProtectedWorkspace { .. } => "Unlock protected working storage",
+            Self::CloseProtectedWorkspace => "Lock protected working storage",
+            Self::CreateDefaultWorkspace => "Create encrypted working folder",
             Self::CaptureLocal { .. } => "Capture repository",
             Self::CaptureRemote { .. } => "Capture HTTPS repository",
             Self::PreparePlan { .. } => "Prepare read-only migration plan",
@@ -206,7 +223,36 @@ pub struct ItemPage {
 pub struct WorkspaceStatus {
     pub path: String,
     pub encryption: String,
+    pub container: Option<String>,
 }
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceSetup {
+    pub recommended_image: Option<String>,
+    pub service_available: bool,
+    pub container_exists: bool,
+}
+pub fn workspace_setup() -> WorkspaceSetup {
+    #[cfg(target_os = "linux")]
+    {
+        let path = protected_storage::recommended_image();
+        let container_exists = path.as_ref().is_some_and(|p| p.is_file());
+        WorkspaceSetup {
+            recommended_image: path.map(|p| p.to_string_lossy().into()),
+            service_available: protected_storage::available(),
+            container_exists,
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        WorkspaceSetup {
+            recommended_image: None,
+            service_available: cfg!(windows),
+            container_exists: false,
+        }
+    }
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
@@ -601,7 +647,98 @@ fn perform(
                 *workspace = Some(WorkspaceStatus {
                     path: verified.root().to_string_lossy().into(),
                     encryption: format!("{:?}", verified.encryption()),
+                    container: None,
                 });
+            }
+            Action::CreateProtectedWorkspace {
+                image_path,
+                capacity_gib,
+                passphrase,
+            } => {
+                #[cfg(target_os = "linux")]
+                {
+                    let image = checked_path(&image_path)?;
+                    if let Some(progress) = &options.progress {
+                        progress(
+                            "Creating encrypted container; check the system authorization dialog",
+                        );
+                    }
+                    let verified = protected_storage::create(&image, capacity_gib, &passphrase.0)?;
+                    *workspace = Some(WorkspaceStatus {
+                        path: verified.root().to_string_lossy().into(),
+                        encryption: format!("{:?}", verified.encryption()),
+                        container: Some(image_path),
+                    });
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    let _ = (image_path, capacity_gib, passphrase);
+                    return Err("Container setup is available on Linux. Use the encrypted-folder option on Windows.".into());
+                }
+            }
+            Action::OpenProtectedWorkspace {
+                image_path,
+                passphrase,
+            } => {
+                #[cfg(target_os = "linux")]
+                {
+                    if let Some(progress) = &options.progress {
+                        progress(
+                            "Unlocking protected storage; check the system authorization dialog",
+                        );
+                    }
+                    let verified =
+                        protected_storage::open(&checked_path(&image_path)?, &passphrase.0)?;
+                    *workspace = Some(WorkspaceStatus {
+                        path: verified.root().to_string_lossy().into(),
+                        encryption: format!("{:?}", verified.encryption()),
+                        container: Some(image_path),
+                    });
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    let _ = (image_path, passphrase);
+                    return Err("Container unlock is available on Linux.".into());
+                }
+            }
+            Action::CloseProtectedWorkspace => {
+                #[cfg(target_os = "linux")]
+                {
+                    let image = workspace
+                        .as_ref()
+                        .and_then(|w| w.container.as_ref())
+                        .ok_or("No app-managed container is selected.")?;
+                    protected_storage::close(&checked_path(image)?)?;
+                    *workspace = None;
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    return Err("EFS is managed by your Windows account; no container needs to be detached.".into());
+                }
+            }
+            Action::CreateDefaultWorkspace => {
+                #[cfg(windows)]
+                {
+                    let base = std::env::var_os("LOCALAPPDATA")
+                        .ok_or("Cannot locate your local application folder.")?;
+                    let parent = PathBuf::from(base).join("RepoStealer");
+                    std::fs::create_dir_all(&parent)?;
+                    let directory = parent.join("GitWorkspace");
+                    let verified = if directory.exists() {
+                        Workspace::open(&directory)?
+                    } else {
+                        Workspace::init(&directory)?
+                    };
+                    *workspace = Some(WorkspaceStatus {
+                        path: verified.root().to_string_lossy().into(),
+                        encryption: format!("{:?}", verified.encryption()),
+                        container: None,
+                    });
+                }
+                #[cfg(not(windows))]
+                {
+                    return Err("Choose the protected-container option on Linux.".into());
+                }
             }
             Action::CaptureLocal {
                 name,

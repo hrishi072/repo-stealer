@@ -38,6 +38,12 @@ fn get_migration_history(
     engine.migration_history(offset, limit)
 }
 #[tauri::command]
+async fn get_workspace_setup() -> Result<repo_stealer_app::WorkspaceSetup, String> {
+    tauri::async_runtime::spawn_blocking(repo_stealer_app::workspace_setup)
+        .await
+        .map_err(|_| "Cannot inspect protected-storage setup".to_owned())
+}
+#[tauri::command]
 fn start_job(engine: State<'_, Arc<Engine>>, action: Action) -> Result<u64, String> {
     engine.inner().start(action)
 }
@@ -63,6 +69,13 @@ async fn choose_path(app: tauri::AppHandle, purpose: String) -> Result<Option<St
                 .add_filter("Repo Stealer backup", &["rsbackup"])
                 .set_file_name("repo-stealer.rsbackup")
                 .blocking_save_file(),
+            "workspace_save" => dialog
+                .add_filter("Protected working storage", &["rsworkspace"])
+                .set_file_name("working-storage.rsworkspace")
+                .blocking_save_file(),
+            "workspace_open" => dialog
+                .add_filter("Protected working storage", &["rsworkspace"])
+                .blocking_pick_file(),
             "key_open" => dialog.blocking_pick_file(),
             _ => return Err("Unsupported path dialog.".to_owned()),
         };
@@ -109,6 +122,7 @@ fn main() {
             get_items,
             get_plan_rows,
             get_migration_history,
+            get_workspace_setup,
             start_job,
             lock_vault,
             cancel_job,

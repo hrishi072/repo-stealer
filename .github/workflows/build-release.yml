@@ -83,6 +83,12 @@ jobs:
       - run: cargo test --workspace --release --locked -- --test-threads=1
       - run: cargo build --release --locked -p repo-stealer-cli
         id: cli_build
+      - if: runner.os == 'Linux'
+        name: Guided encrypted-container setup through the real system disk service
+        run: |
+          sudo apt-get update && sudo apt-get install -y udisks2 cryptsetup e2fsprogs
+          sudo systemctl start udisks2
+          python scripts/test_protected_storage.py
       - name: Native CLI, crash and portability fixture
         run: python scripts/test_cli.py ${{ matrix.binary }} --fixture-out fixture/portable.rsbackup
       - name: Read the committed format fixture
@@ -188,7 +194,7 @@ jobs:
         name: Install desktop build and native automation dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 cryptsetup rpm desktop-file-utils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 cryptsetup udisks2 e2fsprogs rpm desktop-file-utils
       - run: npm --prefix apps/desktop ci --no-audit --no-fund
       - run: npm --prefix apps/desktop run build
       - run: npm --prefix apps/desktop test
