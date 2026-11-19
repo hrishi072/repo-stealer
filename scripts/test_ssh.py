@@ -116,6 +116,12 @@ def synthetic_diagnostics(work):
     limited to NamedTempFile output files under the newly created synthetic
     session; private identity/config/provenance files are never read.
     """
+    # Python's ordinary Windows read handles can deny deletion while the app
+    # drops its temporary files. Diagnostics must not perturb cleanup itself.
+    # Keep native Windows coverage/assertions, using the app's bounded hints.
+    if os.name=="nt":
+        yield
+        return
     stopped=threading.Event();messages=set()
     def observe():
         while not stopped.wait(.005):
@@ -159,7 +165,10 @@ def main():
                     with synthetic_diagnostics(work):
                         result=subprocess.run(command,input=PASSWORD,capture_output=True,timeout=timeout+15)
                         assert (result.returncode==0)==ok,(name,result.stderr)
-                    assert not list(work.glob(".rs-git-*")),"Agent capture left staging behind"
+                    remnants=list(work.glob(".rs-git-*"))
+                    if remnants:
+                        print("Synthetic staging remainder names:",[p.relative_to(work).as_posix() for root in remnants for p in root.rglob("*")][:20],flush=True)
+                    assert not remnants,"Agent capture left staging behind"
                     return result
                 agent_capture("agent-missing-identity",ok=False)
                 with agent.identity(server):
