@@ -2,6 +2,12 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — alpha.8 release preparation
+
+**User direction:** Release alpha.8 with the native Windows agent fixes. For subsequent releases, batch multiple features and bug fixes into a milestone rather than releasing every small change. Routine work remains signed/tested main-source increments until a release is explicitly requested.
+
+**Candidate:** Version `0.1.0-alpha.8` is aligned across Cargo/npm/Tauri and lockfiles. Source includes agent endpoint binding and generated-identity CLI/native UI coverage accepted in run 44471044085 on signed `f906a38`. Release notes preserve supported platforms/credentials, no-existing-destination protection and unchanged snapshot/same-key backup formats. Local root/desktop formatting, workspace Clippy, 41 release-mode Rust tests, frontend production build, 23 browser tests and fixture syntax checks passed; the privileged UDisks2 test is run in native CI. The signed-tag release matrix remains mandatory; alpha.7 remains published at this preparation stage.
+
 ## 2026-11-19 — native Windows agent follow-up accepted
 
 **Scope:** Add native Windows OpenSSH service authentication coverage through the CLI and real desktop, retaining Linux's isolated-agent path. This is an unreleased follow-up to published alpha.7; no tag/installer release is requested here.

@@ -6,6 +6,10 @@ Repository: <https://github.com/hrishi072/repo-stealer> (private at creation). L
 
 Main pushes verify builds. Because the account Actions artifact quota is exhausted, jobs transfer packages and synthetic fixtures using a temporary private draft release, deleted after the run; version-tagged runs publish final assets as GitHub Releases. No other repository artifacts or billing settings are changed. Publishing a signed version tag matching Cargo's workspace version automatically creates a GitHub prerelease only after quality, native build/package checks and bidirectional restore checks succeed. No personal token or signing key is needed by the pipeline: short-lived GITHUB_TOKEN permissions are scoped to staging/upload/download/publication/cleanup jobs; passphrases and application processes do not receive that token. Pull requests run native checks without draft uploads or cross-job fixture exchange. All action references are pinned to reviewed commit IDs. The AppImage tool is version-pinned at 1.9.1 and its download is SHA-256 checked before execution.
 
+## Release cadence
+
+Batch multiple related features and bug fixes into a milestone release. Routine fixes and test additions should land as signed, tested main-source increments. Publish installers when the user explicitly requests the release; do not create a tag for every small change. The explicitly requested alpha.8 agent-fix release continues under this instruction; use the batched cadence for subsequent releases.
+
 Release steps:
 
 ```sh
@@ -97,3 +101,7 @@ The signed alpha.7 tag repeats this complete matrix before automatic prerelease 
 Signed [v0.1.0-alpha.7](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.7) targets `aa8ac055b6d9c53b0cc8305c5331760fa977bee5` and was published on 2026-11-19. The [tagged workflow](https://github.com/hrishi072/repo-stealer/actions/runs/44468237276) passed the complete Linux/Windows matrix, including native SSH capture/discovery/cancellation/restore, encrypted setup, Git/LFS/provider/history suites, desktop/CLI packages, reciprocal recovery, tag/version verification, publication and cleanup. All four desktop and six CLI packages were downloaded into ignored `dist/releases/v0.1.0-alpha.7/`; every SHA-256 matched SHA256SUMS. The main and tagged runs left no temporary staging draft.
 
 Source/tag signing is separate from installer OS signing, which is not implemented. SSH-origin snapshots need alpha.7 or newer; existing local/HTTPS/LFS snapshots and same-key backups remain supported. Native Windows agent authentication and Fedora/openSUSE desktop RPM installation are not claimed by this matrix.
+
+## Alpha.8 agent-fix release preparation
+
+Alpha.8 includes the native Windows agent routing fix and Linux/Windows CLI/native GUI agent acceptance from signed `f906a38`, accepted by [run 44471044085](https://github.com/hrishi072/repo-stealer/actions/runs/44471044085). Cargo/npm/Tauri versions and both Cargo lockfiles are aligned to `0.1.0-alpha.8`. Local formatting/Clippy, 41 release-mode Rust tests, frontend production build, 23 browser tests, locked version metadata and fixture syntax checks passed. The signed-tag workflow must repeat full native acceptance before publication; final package verification and publication evidence follow after completion. No storage/snapshot/backup format changes are introduced.
