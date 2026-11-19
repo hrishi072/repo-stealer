@@ -1,5 +1,5 @@
 //! Create the staged key with a protected current-user DACL from the outset.
-//! EFS inheritance is still provided by the verified workspace directory.
+//! EFS is explicitly requested and verified before any private key bytes.
 use anyhow::{ensure, Context, Result};
 use std::{
     fs::File,
@@ -20,7 +20,7 @@ use windows_sys::Win32::{
         SetSecurityDescriptorDacl, SetSecurityDescriptorOwner, TokenUser, SECURITY_ATTRIBUTES,
         SECURITY_DESCRIPTOR, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
     },
-    Storage::FileSystem::{CreateFileW, CREATE_NEW, FILE_ALL_ACCESS, FILE_ATTRIBUTE_NORMAL},
+    Storage::FileSystem::{CreateFileW, CREATE_NEW, FILE_ALL_ACCESS, FILE_ATTRIBUTE_ENCRYPTED},
     System::Threading::{GetCurrentProcess, OpenProcessToken},
 };
 
@@ -110,7 +110,7 @@ pub(super) fn write_key(path: &Path, contents: &[u8]) -> Result<()> {
             0,
             &attributes,
             CREATE_NEW,
-            FILE_ATTRIBUTE_NORMAL,
+            FILE_ATTRIBUTE_ENCRYPTED,
             ptr::null_mut(),
         );
         ensure!(
@@ -118,6 +118,7 @@ pub(super) fn write_key(path: &Path, contents: &[u8]) -> Result<()> {
             "Cannot create the private staged SSH key"
         );
         let mut file = File::from_raw_handle(handle);
+        crate::workspace::verify_path(path).context("Cannot verify staged SSH key encryption")?;
         file.write_all(contents)
             .context("Cannot write the staged SSH key")?;
         file.sync_all().context("Cannot flush the staged SSH key")?;

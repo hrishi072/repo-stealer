@@ -98,20 +98,30 @@ class SSHFixture:
         finally:transport.close();peer.close()
 
 
-def probe_windows_client(server,work):
-    """Diagnostics on synthetic fixture data only; never enable app secret logs."""
-    client=pathlib.Path(os.environ["SystemRoot"])/"System32/OpenSSH/ssh.exe"
-    print("Synthetic SSH native client version:",subprocess.run([str(client),"-V"],capture_output=True,text=True).stderr,flush=True)
-    probe=work/"client-probe";probe.mkdir()
-    identity=probe/"identity.pem";identity.write_bytes(server.private_key.read_bytes());identity.chmod(0o600)
-    hosts=probe/"known_hosts";hosts.write_text(f"repo-stealer-source ssh-rsa {server.host_key.get_base64()}\n")
-    config=probe/"config"
-    def quoted(path):return '"'+path.as_posix().replace('"','\\"')+'"'
-    config.write_text("Host *\n BatchMode yes\n StrictHostKeyChecking yes\n HostKeyAlias repo-stealer-source\n GlobalKnownHostsFile none\n IdentityAgent none\n IdentitiesOnly yes\n HostKeyAlgorithms rsa-sha2-512,rsa-sha2-256\n UserKnownHostsFile "+quoted(hosts)+"\n IdentityFile "+quoted(identity)+"\n")
-    command=[str(client),"-vvv","-F",str(config),"-p",str(server.port),"git@127.0.0.1","git-upload-pack '/project.git'"]
-    result=subprocess.run(command,input=b"",capture_output=True,timeout=20)
-    print("Synthetic direct SSH result:",result.returncode,result.stderr.decode(errors="replace")[-16000:],flush=True)
-    print("Synthetic fixture counts:",len(server.auth_attempts),len(server.commands),flush=True)
+@contextlib.contextmanager
+def synthetic_diagnostics(work):
+    """Watch only our fixture's transient Git output, never a user workspace.
+
+    The app deliberately does not echo raw child errors. This test watcher is
+    limited to NamedTempFile output files under the newly created synthetic
+    session; private identity/config/provenance files are never read.
+    """
+    stopped=threading.Event();messages=set()
+    def observe():
+        while not stopped.wait(.005):
+            for path in work.glob(".rs-git-*/.tmp*"):
+                try:
+                    with path.open("rb") as stream:data=stream.read(16384)
+                    text=data.decode("utf-8")
+                    if any(word in text.lower() for word in ("fatal:","ssh:","permissions","configuration","createprocess","error","failed","denied","syntax","cannot","no such")):
+                        messages.add(text)
+                except (OSError,UnicodeError):pass
+    thread=threading.Thread(target=observe,daemon=True);thread.start()
+    try:yield
+    except AssertionError:
+        for message in sorted(messages):print("Synthetic SSH child diagnostic:",repr(message),flush=True)
+        raise
+    finally:stopped.set();thread.join(timeout=2)
 
 
 def main():
@@ -122,11 +132,8 @@ def main():
         vault=root/"vault";app(binary,"vault","init",vault)
         with SSHFixture(root/"server") as server:
             def capture(name,ok=True,key=None,host=None,extra=()):
-                try:
+                with synthetic_diagnostics(work):
                     return app(binary,"git","capture-ssh",vault,name,server.url,"--work-root",work,"--ssh-key",key or server.private_key,"--ssh-host-key",host or server.host_public,*extra,ok=ok)
-                except AssertionError:
-                    if ok and os.name=="nt":probe_windows_client(server,work)
-                    raise
             # Wrong host identity must fail before offering any user key.
             other=paramiko.RSAKey.generate(2048);wrong=root/"wrong.pub";wrong.write_text(f"ssh-rsa {other.get_base64()}\n")
             capture("wrong-host",ok=False,host=wrong);assert not server.auth_attempts
