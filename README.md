@@ -12,6 +12,7 @@ Download the [alpha.8 desktop installers and CLI packages](https://github.com/hr
 - [HTTPS capture](docs/REMOTE-CAPTURE.md)
 - [Architecture and stack](docs/ARCHITECTURE.md)
 - [Implementation sequence and acceptance gates](docs/ROADMAP.md)
+- [Proposed alpha.9 batch](docs/ALPHA9-PLAN.md)
 - [Existing script audit](docs/LEGACY-AUDIT.md)
 - [Encryption and backup design](docs/SECURITY.md)
 - [Encrypted Git snapshots and platform requirements](docs/GIT-SNAPSHOTS.md)

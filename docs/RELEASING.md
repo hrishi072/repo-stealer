@@ -8,7 +8,7 @@ Main pushes verify builds. Because the account Actions artifact quota is exhaust
 
 ## Release cadence
 
-Batch multiple related features and bug fixes into a milestone release. Routine fixes and test additions should land as signed, tested main-source increments. Publish installers when the user explicitly requests the release; do not create a tag for every small change.
+Batch multiple related features and bug fixes into a milestone release. Routine fixes and test additions should land as signed, tested main-source increments. Publish installers when the user explicitly requests the release; do not create a tag for every small change. The [alpha.9 proposal](ALPHA9-PLAN.md) defines a combined readiness checklist: no alpha.9 tag while any agreed feature/fix or native acceptance gate remains incomplete.
 
 Release steps:
 

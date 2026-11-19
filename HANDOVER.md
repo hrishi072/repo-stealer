@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — alpha.9 batch proposal recorded
+
+**User direction:** Suggest a combined alpha.9 feature/fix batch, keep Linux/Windows working, update docs and push signed commits; release only when the full batch is ready. This task records a proposal; implementation and release gates remain open.
+
+**Recommendation:** [Bulk capture and workflow reliability](docs/ALPHA9-PLAN.md): (1) record-aware library/snapshot-picker fix, (2) encrypted connection profiles without stored credentials/trust approval, (3) read-only paginated GitHub/GitLab cloud/self-hosted repository discovery, (4) durable reviewed multi-repository capture queue with one active repository, and (5) encrypted results/readiness/platform hardening. Queue recovery never auto-runs; pause/cancel and immutable evidence must preserve completed snapshots and existing-destination protection. Windows agent/service and Linux session-agent regressions remain mandatory.
+
+**First task/evidence:** `SnapshotPicker.tsx` uses generic `listItems`; `Engine.items` exposes names/sizes/hashes for all vault entries, and generic table rows offer Restore Git. Add authenticated record-kind/index filtering bound to entry ID/hash, with conservative unknown/legacy behavior and full validation at use, before profiles/queue records expand the catalog. Other path, queue-race, permissions/space and lock issues are hardening targets until reproduced, not asserted existing bugs.
+
+**Docs:** Updated the roadmap's stale current-release/next-task and platform claims while labeling old milestone notes historical. Clarified current architecture versus proposed scheduling. Added explicit batch completion/native Linux+Windows/package/cross-OS backup release gates; retained the GUI RPM install-coverage gap. Alpha.8 remains published; no version bump, alpha.9 tag or installer was made. Next implementation starts with slice 1 when the batch is taken up.
+
 ## 2026-11-19 — published native-agent alpha.8
 
 **Release:** Signed [v0.1.0-alpha.8](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.8) was published from `c15875a3c29b14e57308bb885b88bd22bd6e4ef7` at 2026-11-19T06:57:32Z. Four desktop installers (Linux x86_64 DEB/RPM/AppImage and Windows x86_64 NSIS), six CLI packages and SHA256SUMS are available.

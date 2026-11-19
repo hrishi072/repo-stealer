@@ -14,31 +14,34 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 | 7 | Release hardening | Install/uninstall and offline launch on supported distributions/Windows, signed packages, dependency/SBOM/license checks, backup review and restore drill; publish compatibility table and measured performance. |
 | 8 | Update detection and one-way sync | Compare both instances to last verified baseline, detect divergence, no deletion propagation by default, user-reviewed plans and loop-safe identity mapping. Bidirectional automatic sync is a separate design. |
 
-## Best next task
+## Current baseline and next batch
 
-**LFS HTTP cancellation is accepted on Linux/Windows in [run 43421991963](https://github.com/hrishi072/repo-stealer/actions/runs/43421991963).** Batch header/body, object header/body, upload and verify stalls passed timed native tests while preserving bounded streaming, TLS/credential isolation, deadlines, no retries and joined-worker cleanup.
+[Alpha.8 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.8) are published. The [signed-tag acceptance run](https://github.com/hrishi072/repo-stealer/actions/runs/44474717064) passed native Linux/Windows CLI and desktop, native/session SSH agent coverage, encrypted Git/LFS capture/restore, guarded personal migration, history/read-only reconciliation, guided LUKS/EFS setup, packages, reciprocal recovery and cleanup.
 
-**Current priority:** Improve the native desktop experience and deliver a GUI build the user can test. The home/library/source-picker refresh passed [native acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/43587289308), and its GUI preview is installed for testing. Next, incorporate user feedback on first-run setup, archive cards and destination selection. Further performance benchmarking is deferred at the user’s request. Keep uncertain remote effects explicit and require reviewed recovery evidence before any future resume/write support.
+**Recommended alpha.9 batch:** [bulk capture and workflow reliability](ALPHA9-PLAN.md): record-aware library/picker fixes, encrypted connection profiles, read-only GitHub/GitLab repository discovery, a durable reviewed capture queue, and batch reports/readiness/platform hardening. Implement these as signed, tested increments, then release only when the full agreed batch and native acceptance gates are complete. The plan is not an implementation claim; no alpha.9 tag is created by planning it.
 
-Encrypted migration history/read-only reconciliation passed [run 43417766154](https://github.com/hrishi072/repo-stealer/actions/runs/43417766154); [scope and usage](MIGRATION-HISTORY.md). Provider API cancellation passed [run 43419501257](https://github.com/hrishi072/repo-stealer/actions/runs/43419501257), including timed native desktop TLS stalls. These are accepted development changes; alpha.6 remains the published installer release.
+**First task:** Stop generic vault records from appearing as Git snapshot choices, using backend-owned authenticated types rather than filename hints. This also provides a foundation for hiding profile/queue records from Git actions. Then implement profiles/discovery, queue/results and the combined platform tests. Further performance benchmarking remains deferred at the user's request.
 
-Automatic retries, resume, rollback and sync writes remain separate work. Representative real-link/load benchmarks, broader namespaces, token types and hosting metadata remain subsequent increments.
+Existing destination protections, ephemeral credentials, strict TLS/SSH trust, one vault writer, encrypted staging and same-key recovery remain mandatory. Bulk destination writes, automatic resume/rollback and synchronization writes are separate milestones.
 
 ## Compatibility and release matrix
 
-Initial CPU baseline proposal: x86_64; ARM64 later after explicit testing. Linux primary distributions: Debian/Ubuntu for `.deb`, Fedora/openSUSE for `.rpm`, and those same environments for AppImage. Select minimum distro/glibc/WebKitGTK and Windows versions after milestone 1, not from the developer workstation alone. Linux packages need native Git/LFS and crypto/webview dependencies resolved; Windows must account for WebView2 and Git/SSH/LFS distribution. Test SSH/custom CAs, paths with spaces and Unicode, corporate proxies, high-DPI and offline unlock/restore. AppImage is not a promise of universal Linux compatibility.
+The current packaged baseline is x86_64, Ubuntu 22.04 for Linux builds and Windows Server 2022/MSVC for native Windows builds. Ship Linux DEB/RPM/AppImage and Windows NSIS setup EXE, plus CLI packages and SHA256SUMS. Git 2.48+ is a runtime prerequisite; supported Git working storage is ext4/XFS on LUKS or Windows EFS. Guided LUKS/EFS setup is implemented. Rust 1.88 is the declared minimum; the desktop build uses Node 24.
 
-Use Linux and Windows runners for native builds; do not claim a Linux-built CLI is a tested Windows executable. Release assets eventually include `.deb`, `.rpm`, `.AppImage`, `.exe`, `.msi`, checksums, signatures and a documented recovery-format version. Signing identities and any publication destination remain user-owned inputs for release time.
+DEB/NSIS installation and extracted AppImage startup/version checks are native release gates. Desktop RPM identity/digests are checked, but Fedora/openSUSE GUI installation remains a coverage gap targeted by the alpha.9 plan. CLI RPM installation is tested separately. Current tests do not prove all distro/Windows versions, FUSE launch, ARM64/macOS support, Windows MSI or OS-signed installers. Source commits/version tags use the maintainer's SSH signature. Preserve Linux/Windows native tests, SSH/custom-CA/path coverage and reciprocal backup recovery throughout alpha.9.
 
 ## Assumptions still open
 
-- Desktop app + optional headless CLI is the intended product; no hosted backend or telemetry by default.
 - "All platforms" currently means the requested Linux and Windows families; macOS and CPU expansion are later targets.
 - Source access is authorized; the application migrates only what the account can read. Source repositories remain intact by default.
-- External verified encrypted working storage may be an initial prerequisite. Automatic provisioning, supported OS minimums and exact crypto bindings need evidence.
+- Broader storage/filesystem and OS support needs native evidence beyond the current verified LUKS/EFS and package matrix.
 - Commercial/open-source license and signing identity are undecided; no license grant or branding clearance has been assumed.
 - User/organization identity mapping, historical PR fidelity and server feature availability are negotiated per instance/version, never assumed universal.
 
+
+## Historical milestone records
+
+The following entries describe their implementation stage at the time; pending statements are historical. Current release and next-batch status are above.
 
 ## 2026-11-08 storage increment
 
