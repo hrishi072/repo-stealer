@@ -1,13 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export type Item = { name: string; size: number; sha256: string };
+export type RecordKind = 'git_snapshot'|'migration_plan'|'migration_receipt'|'migration_report'|'unknown'|'unreadable';
+export type Item = {name:string;size:number;sha256:string;kind:RecordKind;migrationId:string|null};
 export type CaptureProvenance = { lfs?: {objects:number;bytes:number}|null; url: string; advertisedRefCount: number; headAdvertised: boolean; inventory: { headSubmodules: number; headLfsPointers: number; smallBlobsScanned: number; smallBlobsTotal: number; lfsScanComplete: boolean } };
 export type Job = { id: number; label: string; state: 'running'|'completed'|'failed'|'cancelled'; phase: string; startedAt: number; finishedAt: number|null; error: string|null; cancellable: boolean; result?: CaptureProvenance|null };
 export type Status = {
-  version: string; platform: string; vault: { path: string; itemCount: number; totalBytes: number }|null;
+  version: string; platform: string; vault: { path: string; itemCount: number; totalBytes: number; recordIndexSaved?: boolean }|null;
   workspace: { path: string; encryption: string; container?:string|null }|null; busy: boolean; jobs: Job[]; remoteCapture: boolean; plan?: PlanSummary|null; newMigration?: NewMigration|null; migrationResult?: MigrationResult|null; migrationHistory?: MigrationHistory|null;
 };
 export type Action =
+  | {kind:'inspect_record_types'}
   | { kind: 'create_vault'|'unlock_vault'; path: string; passphrase: string }
   | { kind: 'check_workspace'; path: string; create: boolean }
   | {kind:'create_protected_workspace';imagePath:string;capacityGib:number;passphrase:string}
@@ -27,13 +29,13 @@ export type Action =
   | { kind: 'restore_backup'; path: string; destination: string; passphrase: string };
 
 export const desktop = '__TAURI_INTERNALS__' in window;
-export const emptyStatus: Status = { version: '0.1.0-alpha.8', platform: 'linux', vault: null, workspace: null, busy: false, jobs: [], remoteCapture: true };
+export const emptyStatus: Status = { version: '0.1.0-alpha.9', platform: 'linux', vault: null, workspace: null, busy: false, jobs: [], remoteCapture: true };
 export async function getStatus(): Promise<Status> { return desktop ? invoke<Status>('get_status') : emptyStatus; }
 function requireDesktop() { if (!desktop) throw new Error('Open the desktop app to access local vaults and encrypted working storage.'); }
 export async function startJob(action: Action): Promise<number> { requireDesktop(); return invoke<number>('start_job', { action }); }
 export async function lockVault() { requireDesktop(); return invoke('lock_vault'); }
 export async function cancelJob() { requireDesktop(); return invoke('cancel_job'); }
-export async function listItems(query: string, offset: number, limit = 20): Promise<{ items: Item[]; total: number }> { requireDesktop(); return invoke('get_items', { query, offset, limit }); }
+export async function listItems(query: string, offset: number, limit = 20, snapshotsOnly = false): Promise<{ items: Item[]; total: number }> { requireDesktop(); return invoke('get_items', { query, offset, limit, snapshotsOnly }); }
 export async function choosePath(purpose: 'directory'|'backup_open'|'backup_save'|'key_open'|'workspace_save'|'workspace_open'): Promise<string|null> { requireDesktop(); return invoke<string|null>('choose_path', { purpose }); }
 
 export type PlanRow = { name: string; sourceOid: string|null; destinationOid: string|null; change: string };

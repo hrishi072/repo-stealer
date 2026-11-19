@@ -1520,12 +1520,13 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-app"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 dependencies = [
  "anyhow",
  "dbus",
  "libc",
  "repo-stealer-git",
+ "repo-stealer-library",
  "repo-stealer-migration",
  "repo-stealer-vault",
  "serde",
@@ -1535,11 +1536,12 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-cli"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 dependencies = [
  "ctrlc",
  "repo-stealer-core",
  "repo-stealer-git",
+ "repo-stealer-library",
  "repo-stealer-migration",
  "repo-stealer-vault",
  "rpassword",
@@ -1550,11 +1552,11 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-core"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 
 [[package]]
 name = "repo-stealer-git"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1576,8 +1578,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-stealer-library"
+version = "0.1.0-alpha.9"
+dependencies = [
+ "anyhow",
+ "repo-stealer-git",
+ "repo-stealer-migration",
+ "repo-stealer-vault",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "repo-stealer-migration"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 dependencies = [
  "anyhow",
  "getrandom 0.2.17",
@@ -1597,7 +1613,7 @@ dependencies = [
 
 [[package]]
 name = "repo-stealer-vault"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.9"
 dependencies = [
  "age",
  "anyhow",

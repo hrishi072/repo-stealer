@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — alpha.9 record-library slice implemented locally
+
+**Scope:** First batch slice only: backend record types, Git-only source picking, type-aware card/table actions and filtered counts/pagination. Development version is alpha.9 across Cargo/npm/Tauri/locks; no alpha.9 tag or release. Profiles, discovery, queue and remaining hardening/release gates stay pending.
+
+**Persistence decision:** Optional age-encrypted `data/record-types.age`, schema 1, binds types to object ID/hash/size; no catalog/object/Git/backup format change. Trusted producers annotate new Git/migration records. Legacy/imported/recovered records stay unknown until explicit cancellable whole-object inspection, retaining bounded metadata and discarding payload plaintext in memory. The cache is omitted from backups to preserve alpha.8 compatibility and rebuilt after recovery. Cache write failure never misreports a committed capture as failed. Full Git/LFS validation still gates operations. See [record-library behavior](docs/RECORD-LIBRARY.md) and the recorded decision.
+
+**Implementation:** New internal shared library service for CLI/desktop, `vault records` and `vault inspect-records`, typed metadata from Git/migration writers, no name-prefix routing, snapshot filtering before pagination, explicit inspection action and refresh after job completion. Unknown/unreadable/orphan records stay visible without inappropriate Git/history actions. No new external dependency or GUI dependency in CLI.
+
+**Local checks:** Workspace tests (45 passed; privileged UDisks2 test excluded locally), Clippy, formatting, UI production build, all 25 browser regressions and fixture syntax checks pass. Golden mixed-record backup and native/cross-OS fixtures were added. A published alpha.8 Linux CLI verified the fixture, read the cache-bearing alpha.9 vault and exported a backup restored/reindexed by alpha.9. Full native Linux/Windows and package acceptance remains pending CI; keep working until accepted and push signed commits.
+
 ## 2026-11-19 — alpha.9 batch proposal recorded
 
 **User direction:** Suggest a combined alpha.9 feature/fix batch, keep Linux/Windows working, update docs and push signed commits; release only when the full batch is ready. This task records a proposal; implementation and release gates remain open.

@@ -135,9 +135,14 @@ fn absent(api: &Api<'_>, d: &Destination) -> Result<()> {
         Err(_) => anyhow::bail!("Destination is unavailable; creation refused"),
     }
 }
-fn save(vault: &mut Vault, name: &str, value: &impl Serialize) -> Result<()> {
+fn save(
+    vault: &mut Vault,
+    name: &str,
+    value: &impl Serialize,
+    info: repo_stealer_vault::RecordInfo,
+) -> Result<()> {
     let bytes = zeroize::Zeroizing::new(serde_json::to_vec(value)?);
-    vault.put(name, Cursor::new(&*bytes))
+    vault.put_typed(name, info, Cursor::new(&*bytes))
 }
 pub(super) fn load(vault: &Vault, id: &str) -> Result<NewPlan> {
     validate_id(id)?;
@@ -237,7 +242,15 @@ pub fn prepare_new(
     };
     refuse_reflection(&plan, Some(&access))?;
     check(options)?;
-    save(vault, &format!("migration-plan-{}", plan.id), &plan)?;
+    save(
+        vault,
+        &format!("migration-plan-{}", plan.id),
+        &plan,
+        repo_stealer_vault::RecordInfo::migration(
+            repo_stealer_vault::RecordKind::MigrationPlan,
+            &plan.id,
+        ),
+    )?;
     Ok(plan)
 }
 fn created(
@@ -310,6 +323,10 @@ fn checkpoint(vault: &mut Vault, plan: &NewPlan, phase: &str, detail: Value) -> 
         vault,
         &format!("migration-{}-{phase}", plan.id),
         &json!({"schema":1,"operation":plan.id,"repository":plan.repository,"phase":phase,"time":now()?,"detail":detail}),
+        repo_stealer_vault::RecordInfo::migration(
+            repo_stealer_vault::RecordKind::MigrationReceipt,
+            &plan.id,
+        ),
     )
 }
 fn restrictive_policy(value: &Value, name: &str) -> bool {

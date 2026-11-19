@@ -43,3 +43,8 @@ body{background:radial-gradient(ellipse at 85% 0%,#18312b40,transparent 45%),#10
 @media(max-width:650px){.storage-options{grid-template-columns:1fr}.storage-setup .modal-footer{flex-wrap:wrap}}
 
 .ssh-host-review{border:1px solid var(--border);border-radius:10px;padding:16px;margin:16px 0}.ssh-host-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ssh-host-heading>span{display:flex;gap:8px;align-items:center;font-weight:600}.ssh-host-review p,.ssh-host-review small,.form-hint{font-size:11px;color:var(--muted);line-height:1.7}.ssh-fingerprint{display:block;overflow-wrap:anywhere;user-select:text;padding:12px;background:#0b1520;border-radius:6px;margin:12px 0;font-size:12px}
+
+.library-panel>.panel-heading,.library-panel>.table-tools{flex-wrap:wrap}
+.library-panel>.table-tools{gap:12px}
+.library-panel>.table-tools .search{flex:1;min-width:180px;width:auto}
+.library-panel>.table-tools select{width:auto;max-width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:#101925;color:var(--text);font:inherit;font-size:11px}

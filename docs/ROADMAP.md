@@ -20,7 +20,7 @@ Keep each loop reviewable: define one behavior, implement, run relevant tests, i
 
 **Recommended alpha.9 batch:** [bulk capture and workflow reliability](ALPHA9-PLAN.md): record-aware library/picker fixes, encrypted connection profiles, read-only GitHub/GitLab repository discovery, a durable reviewed capture queue, and batch reports/readiness/platform hardening. Implement these as signed, tested increments, then release only when the full agreed batch and native acceptance gates are complete. The plan is not an implementation claim; no alpha.9 tag is created by planning it.
 
-**First task:** Stop generic vault records from appearing as Git snapshot choices, using backend-owned authenticated types rather than filename hints. This also provides a foundation for hiding profile/queue records from Git actions. Then implement profiles/discovery, queue/results and the combined platform tests. Further performance benchmarking remains deferred at the user's request.
+**Slice 1:** The [record-aware library/picker](RECORD-LIBRARY.md) is implemented locally with optional encrypted type metadata, explicit legacy/recovery inspection and backend filtering before pagination; native acceptance is pending. Next implement encrypted profiles, then discovery, queue/results and combined platform tests. Further performance benchmarking remains deferred at the user's request.
 
 Existing destination protections, ephemeral credentials, strict TLS/SSH trust, one vault writer, encrypted staging and same-key recovery remain mandatory. Bulk destination writes, automatic resume/rollback and synchronization writes are separate milestones.
 

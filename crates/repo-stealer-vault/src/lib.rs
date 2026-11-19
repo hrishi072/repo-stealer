@@ -1,6 +1,8 @@
 //! Ciphertext-only local storage and portable, same-identity backups.
 //! No repository transport or plaintext working directory is provided here.
 mod backup;
+mod records;
+pub use records::{RecordInfo, RecordKind};
 
 use age::secrecy::ExposeSecret;
 pub use age::secrecy::SecretString;
@@ -49,6 +51,8 @@ pub struct Vault {
     catalog: Catalog,
     _lock: File,
     writable: bool,
+    record_types: std::collections::BTreeMap<String, records::Cached>,
+    record_index_saved: bool,
 }
 
 impl Vault {
@@ -98,12 +102,19 @@ impl Vault {
         let catalog: Catalog =
             serde_json::from_slice(&plain).context("invalid encrypted catalog")?;
         validate_catalog(&catalog)?;
+        // Optional presentation metadata never prevents opening old/recovered
+        // vaults. Missing, damaged or unsupported caches classify as unknown.
+        let cached = records::load(path, &identity, &catalog);
+        let record_index_saved = cached.is_ok();
+        let record_types = cached.unwrap_or_default();
         Ok(Self {
             root: path.into(),
             identity,
             catalog,
             _lock: lock,
             writable: true,
+            record_types,
+            record_index_saved,
         })
     }
 

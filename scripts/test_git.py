@@ -1,6 +1,7 @@
 """Full-history tests on real encrypted storage; no application verification bypass."""
 import argparse
 import ctypes
+import json
 import os
 import pathlib
 import shutil
@@ -80,6 +81,11 @@ def encrypted_files(root):
 def restore_fixture(binary, backup, workspace, root):
     vault = root / "portable-vault"
     app(binary, "vault", "restore", backup, vault)
+    recovered_records=[json.loads(line) for line in app(binary,"vault","records",vault).stdout.splitlines()]
+    assert all(record["kind"]=="unknown" for record in recovered_records)
+    app(binary,"vault","inspect-records",vault)
+    records=[json.loads(line) for line in app(binary,"vault","records",vault).stdout.splitlines()]
+    assert next(record for record in records if record["name"]=="history")["kind"]=="git_snapshot"
     destination = workspace / "cross-os.git"
     app(binary, "git", "restore", vault, "history", destination, "--work-root", workspace)
     git(destination, "fsck", "--full", "--strict", "--no-reflogs")
@@ -131,6 +137,8 @@ def main():
         source = fixture(root / "source with spaces")
         expected = inventory(source)
         app(binary, "git", "capture", vault, "history", source, "--work-root", workspace)
+        records=[json.loads(line) for line in app(binary,"vault","records",vault).stdout.splitlines()]
+        assert records[0]["kind"]=="git_snapshot", "New capture lost producer-assigned record type"
         destination = workspace / "restored.git"
         app(binary, "git", "restore", vault, "history", destination, "--work-root", workspace)
         assert inventory(destination) == expected

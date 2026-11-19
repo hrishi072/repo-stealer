@@ -17,8 +17,9 @@ fn get_items(
     query: String,
     offset: usize,
     limit: usize,
+    snapshots_only: Option<bool>,
 ) -> Result<ItemPage, String> {
-    engine.items(&query, offset, limit)
+    engine.record_items(&query, offset, limit, snapshots_only.unwrap_or(false))
 }
 #[tauri::command]
 fn get_plan_rows(

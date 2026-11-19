@@ -1,6 +1,6 @@
 # Alpha.9 proposal: bulk capture and workflow reliability
 
-Status: proposed batch, not implemented. Alpha.8 remains the published release. This planning task adds no version bump, tag or installer. Implement reviewable slices with signed commits and updated docs, then release only after the full agreed batch is ready and its release gates pass.
+Status: batch in progress. Slice 1 is implemented locally and awaiting native acceptance; slices 2–5 remain pending. Development version is alpha.9; alpha.8 remains the published release and no alpha.9 tag/installer is published. Implement reviewable slices with signed commits and updated docs, then release only after the full agreed batch is ready and its release gates pass.
 
 ## Outcome
 
@@ -16,11 +16,9 @@ Find repositories on GitHub/GitLab, select several, capture them into the encryp
 | 4 | Durable multi-repository capture queue | Review source/name/LFS policy before starting. Proposed first limit: 100 items and one active repository per vault, retaining existing bounded LFS workers. Persist encrypted per-item state; support pause after current, cancel current, stop batch and explicit review/requeue of unfinished work. No automatic retry or restart execution. |
 | 5 | Batch results, readiness diagnostics and platform hardening | Show per-item snapshot evidence and failures, retain an encrypted summary and expose CLI equivalents. Check Git/OpenSSH/workspace readiness with actionable messages. Cover queue races, local path edge cases, storage/permission failures and lock/privacy regressions on both OSes. |
 
-### Confirmed UI fix to start with
+### Slice 1 implementation
 
-The current [snapshot picker](../apps/desktop/src/SnapshotPicker.tsx) calls the generic item-list API. The [desktop engine](../crates/repo-stealer-app/src/lib.rs) returns catalog entries containing names/sizes/hashes without record-kind filtering. Repository cards use name-based migration-record hints, and the table offers Restore Git for generic entries. Non-Git records can therefore appear as Git choices; backend validation still refuses invalid snapshots.
-
-Introduce a backend-owned, authenticated classification/index bound to immutable entry ID and content hash. Do not trust a filename prefix. Unknown/legacy records need conservative classification, not a full decryption of every Git payload on each UI poll. Keep full snapshot authentication and Git validation at use time. Document index/record versioning and legacy behavior before changing persistence; do not silently rewrite the vault catalog format. A migration-looking Git snapshot name and a snapshot-looking non-Git blob must both behave correctly.
+The [record-aware library](RECORD-LIBRARY.md) replaces name-based action hints with backend-owned record types, Git-only picker queries and filtering before pagination. An optional encrypted cache is bound to entry ID/hash/size. Generic imports/recovered data require an explicit cancellable whole-object inspection, with bounded memory; full Git validation remains mandatory at use. The critical catalog/Git/backup formats are unchanged, and the disposable cache is omitted from backups. Native acceptance remains pending; this completes neither the remaining features nor the release gates.
 
 Other hardening items below are test targets, not claims of newly reproduced defects. Add fixes with evidence when their regressions are demonstrated.
 

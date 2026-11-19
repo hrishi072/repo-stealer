@@ -74,6 +74,55 @@ pub struct Reconciliation {
     pub difference_count: usize,
 }
 
+/// Recognize bounded, fully authenticated application records by content, not
+/// their catalog names. This is presentation metadata, not execution authority.
+pub fn classify_record(bytes: &[u8]) -> Option<repo_stealer_vault::RecordInfo> {
+    use repo_stealer_vault::{RecordInfo, RecordKind};
+    if bytes.len() > 1024 * 1024 {
+        return None;
+    }
+    let value: Value = serde_json::from_slice(bytes).ok()?;
+    if value["schema"] != 1 {
+        return None;
+    }
+    let valid_id = |id: &str| id.len() == 32 && id.bytes().all(|b| b.is_ascii_hexdigit());
+    if let Ok(plan) = serde_json::from_value::<NewPlan>(value.clone()) {
+        if valid_id(&plan.id) && plan.visibility == "private" && plan.automation == "disabled" {
+            return Some(RecordInfo::migration(RecordKind::MigrationPlan, &plan.id));
+        }
+    }
+    let id = value["operation"].as_str()?;
+    if !valid_id(id) {
+        return None;
+    }
+    if let Ok(report) = serde_json::from_value::<Reconciliation>(value.clone()) {
+        if report.schema == 1 {
+            return Some(RecordInfo::migration(RecordKind::MigrationReport, id));
+        }
+    }
+    if value["phase"].as_str().is_some_and(|p| PHASES.contains(&p))
+        && value["time"].as_u64().is_some()
+        && value["repository"]
+            .as_str()
+            .is_some_and(|r| !r.is_empty() && r.len() <= 8192)
+        && value["detail"].is_object()
+        && value.as_object()?.keys().all(|k| {
+            [
+                "schema",
+                "operation",
+                "phase",
+                "time",
+                "repository",
+                "detail",
+            ]
+            .contains(&k.as_str())
+        })
+    {
+        return Some(RecordInfo::migration(RecordKind::MigrationReceipt, id));
+    }
+    None
+}
+
 fn read_json<T: serde::de::DeserializeOwned>(vault: &Vault, name: &str) -> Result<T> {
     struct Bounded(zeroize::Zeroizing<Vec<u8>>);
     impl Write for Bounded {
@@ -374,7 +423,14 @@ pub fn reconcile(
         bytes.len() <= 1024 * 1024,
         "Reconciliation report exceeds limit"
     );
-    vault.put(&name, std::io::Cursor::new(&*bytes))?;
+    vault.put_typed(
+        &name,
+        repo_stealer_vault::RecordInfo::migration(
+            repo_stealer_vault::RecordKind::MigrationReport,
+            id,
+        ),
+        std::io::Cursor::new(&*bytes),
+    )?;
     inspect(vault, id)
 }
 

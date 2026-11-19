@@ -279,6 +279,8 @@ def desktop_workflow(args, agent):
             click("Lock vault"); wait.until(lambda _: status()["vault"] is None)
             click("Overview");click("Unlock vault");fill("Vault location",root / "restored-vault");fill("Vault passphrase",password)
             submit_modal();completed()
+            # Recovery deliberately omits the optional encrypted type cache.
+            click("Repositories");click("Inspect record types");completed()
             click("New migrations")
             from selenium.webdriver.support.ui import Select
             for provider_name in ("github","gitlab"):
@@ -434,6 +436,36 @@ def desktop_workflow(args, agent):
 
             click("Lock vault");wait.until(lambda _:status()["vault"] is None)
             assert status()["newMigration"] is None and status()["migrationResult"] is None and status()["migrationHistory"] is None
+            # Legacy backup contains mixed authenticated payloads but no type
+            # cache: misleading names must not assign Git/history actions.
+            library_fixture=pathlib.Path(__file__).resolve().parents[1]/"tests/fixtures/record-library-v1.rsbackup"
+            click("Backups");click("Restore backup")
+            fill("Encrypted backup",library_fixture);fill("New vault location",root/"record-library-vault");fill("Original vault passphrase",password)
+            click("Restore vault");completed()
+            assert status()["vault"]["itemCount"]==4
+            click("Repositories")
+            wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".repository-card"))==4)
+            assert not driver.find_elements(By.CSS_SELECTOR,".repository-card-actions button")
+            click("New migrations");click("Browse saved snapshots")
+            wait.until(lambda d:"0 Git snapshots" in d.find_element(By.CSS_SELECTOR,".snapshot-search-heading").text)
+            assert not driver.find_elements(By.CSS_SELECTOR,".snapshot-option")
+            click("Close");click("Repositories");click("Inspect record types");completed()
+            git_name="migration-plan-"+"a"*32
+            fill("Search repository library",git_name)
+            wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".repository-card"))==1)
+            wait.until(lambda d:d.find_element(By.CSS_SELECTOR,".repository-card .badge").text=="Git snapshot")
+            click("Restore");fill("New bare repository",work/"record-library-empty.git");submit_modal();completed()
+            refs,head,objects=inventory(work/"record-library-empty.git")
+            assert not refs and not objects and head==b"symbolic:refs/heads/main\n"
+            fill("Search repository library","");click("Table")
+            wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".archive-panel tbody tr"))==4)
+            assert sum(button.text.strip()=="Restore Git" for button in driver.find_elements(By.CSS_SELECTOR,".archive-panel button"))==1
+            click("New migrations");click("Browse saved snapshots")
+            wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".snapshot-option"))==1)
+            assert git_name in driver.find_element(By.CSS_SELECTOR,".snapshot-option").text
+            click("Lock vault");wait.until(lambda _:status()["vault"] is None)
+            assert not driver.find_elements(By.CSS_SELECTOR,".snapshot-option")
+            print("Native mixed-record recovery, explicit type inspection, misleading-name routing, filtered picker/table and Git restore passed.",flush=True)
             print("Native desktop encrypted archive, guarded personal GitHub/GitLab migrations, receipts, lock privacy and recovery passed.")
     finally:
         if driver:

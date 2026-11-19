@@ -2,7 +2,8 @@
 //! for explicitly confirmed new private repositories. No existing-repo adoption.
 mod history;
 pub use history::{
-    history, inspect, reconcile, HistoryItem, HistoryPage, MigrationHistory, Reconciliation,
+    classify_record, history, inspect, reconcile, HistoryItem, HistoryPage, MigrationHistory,
+    Reconciliation,
 };
 mod http;
 mod new;

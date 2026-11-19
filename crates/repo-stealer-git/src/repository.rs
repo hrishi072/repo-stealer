@@ -89,6 +89,35 @@ pub fn snapshot_refs(vault: &Vault, name: &str, options: &Options) -> Result<Sna
     })
 }
 
+/// Classify an already authenticated object's bounded prefix. This identifies
+/// snapshot metadata, not Git/LFS payload integrity; restore still verifies all.
+pub fn is_snapshot_record(prefix: &[u8], total: u64) -> bool {
+    let mut input = io::Cursor::new(prefix);
+    let Ok(manifest) = read_manifest(&mut input) else {
+        return false;
+    };
+    let start = input.position();
+    if let Some(lfs) = &manifest.lfs {
+        let size = lfs
+            .objects
+            .iter()
+            .try_fold(start + lfs.bundle_bytes, |sum, object| {
+                sum.checked_add(object.size)
+            });
+        if size != Some(total) {
+            return false;
+        }
+    } else if !manifest.bundle {
+        return total == start;
+    }
+    if manifest.bundle {
+        let payload = &prefix[start as usize..];
+        return payload.starts_with(b"# v2 git bundle\n")
+            || payload.starts_with(b"# v3 git bundle\n");
+    }
+    true
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct GitRef {
@@ -241,8 +270,9 @@ pub(crate) fn capture_impl(
         current: None,
     });
     options.report("Encrypting verified snapshot into vault");
-    vault.put(
+    vault.put_typed(
         name,
+        repo_stealer_vault::RecordInfo::new(repo_stealer_vault::RecordKind::GitSnapshot),
         Cancellable {
             inner: contents,
             options: options.clone(),

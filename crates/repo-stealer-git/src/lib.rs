@@ -8,7 +8,7 @@ pub use remote::{
     capture_remote, capture_ssh, observe_remote, Advertisement, CaptureProvenance, Credentials,
     ExternalInventory, RemoteUrl,
 };
-pub use repository::{capture, restore, snapshot_refs, SnapshotRefs};
+pub use repository::{capture, is_snapshot_record, restore, snapshot_refs, SnapshotRefs};
 pub use runner::Options;
 pub use workspace::{Encryption, Workspace};
 

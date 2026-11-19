@@ -110,6 +110,7 @@ pub enum Action {
         username: Option<String>,
         ca_file: Option<String>,
     },
+    InspectRecordTypes,
     InspectMigration {
         plan_id: String,
     },
@@ -140,6 +141,7 @@ pub enum Action {
 impl Action {
     fn label(&self) -> &'static str {
         match self {
+            Self::InspectRecordTypes => "Inspect encrypted record types",
             Self::CreateVault { .. } => "Create encrypted vault",
             Self::UnlockVault { .. } => "Unlock vault",
             Self::CheckWorkspace { .. } => "Verify encrypted workspace",
@@ -164,7 +166,8 @@ impl Action {
     fn cancellable(&self) -> bool {
         matches!(
             self,
-            Self::CaptureLocal { .. }
+            Self::InspectRecordTypes
+                | Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
                 | Self::CaptureSsh { .. }
                 | Self::RestoreGit { .. }
@@ -177,7 +180,8 @@ impl Action {
     fn needs_vault(&self) -> bool {
         matches!(
             self,
-            Self::CaptureLocal { .. }
+            Self::InspectRecordTypes
+                | Self::CaptureLocal { .. }
                 | Self::CaptureRemote { .. }
                 | Self::CaptureSsh { .. }
                 | Self::RestoreGit { .. }
@@ -210,25 +214,14 @@ impl Action {
     }
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Item {
-    pub name: String,
-    pub size: u64,
-    pub sha256: String,
-}
+pub use repo_stealer_library::{Item, ItemPage};
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultStatus {
     pub path: String,
     pub item_count: usize,
     pub total_bytes: u64,
-}
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ItemPage {
-    pub items: Vec<Item>,
-    pub total: usize,
+    pub record_index_saved: bool,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -375,9 +368,15 @@ impl Engine {
         Ok(())
     }
     pub fn items(&self, query: &str, offset: usize, limit: usize) -> Result<ItemPage, String> {
-        if query.len() > 256 || !(1..=100).contains(&limit) {
-            return Err("Invalid item query.".into());
-        }
+        self.record_items(query, offset, limit, false)
+    }
+    pub fn record_items(
+        &self,
+        query: &str,
+        offset: usize,
+        limit: usize,
+        snapshots_only: bool,
+    ) -> Result<ItemPage, String> {
         let inner = self
             .inner
             .lock()
@@ -386,25 +385,8 @@ impl Engine {
             .vault
             .as_ref()
             .ok_or("Unlock a vault and wait for the active job to finish.")?;
-        let query = query.to_lowercase();
-        let matches: Vec<_> = vault
-            .entries()
-            .iter()
-            .filter(|entry| entry.name.to_lowercase().contains(&query))
-            .collect();
-        Ok(ItemPage {
-            total: matches.len(),
-            items: matches
-                .into_iter()
-                .skip(offset)
-                .take(limit)
-                .map(|entry| Item {
-                    name: entry.name.clone(),
-                    size: entry.size,
-                    sha256: entry.sha256.clone(),
-                })
-                .collect(),
-        })
+        repo_stealer_library::items(vault, query, offset, limit, snapshots_only)
+            .map_err(|_| "Invalid item query.".into())
     }
     pub fn migration_history(
         &self,
@@ -636,6 +618,12 @@ fn perform(
 ) -> Result<Outcome, String> {
     let result = || -> Result<Outcome, Box<dyn std::error::Error + Send + Sync>> {
         match action {
+            Action::InspectRecordTypes => {
+                repo_stealer_library::inspect_types(
+                    vault.as_mut().ok_or("Unlock a vault first.")?,
+                    options,
+                )?;
+            }
             Action::CreateVault {
                 path: value,
                 passphrase,
@@ -1016,6 +1004,7 @@ fn summarize(vault: &Vault, path: &str) -> VaultStatus {
         path: path.into(),
         total_bytes: vault.entries().iter().map(|e| e.size).sum(),
         item_count: vault.entries().len(),
+        record_index_saved: vault.record_index_saved(),
     }
 }
 fn now() -> u64 {

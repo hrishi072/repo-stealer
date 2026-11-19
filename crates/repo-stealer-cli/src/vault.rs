@@ -12,6 +12,8 @@ Usage:
   repo-stealer vault init VAULT
   repo-stealer vault put VAULT NAME INPUT
   repo-stealer vault list VAULT
+  repo-stealer vault records VAULT
+  repo-stealer vault inspect-records VAULT
   repo-stealer vault verify VAULT
   repo-stealer vault export VAULT NAME OUTPUT --plaintext
   repo-stealer vault backup VAULT OUTPUT.rsbackup
@@ -67,7 +69,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         .collect();
     let command = args.first().and_then(|a| a.to_str()).unwrap_or("");
     let expected = match command {
-        "init" | "list" | "verify" | "verify-backup" => 2,
+        "init" | "list" | "records" | "inspect-records" | "verify" | "verify-backup" => 2,
         "backup" | "restore" => 3,
         "put" | "export" => 4,
         _ => return Err(HELP.into()),
@@ -103,6 +105,27 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
                         for e in vault.entries() {
                             println!("{}\t{} bytes", e.name, e.size);
                         }
+                    }
+                    "records" => {
+                        for e in vault.entries() {
+                            let info = vault.record_info(e);
+                            println!(
+                                "{}",
+                                serde_json::json!({"name":e.name,"size":e.size,"sha256":e.sha256,"kind":info.kind,"migrationId":info.migration_id})
+                            );
+                        }
+                    }
+                    "inspect-records" => {
+                        let options = repo_stealer_git::Options::default();
+                        let flag = options.cancelled.clone();
+                        ctrlc::set_handler(move || {
+                            flag.store(true, std::sync::atomic::Ordering::Relaxed)
+                        })?;
+                        repo_stealer_library::inspect_types(&mut vault, &options)?;
+                        if !vault.record_index_saved() {
+                            return Err("Record inspection completed, but optional type cache could not be saved".into());
+                        }
+                        println!("Record types inspected. Git payloads still require full verification at use.");
                     }
                     "verify" => {
                         vault.verify()?;

@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { Status } from '../src/api';
+import type { Status, Item } from '../src/api';
 
-async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false, migration = false, platform = 'linux') {
-  await page.addInitScript(({ unlocked, workspace, plan, migration, platform }) => {
+async function mockDesktop(page: Page, unlocked = false, workspace = false, plan = false, migration = false, platform = 'linux', records?: Item[]) {
+  await page.addInitScript(({ unlocked, workspace, plan, migration, platform, records }) => {
     const state:Status = { version: '0.1.0-alpha.5', platform, vault: unlocked ? { path: '/synthetic/vault', itemCount: 1, totalBytes: 4096 } : null, workspace: workspace ? { path: '/synthetic/luks/work', encryption: 'LinuxLuks' } : null, busy: false, jobs: [] as unknown[], remoteCapture: true, plan: plan ? {schema:1,observedAt:10,provider:'gitlab',deployment:'self_hosted',instance:'https://git.example/platform/',requestedRepository:'group/sub/repo',sourceName:'history',sourceSha256:'a'.repeat(64),sourceVerification:'authenticated_manifest',actor:{id:1,login:'fixture'},repository:null,policies:[{endpoint:'protected_branches',complete:false,count:0,issue:{code:'access_denied',status:403,retryAfterSeconds:null}}],blockers:[],warnings:['policy_coverage_incomplete_never_assume_unprotected'],apiIssues:[],destinationFingerprint:'b'.repeat(64),destinationHead:null,sourceExcludedRefs:2,destinationExcludedRefs:1,rows:41,counts:{create_candidate:41},executionSupported:false,writeAuthorization:'unproven'} : null };
     state.newMigration=migration ? {id:'1'.repeat(32),expiresAt:Math.floor(Date.now()/1000)+900,provider:'github',instance:'https://github.com/',deployment:'cloud',repository:'fixture/new-private',actor:{id:10,login:'fixture'},sourceName:'history',sourceSha256:'a'.repeat(64),defaultBranch:'main',refCount:5,refs:{'refs/heads/main':'b'.repeat(40)},excludedRefs:2,visibility:'private',automation:'disabled',scopeProof:'classic_repo_workflow'} : null;
     const calls: { command: string; args: unknown }[] = [];
@@ -15,7 +15,12 @@ async function mockDesktop(page: Page, unlocked = false, workspace = false, plan
         const {offset,limit}=args as {offset:number;limit:number};
         return {total:21,items:Array.from({length:Math.min(limit,21-offset)},(_,i)=>({id:(offset+i+1).toString(16).padStart(32,'0'),repository:'fixture/recovered-private',createdAt:1,state:'interrupted_needs_attention'}))};
       }
-      if (command === 'get_items') return { items: [{ name: '<img src=x onerror="window.untrustedRan=true">', size: 4096, sha256: 'a'.repeat(64) }], total: 1 };
+      if (command === 'get_items') {
+        const {query,offset,limit,snapshotsOnly}=args as {query:string;offset:number;limit:number;snapshotsOnly:boolean};
+        const all=records??[{ name: '<img src=x onerror="window.untrustedRan=true">', size:4096, sha256:'a'.repeat(64),kind:'git_snapshot',migrationId:null }];
+        const found=all.filter(item=>item.name.toLowerCase().includes(query.toLowerCase())&&(!snapshotsOnly||item.kind==='git_snapshot'));
+        return {items:found.slice(offset,offset+limit),total:found.length};
+      }
       if (command === 'get_plan_rows') { const {offset,limit}=args as {offset:number;limit:number}; return {total:41,rows:Array.from({length:Math.min(limit,41-offset)},(_,n)=>({name:`refs/heads/branch-${offset+n}`,sourceOid:'c'.repeat(40),destinationOid:null,change:'create_candidate'}))}; }
       if (command === 'lock_vault') { state.vault = null; state.plan = null; state.newMigration=null;state.migrationResult=null;state.migrationHistory=null; return; }
       if (command === 'start_job') {
@@ -29,7 +34,7 @@ async function mockDesktop(page: Page, unlocked = false, workspace = false, plan
       if (command === 'choose_path') return '/synthetic/chosen';
       throw new Error('Unexpected test command: ' + command);
     } } });
-  }, { unlocked, workspace, plan, migration, platform });
+  }, { unlocked, workspace, plan, migration, platform, records });
 }
 
 test('browser preview is honest and capture stays gated', async ({ page }) => {
@@ -267,7 +272,7 @@ test('snapshot browser selects an archived name and clears suggestions on lock',
  await page.getByRole('button',{name:'New migrations',exact:true}).click();
  await page.getByRole('button',{name:'Browse saved snapshots',exact:true}).click();
  const suggestions=page.getByLabel('Saved snapshot suggestions',{exact:true});
- await expect(suggestions).toContainText('1 archived items');
+ await expect(suggestions).toContainText('1 Git snapshots');
  await suggestions.getByRole('button',{name:'<img src=x',exact:false}).click();
  await expect(page.getByLabel('New migration source',{exact:true})).toHaveValue('<img src=x onerror="window.untrustedRan=true">');
  await expect(suggestions).toHaveCount(0);
@@ -386,4 +391,57 @@ test('editing the SSH URL invalidates host approval and agent mode needs no key 
  await page.getByLabel('Snapshot name',{exact:true}).fill('agent-history');await page.getByRole('button',{name:'Capture repository',exact:true}).last().click();
  const calls=await page.evaluate(()=>(window as unknown as {__desktopTestCalls:{command:string;args:{action?:{privateKey:string|null;kind:string}}}[]}).__desktopTestCalls);
  expect(calls.find(c=>c.command==='start_job')?.args.action).toMatchObject({kind:'capture_ssh',privateKey:null});
+});
+
+
+test('record types control cards and table actions despite misleading names',async({page})=>{
+ await page.setViewportSize({width:1000,height:700});
+ const records:Item[]=[
+  {name:'migration-plan-'+ 'a'.repeat(32),size:400,sha256:'a'.repeat(64),kind:'git_snapshot',migrationId:null},
+  {name:'looks-like-history.git',size:10,sha256:'b'.repeat(64),kind:'unknown',migrationId:null},
+  {name:'ordinary-receipt-name',size:200,sha256:'c'.repeat(64),kind:'migration_receipt',migrationId:'b'.repeat(32)},
+  {name:'damaged',size:500,sha256:'d'.repeat(64),kind:'unreadable',migrationId:null},
+ ];
+ await mockDesktop(page,true,true,false,false,'linux',records);
+ await page.goto('/');await page.getByRole('button',{name:'Repositories',exact:true}).click();
+ const library=page.getByRole('region',{name:'Repository library'});
+ const git=library.getByRole('article').filter({has:page.getByRole('heading',{name:records[0].name,exact:true})});
+ await expect(git.getByRole('button',{name:'Restore',exact:true})).toBeVisible();
+ await expect(git.getByRole('button',{name:'View migration history'})).toHaveCount(0);
+ for(const name of ['looks-like-history.git','damaged']){
+  const card=library.getByRole('article').filter({has:page.getByRole('heading',{name,exact:true})});
+  await expect(card.getByRole('button',{name:'Restore',exact:true})).toHaveCount(0);
+  await expect(card.getByRole('button',{name:'Migrate',exact:true})).toHaveCount(0);
+ }
+ await expect(library.getByRole('button',{name:'View migration history'})).toHaveCount(1);
+ await library.getByRole('button',{name:'Table',exact:true}).click();
+ await expect(library.getByRole('button',{name:'Restore Git',exact:true})).toHaveCount(1);
+ await library.getByRole('button',{name:'Inspect record types',exact:true}).click();
+ const calls=await page.evaluate(()=> (window as unknown as {__desktopTestCalls:{command:string;args:{action?:{kind:string}}}[]}).__desktopTestCalls);
+ expect(calls.some(c=>c.command==='start_job'&&c.args.action?.kind==='inspect_record_types')).toBeTruthy();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+});
+
+test('snapshot filtering occurs before paging in library tables and pickers',async({page})=>{
+ const records:Item[]=Array.from({length:25},(_,n)=>[
+  {name:'raw-'+n,size:20,sha256:'a'.repeat(64),kind:'unknown' as const,migrationId:null},
+  {name:'snapshot-'+n,size:300,sha256:'b'.repeat(64),kind:'git_snapshot' as const,migrationId:null},
+ ]).flat();
+ await mockDesktop(page,true,true,false,false,'linux',records);
+ await page.goto('/');await page.getByRole('button',{name:'Repositories',exact:true}).click();
+ const library=page.getByRole('region',{name:'Repository library'});
+ await library.getByLabel('Archive record type').selectOption('snapshots');
+ await library.getByRole('button',{name:'Table',exact:true}).click();
+ await expect(library.getByRole('button',{name:'Restore Git',exact:true})).toHaveCount(20);
+ await library.getByRole('button',{name:'Next',exact:true}).click();
+ await expect(library.getByRole('button',{name:'Restore Git',exact:true})).toHaveCount(5);
+ await expect(library).not.toContainText('raw-');
+ await page.getByRole('button',{name:'New migrations',exact:true}).click();
+ await page.getByRole('button',{name:'Browse saved snapshots',exact:true}).click();
+ const suggestions=page.getByLabel('Saved snapshot suggestions',{exact:true});
+ await expect(suggestions).toContainText('25 Git snapshots');
+ await expect(suggestions.locator('.snapshot-option')).toHaveCount(10);
+ await suggestions.getByRole('button',{name:'More snapshots',exact:true}).click();
+ await expect(suggestions.locator('.snapshot-option').first()).toContainText('snapshot-10');
+ await expect(suggestions).not.toContainText('raw-');
 });

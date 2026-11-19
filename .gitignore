@@ -5,6 +5,7 @@
 *.rsvault
 *.rsbackup
 !/tests/fixtures/portable-v1.rsbackup
+!/tests/fixtures/record-library-v1.rsbackup
 /fixture/
 __pycache__/
 *.env

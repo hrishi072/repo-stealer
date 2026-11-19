@@ -101,3 +101,7 @@ The [full Linux/Windows acceptance run](https://github.com/hrishi072/repo-steale
 ## Alpha.8 native-agent release
 
 Windows SSH agent mode explicitly selects the native service endpoint, so inherited Git Bash/WSL/custom sockets cannot redirect authentication. [Full Linux/Windows acceptance](https://github.com/hrishi072/repo-stealer/actions/runs/44471044085) passed native CLI and real desktop agent capture/restore, host rejection, missing/unloaded identity, cancellation, Windows stopped-service and cleanup cases, plus existing installer and reciprocal recovery checks. See [Windows agent setup](docs/DESKTOP.md#windows-native-agent-setup). The [alpha.8 signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/44474717064) repeated the full native Linux/Windows matrix and passed publication and cleanup. [Alpha.8](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.8) contains four desktop installers, six CLI packages and SHA256SUMS. All ten published package hashes were independently verified against SHA256SUMS.
+
+## Alpha.9 development
+
+The first [planned batch](docs/ALPHA9-PLAN.md) slice adds a [record-aware library and snapshot picker](docs/RECORD-LIBRARY.md): typed actions, snapshot-only filtering/pagination and explicit legacy/recovery inspection using a disposable encrypted cache. Native acceptance is pending. Remaining profiles/discovery/queue/report features and release gates must be completed before alpha.9 installers; alpha.8 remains available above.
