@@ -8,7 +8,7 @@ Main pushes verify builds. Because the account Actions artifact quota is exhaust
 
 ## Release cadence
 
-Batch multiple related features and bug fixes into a milestone release. Routine fixes and test additions should land as signed, tested main-source increments. Publish installers when the user explicitly requests the release; do not create a tag for every small change. The explicitly requested alpha.8 agent-fix release continues under this instruction; use the batched cadence for subsequent releases.
+Batch multiple related features and bug fixes into a milestone release. Routine fixes and test additions should land as signed, tested main-source increments. Publish installers when the user explicitly requests the release; do not create a tag for every small change.
 
 Release steps:
 
@@ -105,3 +105,9 @@ Source/tag signing is separate from installer OS signing, which is not implement
 ## Alpha.8 agent-fix release preparation
 
 Alpha.8 includes the native Windows agent routing fix and Linux/Windows CLI/native GUI agent acceptance from signed `f906a38`, accepted by [run 44471044085](https://github.com/hrishi072/repo-stealer/actions/runs/44471044085). Cargo/npm/Tauri versions and both Cargo lockfiles are aligned to `0.1.0-alpha.8`. Local formatting/Clippy, 41 release-mode Rust tests, frontend production build, 23 browser tests, locked version metadata and fixture syntax checks passed. The signed-tag workflow must repeat full native acceptance before publication; final package verification and publication evidence follow after completion. No storage/snapshot/backup format changes are introduced.
+
+## Alpha.8 publication
+
+Signed [v0.1.0-alpha.8](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.8) targets `c15875a3c29b14e57308bb885b88bd22bd6e4ef7` and was published at 2026-11-19T06:57:32Z. The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/44474717064) passed the full quality/minimum-Rust, native Linux/Windows CLI and WebKitGTK/WebView2 desktop, 23 browser tests per OS, agent lifecycle/failure/cancellation, guided encrypted setup, Git/HTTPS/LFS/provider/history, installer/version and reciprocal recovery matrix. Signature/version verification, publication and staging cleanup passed. Four desktop and six CLI packages plus SHA256SUMS are available. All four desktop and six CLI packages were downloaded into ignored `dist/releases/v0.1.0-alpha.8/` and independently matched the published SHA256SUMS. The temporary staging draft is absent.
+
+Vault/snapshot/same-key backup formats are unchanged. Source commits/tag are SSH-signed; installers are not OS code-signed. Desktop RPM distribution installation remains outside this acceptance. Subsequent releases batch related features and fixes according to the release cadence above.

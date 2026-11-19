@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — published native-agent alpha.8
+
+**Release:** Signed [v0.1.0-alpha.8](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.8) was published from `c15875a3c29b14e57308bb885b88bd22bd6e4ef7` at 2026-11-19T06:57:32Z. Four desktop installers (Linux x86_64 DEB/RPM/AppImage and Windows x86_64 NSIS), six CLI packages and SHA256SUMS are available.
+
+**Acceptance:** The [signed-tag run](https://github.com/hrishi072/repo-stealer/actions/runs/44474717064) passed the full Linux/Windows matrix, including native CLI and WebKitGTK/WebView2 agent capture/restore, host rejection, unavailable/unloaded identity, invalid inherited socket, stopped Windows service and cancellation/timeout cases. Quality/minimum Rust, 23 browser tests per OS, guided LUKS/EFS setup, all existing Git/HTTPS/LFS/provider/history suites, fresh desktop/CLI installer/version checks, reciprocal recovery, signature/version verification, publication and cleanup passed. Windows fixtures remove only generated keys and restore original service settings/baseline identities; the application adds no service/key management.
+
+**Verification:** All four desktop and six CLI packages were downloaded into ignored `dist/releases/v0.1.0-alpha.8/` and independently matched the published SHA256SUMS. The temporary staging draft is absent. Source commits/tag are SSH-signed; installers are not OS code-signed. Desktop RPM distribution installation remains untested. Vault/snapshot and same-key backup formats are unchanged; SSH-origin snapshots still require alpha.7 readers and LFS v3 requires alpha.6.
+
+**Future cadence:** Per user direction, batch multiple related features and bug fixes into subsequent milestone releases. Routine work lands as signed/tested main-source increments; publish installers when explicitly requested. This alpha.8 release completed the already-requested agent-fix delivery.
+
 ## 2026-11-19 — alpha.8 release preparation
 
 **User direction:** Release alpha.8 with the native Windows agent fixes. For subsequent releases, batch multiple features and bug fixes into a milestone rather than releasing every small change. Routine work remains signed/tested main-source increments until a release is explicitly requested.
