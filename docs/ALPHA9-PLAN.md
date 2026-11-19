@@ -1,6 +1,6 @@
 # Alpha.9 proposal: bulk capture and workflow reliability
 
-Status: batch in progress. Slice 1 is implemented locally and awaiting native acceptance; slices 2–5 remain pending. Development version is alpha.9; alpha.8 remains the published release and no alpha.9 tag/installer is published. Implement reviewable slices with signed commits and updated docs, then release only after the full agreed batch is ready and its release gates pass.
+Status: batch in progress. Slice 1 is implemented and passed native Linux/Windows acceptance; slices 2–5 remain pending. Development version is alpha.9; alpha.8 remains the published release and no alpha.9 tag/installer is published. Implement reviewable slices with signed commits and updated docs, then release only after the full agreed batch is ready and its release gates pass.
 
 ## Outcome
 
@@ -18,7 +18,7 @@ Find repositories on GitHub/GitLab, select several, capture them into the encryp
 
 ### Slice 1 implementation
 
-The [record-aware library](RECORD-LIBRARY.md) replaces name-based action hints with backend-owned record types, Git-only picker queries and filtering before pagination. An optional encrypted cache is bound to entry ID/hash/size. Generic imports/recovered data require an explicit cancellable whole-object inspection, with bounded memory; full Git validation remains mandatory at use. The critical catalog/Git/backup formats are unchanged, and the disposable cache is omitted from backups. Native acceptance remains pending; this completes neither the remaining features nor the release gates.
+The [record-aware library](RECORD-LIBRARY.md) replaces name-based action hints with backend-owned record types, Git-only picker queries and filtering before pagination. An optional encrypted cache is bound to entry ID/hash/size. Generic imports/recovered data require an explicit cancellable whole-object inspection, with bounded memory; full Git validation remains mandatory at use. The critical catalog/Git/backup formats are unchanged, and the disposable cache is omitted from backups. Linux/Windows acceptance passed in [full native run 44509317354](https://github.com/hrishi072/repo-stealer/actions/runs/44509317354); this completes neither the remaining features nor the full-batch release gates.
 
 Other hardening items below are test targets, not claims of newly reproduced defects. Add fixes with evidence when their regressions are demonstrated.
 

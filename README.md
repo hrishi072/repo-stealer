@@ -104,4 +104,4 @@ Windows SSH agent mode explicitly selects the native service endpoint, so inheri
 
 ## Alpha.9 development
 
-The first [planned batch](docs/ALPHA9-PLAN.md) slice adds a [record-aware library and snapshot picker](docs/RECORD-LIBRARY.md): typed actions, snapshot-only filtering/pagination and explicit legacy/recovery inspection using a disposable encrypted cache. Native acceptance is pending. Remaining profiles/discovery/queue/report features and release gates must be completed before alpha.9 installers; alpha.8 remains available above.
+The first [planned batch](docs/ALPHA9-PLAN.md) slice adds a [record-aware library and snapshot picker](docs/RECORD-LIBRARY.md): typed actions, snapshot-only filtering/pagination and explicit legacy/recovery inspection using a disposable encrypted cache. Linux/Windows native acceptance passed in [full native run 44509317354](https://github.com/hrishi072/repo-stealer/actions/runs/44509317354). Remaining profiles/discovery/queue/report features and release gates must be completed before alpha.9 installers; alpha.8 remains available above.

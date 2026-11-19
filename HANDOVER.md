@@ -2,7 +2,7 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-19 — alpha.9 record-library slice implemented locally
+## 2026-11-19 — alpha.9 record-library slice accepted
 
 **Scope:** First batch slice only: backend record types, Git-only source picking, type-aware card/table actions and filtered counts/pagination. Development version is alpha.9 across Cargo/npm/Tauri/locks; no alpha.9 tag or release. Profiles, discovery, queue and remaining hardening/release gates stay pending.
 
@@ -10,7 +10,9 @@ Sections are chronological milestone records, newest first; earlier pending stat
 
 **Implementation:** New internal shared library service for CLI/desktop, `vault records` and `vault inspect-records`, typed metadata from Git/migration writers, no name-prefix routing, snapshot filtering before pagination, explicit inspection action and refresh after job completion. Unknown/unreadable/orphan records stay visible without inappropriate Git/history actions. No new external dependency or GUI dependency in CLI.
 
-**Local checks:** Workspace tests (45 passed; privileged UDisks2 test excluded locally), Clippy, formatting, UI production build, all 25 browser regressions and fixture syntax checks pass. Golden mixed-record backup and native/cross-OS fixtures were added. A published alpha.8 Linux CLI verified the fixture, read the cache-bearing alpha.9 vault and exported a backup restored/reindexed by alpha.9. Full native Linux/Windows and package acceptance remains pending CI; keep working until accepted and push signed commits.
+**Local checks:** Workspace tests (45 passed; privileged UDisks2 test excluded locally), Clippy, formatting, UI production build, all 25 browser regressions and fixture syntax checks pass. Golden mixed-record backup and native/cross-OS fixtures were added. A published alpha.8 Linux CLI verified the fixture, read the cache-bearing alpha.9 vault and exported a backup restored/reindexed by alpha.9.
+
+**Native acceptance:** [Full native run 44509317354](https://github.com/hrishi072/repo-stealer/actions/runs/44509317354) passed on signed `6083fb0`, covering native Linux/Windows CLI and real desktop workflows, 25 browser tests per OS, package checks and reciprocal recovery. The first run exposed a Windows staging-cleanup failure consistent with diagnostic-observer interference; the observer is now Linux-only, with strict cleanup assertions retained and passing on both platforms. CI cleanup passed and the temporary staging draft is absent. Signed implementation commits `65ded47` and `6083fb0` are pushed. Next: encrypted connection profiles, then discovery and queue/results; no alpha.9 release until the entire batch passes.
 
 ## 2026-11-19 — alpha.9 batch proposal recorded
 
