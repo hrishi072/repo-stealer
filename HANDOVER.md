@@ -2,7 +2,7 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-19 — native Windows agent follow-up in progress
+## 2026-11-19 — native Windows agent follow-up accepted
 
 **Scope:** Add native Windows OpenSSH service authentication coverage through the CLI and real desktop, retaining Linux's isolated-agent path. This is an unreleased follow-up to published alpha.7; no tag/installer release is requested here.
 
@@ -10,7 +10,7 @@ Sections are chronological milestone records, newest first; earlier pending stat
 
 **Acceptance additions:** The fixture loads only generated keys through ssh-add stdin, hides the original synthetic private-key path during agent capture, restores full Git history offline, rejects a wrong/changed host before offering credentials, refuses missing/unloaded identities and a stopped Windows service, and checks no-overwrite, private-key-mode isolation, timeout/cancellation cleanup and no failed snapshot publication. Native GUI processes start with an intentionally invalid inherited Windows socket. Windows service operations are guarded to disposable GitHub-hosted runners; normal/error context cleanup restores the original service status/startup type and baseline identities, removing only the fixture key. Linux starts/stops a separate agent and restores the original test-process environment.
 
-**Local validation:** Linux fixture load/remove/environment restoration, 22 Git crate tests, workspace Clippy and Python syntax checks passed. Native Linux/Windows integration acceptance remains pending CI.
+**Local validation:** Linux fixture load/remove/environment restoration, 22 Git crate tests, workspace Clippy and Python syntax checks passed. [Full acceptance run 44471044085](https://github.com/hrishi072/repo-stealer/actions/runs/44471044085) passed on signed `f906a381d750b755258d91d7135d8c3cbb48ec02`: quality/minimum Rust, native CLI and WebKitGTK/WebView2 agent workflows, 23 browser tests per OS, existing Git/HTTPS/LFS/provider/history/setup suites, desktop/CLI package checks, reciprocal recovery and cleanup. Both OSes passed agent-only capture/restore, strict host checks, missing/unloaded identities and cleanup. Windows additionally passed poisoned inherited-socket and stopped-service cases, with original service settings/identities restored. The temporary staging draft is absent. Signed implementation and acceptance docs are pushed on main as an unreleased follow-up; published alpha.7 remains the earlier immutable release.
 
 ## 2026-11-19 — published SSH and guided desktop alpha.7
 
