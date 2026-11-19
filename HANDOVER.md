@@ -2,15 +2,15 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
-## 2026-11-19 — SSH release stabilization in progress
+## 2026-11-19 — SSH alpha.7 accepted for release
 
 **Scope:** Finish native Linux/Windows SSH capture and publish signed alpha.7 only after the complete acceptance and tagged release matrices. Actions runner allocation is working again. Linux SSH and native desktop/installer checks passed in run 44464753915; Windows capture failed before authentication and host discovery returned no usable key, so publication remains gated.
 
 **Changes:** SSH failures expose bounded fixed hints without echoing arbitrary paths, credentials or server diagnostics. Windows staged keys request EFS explicitly and verify encryption before key bytes, retaining a protected current-user-only ACL and no-replace creation. Disposable fixture diagnostics inspect transient Git output only, never staged keys/configuration; public host discovery has a separate unauthenticated probe. Existing host pinning, no user-config/known_hosts changes, no forwarding/prompts and encrypted staging remain mandatory. Release notes include the accumulated guided storage/library/history/reconciliation and HTTP cancellation changes.
 
-**Root cause:** The native Windows OpenSSH runtime requires `ProgramData` before command startup. Both sanitized subprocess environments omitted it; they now share an explicit OS-runtime allowlist that retains it without restoring inherited Git/SSH configuration or credentials. Native acceptance of this correction is pending.
+**Root cause:** The native Windows OpenSSH runtime requires `ProgramData` before command startup. Both sanitized subprocess environments omitted it; they now share an explicit OS-runtime allowlist that retains it without restoring inherited Git/SSH configuration or credentials. Native acceptance of this correction passed in the full run below.
 
-**Local checks:** Both formatting scopes, workspace Clippy, 40 release-mode Rust tests and 23 browser tests plus production frontend build passed. One root/UDisks2 test is intentionally ignored locally and runs against the real service in native CI. Windows-specific changes still require native acceptance; no alpha.7 tag or release has been created.
+**Local checks:** Both formatting scopes, workspace Clippy, 40 release-mode Rust tests and 23 browser tests plus production frontend build passed. One root/UDisks2 test is intentionally ignored locally and runs against the real service in native CI. Native acceptance followed in [run 44466633504](https://github.com/hrishi072/repo-stealer/actions/runs/44466633504) on signed source `d494ba263319360e54fdc5769399cdf9b27c50c6`: quality/minimum Rust, Linux/Windows engine and SSH host pinning/key authentication/offline restore, 23 browser tests per OS, native WebKitGTK/WebView2 SSH discovery/capture/cancellation/restore, guided encrypted setup, provider/LFS/history suites, installed DEB/NSIS and extracted AppImage checks, RPM packaging/digests, reciprocal vault/Git/HTTPS/LFS recovery and cleanup all passed. A signed alpha.7 tag will repeat the full release matrix before publication.
 
 ## 2026-11-14 — desktop usability refresh installed and accepted
 
