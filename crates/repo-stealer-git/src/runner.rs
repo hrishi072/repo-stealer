@@ -158,12 +158,22 @@ impl Runner {
                 }
                 // Raw diagnostics can include paths/credentials. Keep them out
                 // of ordinary terminal/log output; the error identifies phase.
-                ensure!(
-                    status.success(),
-                    "Git {} failed ({status}); capture/restore not published",
-                    args.first()
-                        .map_or("command".into(), |arg| arg.to_string_lossy())
-                );
+                if !status.success() {
+                    let hint = if self.ssh.is_some() {
+                        let mut diagnostic = zeroize::Zeroizing::new(Vec::new());
+                        File::open(stderr.path())?
+                            .take(65536)
+                            .read_to_end(&mut diagnostic)?;
+                        ssh_failure_hint(&diagnostic)
+                    } else {
+                        "git_command_failed"
+                    };
+                    anyhow::bail!(
+                        "Git {} failed ({status}, {hint}); capture/restore not published",
+                        args.first()
+                            .map_or("command".into(), |arg| arg.to_string_lossy())
+                    );
+                }
                 break;
             }
             std::thread::sleep(Duration::from_millis(25));
@@ -305,6 +315,31 @@ pub(crate) fn git_arg(arg: &OsStr) -> OsString {
     arg.to_os_string()
 }
 
+// Hints are fixed strings, never remote-controlled diagnostics. They explain a
+// refusal without exposing keys, hostnames, paths or server banners.
+fn ssh_failure_hint(bytes: &[u8]) -> &'static str {
+    let text = String::from_utf8_lossy(bytes);
+    for (needle, hint) in [
+        ("bad permissions", "ssh_key_permissions"),
+        ("Host key verification failed", "ssh_host_key_verification"),
+        ("Bad configuration option", "ssh_configuration"),
+        ("Bad owner or permissions", "ssh_configuration_permissions"),
+        (
+            "Permission denied (publickey",
+            "ssh_publickey_authentication",
+        ),
+        ("No such file or directory", "ssh_missing_file"),
+        ("Could not resolve hostname", "ssh_name_resolution"),
+        ("Connection refused", "ssh_connection_refused"),
+        ("invalid format", "ssh_key_format"),
+    ] {
+        if text.contains(needle) {
+            return hint;
+        }
+    }
+    "ssh_command_failed"
+}
+
 fn supported_version(text: &str) -> bool {
     let Some(raw) = text.strip_prefix("git version ") else {
         return false;
@@ -408,6 +443,21 @@ fn sync_file(_: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ssh_hints_never_echo_diagnostics() {
+        assert_eq!(
+            ssh_failure_hint(b"Load key secret-path: bad permissions"),
+            "ssh_key_permissions"
+        );
+        assert_eq!(
+            ssh_failure_hint(b"REMOTE SECRET TOKEN\nPermission denied (publickey)."),
+            "ssh_publickey_authentication"
+        );
+        assert_eq!(
+            ssh_failure_hint(b"secret key and hostile server banner"),
+            "ssh_command_failed"
+        );
+    }
     #[test]
     fn flushes_readonly_git_files_without_changing_their_protection() {
         let directory = tempfile::tempdir().unwrap();

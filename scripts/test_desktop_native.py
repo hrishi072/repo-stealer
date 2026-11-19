@@ -333,12 +333,25 @@ def main():
                     encrypted_files(work)
                     print("LFS_MUTATION_CANCELLATION_JSON="+json.dumps({"stage":stage,"cancelToCompletionSeconds":round(elapsed,6),"gitPushes":0,"state":"cancelled_needs_attention"}),flush=True)
             click("Overview")
+            def wait_ssh_fingerprint(expected):
+                # Only the disposable local SSH fixture is in this form. Fail
+                # with its public discovery result rather than a bare timeout.
+                def ready(d):
+                    errors = [e.text for e in d.find_elements(By.CSS_SELECTOR, '.ssh-host-review .form-error') if e.is_displayed()]
+                    assert not errors, f"Synthetic SSH host discovery failed: {errors}"
+                    keys = d.find_elements(By.CSS_SELECTOR, '.ssh-fingerprint')
+                    if not keys or not keys[0].text:
+                        return False
+                    assert keys[0].text == expected, "Synthetic SSH fingerprint differs from server key"
+                    return True
+                wait.until(ready)
+
             with SSHFixture(root/"ssh-server") as ssh:
                 click("Capture repository");click("SSH remote")
                 fill("SSH clone URL",ssh.url);fill("Snapshot name","synthetic-ssh-history")
                 click("Private key file");fill("SSH private key",ssh.private_key)
                 click("Inspect host key")
-                wait.until(lambda d: d.find_element(By.CSS_SELECTOR,".ssh-fingerprint").text==ssh.fingerprint)
+                wait_ssh_fingerprint(ssh.fingerprint)
                 driver.find_element(By.CSS_SELECTOR,'input[aria-label="Confirm SSH host fingerprint"]').click()
                 submit_modal();ssh_result=completed()
                 assert ssh_result["jobs"][0]["result"]["url"]==ssh.url
@@ -352,7 +365,7 @@ def main():
                 click("Capture repository");click("SSH remote")
                 fill("SSH clone URL",ssh.url);fill("Snapshot name","cancelled-ssh")
                 click("Private key file");fill("SSH private key",ssh.private_key);click("Inspect host key")
-                wait.until(lambda d:d.find_element(By.CSS_SELECTOR,".ssh-fingerprint").text==ssh.fingerprint)
+                wait_ssh_fingerprint(ssh.fingerprint)
                 driver.find_element(By.CSS_SELECTOR,'input[aria-label="Confirm SSH host fingerprint"]').click()
                 submit_modal();wait.until(lambda _:ssh.executing.is_set())
                 started=time.perf_counter();click("Cancel");completed("cancelled")
