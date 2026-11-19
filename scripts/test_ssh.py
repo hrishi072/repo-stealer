@@ -15,6 +15,7 @@ import time
 
 import paramiko
 from test_git import PASSWORD, app, encrypted_files, fixture, git, inventory
+from ssh_agent_fixture import SSHAgent
 
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
@@ -152,19 +153,43 @@ def main():
             capture("ssh-history")
             restored=work/"restored.git";app(binary,"git","restore",vault,"ssh-history",restored,"--work-root",work)
             assert inventory(server.repository)==inventory(restored)
-            if os.name!="nt":
-                # Use an isolated fixture agent; never touch the developer's agent.
-                import re
-                output=subprocess.check_output(["ssh-agent","-s"],text=True)
-                socket_path=re.search(r"SSH_AUTH_SOCK=([^;]+)",output).group(1)
-                pid=re.search(r"SSH_AGENT_PID=([0-9]+)",output).group(1)
-                env=dict(os.environ,SSH_AUTH_SOCK=socket_path,SSH_AGENT_PID=pid)
-                try:
-                    subprocess.run(["ssh-add",str(server.private_key)],env=env,capture_output=True,check=True)
-                    command=[str(binary),"git","capture-ssh",str(vault),"agent-history",server.url,"--work-root",str(work),"--ssh-host-key",str(server.host_public),"--password-stdin"]
-                    result=subprocess.run(command,input=PASSWORD,capture_output=True,env=env,timeout=60)
-                    assert result.returncode==0,result.stderr
-                finally:subprocess.run(["ssh-agent","-k"],env=env,capture_output=True,check=True)
+            with SSHAgent() as agent:
+                def agent_capture(name, ok=True, host=None, timeout=60):
+                    command=[str(binary),"git","capture-ssh",str(vault),name,server.url,"--work-root",str(work),"--ssh-host-key",str(host or server.host_public),"--password-stdin","--timeout-seconds",str(timeout)]
+                    with synthetic_diagnostics(work):
+                        result=subprocess.run(command,input=PASSWORD,capture_output=True,timeout=timeout+15)
+                        assert (result.returncode==0)==ok,(name,result.stderr)
+                    assert not list(work.glob(".rs-git-*")),"Agent capture left staging behind"
+                    return result
+                agent_capture("agent-missing-identity",ok=False)
+                with agent.identity(server):
+                    # The original key file is unavailable, and no key path is
+                    # passed. Only the agent can authenticate this capture.
+                    assert not server.private_key.exists()
+                    auth_before=len(server.auth_attempts)
+                    agent_capture("agent-wrong-host",ok=False,host=wrong)
+                    assert len(server.auth_attempts)==auth_before
+                    agent_capture("agent-history")
+                    agent_restored=work/"agent-restored.git"
+                    app(binary,"git","restore",vault,"agent-history",agent_restored,"--work-root",work)
+                    assert inventory(server.repository)==inventory(agent_restored)
+                    count=len(server.commands)
+                    capture("file-mode-must-not-use-agent",ok=False,key=bad)
+                    assert len(server.commands)==count
+                    agent_capture("agent-history",ok=False)
+                    assert len(server.commands)==count
+                    server.mode="stall"
+                    started=time.monotonic();agent_capture("agent-timeout",ok=False,timeout=1)
+                    assert time.monotonic()-started<10
+                    server.mode="normal"
+                agent_capture("agent-unloaded",ok=False)
+                if os.name=="nt":
+                    with agent.unavailable():
+                        agent_capture("agent-service-stopped",ok=False)
+                catalog=app(binary,"vault","list",vault).stdout
+                for name in ("agent-missing-identity","agent-wrong-host","file-mode-must-not-use-agent","agent-timeout","agent-unloaded","agent-service-stopped"):
+                    assert name.encode() not in catalog,"Failed agent operation published a snapshot"
+                print("Native SSH agent capture/restore, wrong-host-before-auth, missing/unloaded identity, private-key-mode isolation, no-overwrite and timeout cleanup passed.",flush=True)
             # No archive replacement on duplicate capture.
             count=len(server.commands);capture("ssh-history",ok=False);assert len(server.commands)==count
             server.commands.clear();server.mode="mutate";capture("changed",ok=False)

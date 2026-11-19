@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — native Windows agent follow-up in progress
+
+**Scope:** Add native Windows OpenSSH service authentication coverage through the CLI and real desktop, retaining Linux's isolated-agent path. This is an unreleased follow-up to published alpha.7; no tag/installer release is requested here.
+
+**Fix:** Windows agent mode now explicitly selects `\\.\pipe\openssh-ssh-agent`, so inherited Git Bash/WSL/custom `SSH_AUTH_SOCK` values cannot redirect it. Linux continues to use the selected session socket. Explicit-key mode still disables the agent. No service-start, key-loading, SSH configuration or credential persistence was added to the application.
+
+**Acceptance additions:** The fixture loads only generated keys through ssh-add stdin, hides the original synthetic private-key path during agent capture, restores full Git history offline, rejects a wrong/changed host before offering credentials, refuses missing/unloaded identities and a stopped Windows service, and checks no-overwrite, private-key-mode isolation, timeout/cancellation cleanup and no failed snapshot publication. Native GUI processes start with an intentionally invalid inherited Windows socket. Windows service operations are guarded to disposable GitHub-hosted runners; normal/error context cleanup restores the original service status/startup type and baseline identities, removing only the fixture key. Linux starts/stops a separate agent and restores the original test-process environment.
+
+**Local validation:** Linux fixture load/remove/environment restoration, 22 Git crate tests, workspace Clippy and Python syntax checks passed. Native Linux/Windows integration acceptance remains pending CI.
+
 ## 2026-11-19 — published SSH and guided desktop alpha.7
 
 **Release:** Signed [v0.1.0-alpha.7](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.7) was published from `aa8ac055b6d9c53b0cc8305c5331760fa977bee5` at 2026-11-19T06:05:59Z. Four Linux/Windows desktop installers (DEB/RPM/AppImage and NSIS setup EXE), six CLI packages and SHA256SUMS are available. Source commits/tag are SSH-signed; installers are not OS code-signed.

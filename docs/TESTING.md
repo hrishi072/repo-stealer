@@ -190,3 +190,11 @@ Native Windows OpenSSH initializes `ProgramData` before entering its command mai
 ### Alpha.7 signed-tag release verification
 
 [Run 44468237276](https://github.com/hrishi072/repo-stealer/actions/runs/44468237276) repeated the complete acceptance matrix above on signed tag source `aa8ac055b6d9c53b0cc8305c5331760fa977bee5` and passed all jobs, including release signature/version checks, publication and staging cleanup. Post-publication verification downloaded all four desktop and six CLI packages and independently matched every SHA-256 in the published SHA256SUMS. Native Windows agent authentication and Fedora/openSUSE desktop RPM installation remain outside this acceptance scope.
+
+## Native Windows SSH agent follow-up (unreleased)
+
+`ssh_agent_fixture.py` uses the native Windows OpenSSH agent service only when `GITHUB_ACTIONS=true`, `RUNNER_OS=Windows` and `RUNNER_ENVIRONMENT=github-hosted`. It records service status/startup type, temporarily starts it (Manual only if initially Disabled), loads a generated fixture key via ssh-add stdin and removes only that public identity. It never clears the entire agent. Context cleanup verifies baseline identities and restores service state; forced runner termination relies on disposable runner teardown. No developer-machine Windows service is changed. Linux uses an independent fixture agent and restores the original environment.
+
+CLI/native desktop acceptance covers agent-only capture with the original key file unavailable, exact full-history offline restore, wrong/changed host rejection before authentication, missing/unloaded identities, a stopped Windows service, and timeout/cancellation without publication or staging remnants. CLI tests also prove no-overwrite and that explicit-key mode cannot use a loaded agent. Windows application processes inherit a deliberately invalid custom socket; successful authentication must use the standard native named pipe. Linux continues to honor its isolated socket. The fixture checks other loaded keys are unchanged.
+
+The agent lifecycle helper passed locally on Linux, as did all 22 Git crate tests, workspace Clippy and fixture syntax checks. Full native Linux/Windows acceptance is pending CI. Published alpha.7's historical test-coverage statements above remain accurate for that immutable release.

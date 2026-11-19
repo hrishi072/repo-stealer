@@ -98,3 +98,21 @@ Choose **Capture repository**. The same encrypted staging, advertised-ref checks
 SSH capture currently includes Git history and LFS pointers only. The LFS checkbox is disabled; use HTTPS capture to include payloads. Migration continues to use its existing provider token and HTTPS transport. Existing HTTPS/local snapshots remain readable. SSH snapshots need this updated reader because older builds reject SSH provenance URLs. Linux packages declare an OpenSSH client dependency; AppImage users need `ssh` and `ssh-keyscan`. Windows needs the optional OpenSSH Client feature installed.
 
 SSH-origin Git snapshots require alpha.7 or newer for restore, even though they retain manifest v2: older releases reject SSH URL provenance. Existing local/HTTPS/LFS snapshots and same-key backups remain supported.
+
+### Windows native agent setup
+
+Use the Windows OpenSSH **Authentication Agent** service and load your key under the same Windows account that runs Repo Stealer. [Microsoft's key-management guide](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement) describes the service and ssh-add setup. If the service is disabled/stopped, an elevated PowerShell session can enable manual startup and start it:
+
+```powershell
+Set-Service -Name ssh-agent -StartupType Manual
+Start-Service -Name ssh-agent
+```
+
+Then, as your normal Windows user, unlock/load your key with the native tool (which handles any key passphrase):
+
+```powershell
+& "$env:WINDIR\System32\OpenSSH\ssh-add.exe" "$env:USERPROFILE\.ssh\id_ed25519"
+& "$env:WINDIR\System32\OpenSSH\ssh-add.exe" -l
+```
+
+Select **SSH agent** in the application and independently verify the server fingerprint. Repo Stealer does not start/configure the service or load/remove agent keys. Missing identities or an unavailable service fail without password fallback. The unreleased follow-up explicitly selects the native `\\.\pipe\openssh-ssh-agent` endpoint, ignoring inherited Git Bash/WSL/custom sockets; Linux still uses its session's `SSH_AUTH_SOCK`. This behavior is being tested natively in CI and is not part of the already-published alpha.7 installers.

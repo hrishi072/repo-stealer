@@ -18,6 +18,7 @@ from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
 
 from test_ssh import SSHFixture, probe_public_host
+from ssh_agent_fixture import SSHAgent
 from test_git import encrypted_files, fixture, inventory
 from test_remote import HTTPSFixture, TOKEN, USERNAME
 from test_migration import ProviderFixture
@@ -47,6 +48,13 @@ def main():
     parser.add_argument("--screenshot", type=pathlib.Path)
     parser.add_argument("--smoke", action="store_true", help="Only launch and check the installed native UI")
     args = parser.parse_args()
+    if args.smoke:
+        return desktop_workflow(args, None)
+    with SSHAgent() as agent:
+        desktop_workflow(args, agent)
+
+
+def desktop_workflow(args, agent):
     application = args.application.resolve()
     server = subprocess.Popen(["tauri-driver", "--native-driver", native_driver()])
     driver = None
@@ -363,6 +371,56 @@ def main():
                 click("Restore");fill("New bare repository",work/"ssh-restored.git");submit_modal();completed()
                 assert inventory(ssh.repository)==inventory(work/"ssh-restored.git")
                 encrypted_files(work)
+
+                def submit_agent_capture(name, rotate_host=False):
+                    click("Capture repository");click("SSH remote")
+                    fill("SSH clone URL",ssh.url);fill("Snapshot name",name)
+                    # Agent is the default. No private-key field/path is used.
+                    assert not driver.find_elements(By.CSS_SELECTOR,'input[aria-label="SSH private key"]')
+                    click("Inspect host key");wait_ssh_fingerprint(ssh.fingerprint)
+                    driver.find_element(By.CSS_SELECTOR,'input[aria-label="Confirm SSH host fingerprint"]').click()
+                    if rotate_host:
+                        import paramiko
+                        ssh.host_key=paramiko.RSAKey.generate(2048)
+                    submit_modal()
+
+                before_agent=status()["vault"]["itemCount"]
+                submit_agent_capture("agent-ui-missing");completed("failed")
+                assert status()["vault"]["itemCount"]==before_agent
+                with agent.identity(ssh):
+                    assert not ssh.private_key.exists()
+                    submit_agent_capture("synthetic-agent-history");agent_result=completed()
+                    assert agent_result["jobs"][0]["result"]["url"]==ssh.url
+                    assert str(ssh.private_key) not in json.dumps(agent_result)
+                    click("Repositories");fill("Search repository library","synthetic-agent-history")
+                    wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,".repository-card"))==1)
+                    click("Restore");fill("New bare repository",work/"agent-ui-restored.git");submit_modal();completed()
+                    assert inventory(ssh.repository)==inventory(work/"agent-ui-restored.git")
+                    original_host=ssh.host_key;auth_before=len(ssh.auth_attempts)
+                    before_agent=status()["vault"]["itemCount"]
+                    try:
+                        submit_agent_capture("agent-ui-changed-host",rotate_host=True)
+                        completed("failed")
+                        assert len(ssh.auth_attempts)==auth_before
+                        assert status()["vault"]["itemCount"]==before_agent
+                    finally:ssh.host_key=original_host
+                    ssh.mode="stall";ssh.executing.clear()
+                    submit_agent_capture("agent-ui-cancelled")
+                    wait.until(lambda _:ssh.executing.is_set())
+                    started=time.perf_counter();click("Cancel");completed("cancelled")
+                    assert time.perf_counter()-started<2
+                    assert status()["vault"]["itemCount"]==before_agent
+                    assert not list(work.glob(".rs-git-*"))
+                    ssh.mode="normal"
+                submit_agent_capture("agent-ui-unloaded");completed("failed")
+                assert status()["vault"]["itemCount"]==before_agent
+                if os.name=="nt":
+                    with agent.unavailable():
+                        submit_agent_capture("agent-ui-service-stopped");completed("failed")
+                        assert status()["vault"]["itemCount"]==before_agent
+                encrypted_files(work)
+                print("Native GUI agent capture/restore, changed-host-before-auth, unloaded identity, unavailable Windows service and cancellation passed.",flush=True)
+
                 ssh.mode="stall";ssh.executing.clear();before_ssh=status()["vault"]["itemCount"]
                 click("Capture repository");click("SSH remote")
                 fill("SSH clone URL",ssh.url);fill("Snapshot name","cancelled-ssh")

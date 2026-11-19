@@ -249,6 +249,11 @@ impl Runner {
                 .env("GIT_SSH_VARIANT", "ssh")
                 .env("SSH_ASKPASS_REQUIRE", "never");
             if *agent {
+                // Windows agent mode always targets the native service, not
+                // a Git Bash/WSL/custom socket inherited from the launcher.
+                #[cfg(windows)]
+                command.env("SSH_AUTH_SOCK", r"\\.\pipe\openssh-ssh-agent");
+                #[cfg(not(windows))]
                 if let Some(socket) = std::env::var_os("SSH_AUTH_SOCK") {
                     command.env("SSH_AUTH_SOCK", socket);
                 }
