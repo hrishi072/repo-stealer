@@ -193,12 +193,7 @@ impl Runner {
         let mut command = Command::new("git");
         // Inherited GIT_*, tracing, pager/helper and temp settings must not leak
         // data or redirect object writes outside the verified session.
-        command.env_clear();
-        for key in ["PATH", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT"] {
-            if let Some(value) = std::env::var_os(key) {
-                command.env(key, value);
-            }
-        }
+        runtime_environment(&mut command);
         command
             .current_dir(git_arg(self.root.as_os_str()))
             .env("HOME", git_arg(self.root.join("home").as_os_str()))
@@ -302,6 +297,24 @@ impl Runner {
             fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
         }
         Ok(())
+    }
+}
+
+/// Retain only OS executable/runtime prerequisites, never Git/SSH configuration
+/// or credentials. Native Windows OpenSSH initializes ProgramData before main.
+pub(crate) fn runtime_environment(command: &mut Command) {
+    command.env_clear();
+    for key in [
+        "PATH",
+        "SystemRoot",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "ProgramData",
+    ] {
+        if let Some(value) = std::env::var_os(key) {
+            command.env(key, value);
+        }
     }
 }
 
@@ -443,6 +456,33 @@ fn sync_file(_: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn runtime_environment_is_explicit_and_supports_native_openssh() {
+        let mut command = Command::new("unused");
+        command.env("GIT_CONFIG_GLOBAL", "must-be-cleared");
+        command.env("SSH_ASKPASS", "must-be-cleared");
+        runtime_environment(&mut command);
+        let vars: Vec<_> = command.get_envs().collect();
+        assert!(vars.iter().all(|(key, _)| [
+            "PATH",
+            "SystemRoot",
+            "WINDIR",
+            "COMSPEC",
+            "PATHEXT",
+            "ProgramData"
+        ]
+        .iter()
+        .any(|allowed| key == allowed)));
+        #[cfg(windows)]
+        {
+            let program_data =
+                std::env::var_os("ProgramData").expect("Windows OpenSSH requires ProgramData");
+            assert!(vars
+                .iter()
+                .any(|(key, value)| *key == "ProgramData"
+                    && *value == Some(program_data.as_os_str())));
+        }
+    }
     #[test]
     fn ssh_hints_never_echo_diagnostics() {
         assert_eq!(

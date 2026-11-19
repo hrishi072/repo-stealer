@@ -98,6 +98,15 @@ class SSHFixture:
         finally:transport.close();peer.close()
 
 
+def probe_public_host(server):
+    """Unauthenticated discovery against this loopback fixture, no user keys."""
+    assert server.url.startswith("ssh://git@127.0.0.1:")
+    tool=str(pathlib.Path(os.environ["SystemRoot"])/"System32/OpenSSH/ssh-keyscan.exe") if os.name=="nt" else "ssh-keyscan"
+    env={k:os.environ[k] for k in ("PATH","SystemRoot","WINDIR","COMSPEC","PATHEXT","ProgramData") if k in os.environ}
+    result=subprocess.run([tool,"-T","5","-p",str(server.port),"-t","ed25519,ecdsa,rsa","127.0.0.1"],input=b"",capture_output=True,timeout=15,env=env)
+    print("Synthetic public host discovery:",result.returncode,repr(result.stdout[:8192]),repr(result.stderr[:8192]),flush=True)
+
+
 @contextlib.contextmanager
 def synthetic_diagnostics(work):
     """Watch only our fixture's transient Git output, never a user workspace.

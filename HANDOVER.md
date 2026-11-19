@@ -2,6 +2,16 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — SSH release stabilization in progress
+
+**Scope:** Finish native Linux/Windows SSH capture and publish signed alpha.7 only after the complete acceptance and tagged release matrices. Actions runner allocation is working again. Linux SSH and native desktop/installer checks passed in run 44464753915; Windows capture failed before authentication and host discovery returned no usable key, so publication remains gated.
+
+**Changes:** SSH failures expose bounded fixed hints without echoing arbitrary paths, credentials or server diagnostics. Windows staged keys request EFS explicitly and verify encryption before key bytes, retaining a protected current-user-only ACL and no-replace creation. Disposable fixture diagnostics inspect transient Git output only, never staged keys/configuration; public host discovery has a separate unauthenticated probe. Existing host pinning, no user-config/known_hosts changes, no forwarding/prompts and encrypted staging remain mandatory. Release notes include the accumulated guided storage/library/history/reconciliation and HTTP cancellation changes.
+
+**Root cause:** The native Windows OpenSSH runtime requires `ProgramData` before command startup. Both sanitized subprocess environments omitted it; they now share an explicit OS-runtime allowlist that retains it without restoring inherited Git/SSH configuration or credentials. Native acceptance of this correction is pending.
+
+**Local checks:** Both formatting scopes, workspace Clippy, 40 release-mode Rust tests and 23 browser tests plus production frontend build passed. One root/UDisks2 test is intentionally ignored locally and runs against the real service in native CI. Windows-specific changes still require native acceptance; no alpha.7 tag or release has been created.
+
 ## 2026-11-14 — desktop usability refresh installed and accepted
 
 **User direction:** Feature development and a usable native GUI take priority over further performance benchmarking. No new benchmark work was added.

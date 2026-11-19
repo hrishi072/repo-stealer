@@ -17,7 +17,7 @@ from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.remote.file_detector import UselessFileDetector
 from selenium.webdriver.support.ui import WebDriverWait
 
-from test_ssh import SSHFixture
+from test_ssh import SSHFixture, probe_public_host
 from test_git import encrypted_files, fixture, inventory
 from test_remote import HTTPSFixture, TOKEN, USERNAME
 from test_migration import ProviderFixture
@@ -338,7 +338,9 @@ def main():
                 # with its public discovery result rather than a bare timeout.
                 def ready(d):
                     errors = [e.text for e in d.find_elements(By.CSS_SELECTOR, '.ssh-host-review .form-error') if e.is_displayed()]
-                    assert not errors, f"Synthetic SSH host discovery failed: {errors}"
+                    if errors:
+                        probe_public_host(ssh)
+                        raise AssertionError(f"Synthetic SSH host discovery failed: {errors}")
                     keys = d.find_elements(By.CSS_SELECTOR, '.ssh-fingerprint')
                     if not keys or not keys[0].text:
                         return False

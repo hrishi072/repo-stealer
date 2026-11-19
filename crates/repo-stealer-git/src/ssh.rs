@@ -191,12 +191,7 @@ pub fn inspect_ssh_host(value: &str) -> Result<Vec<SshHostKey>> {
 // Only public key discovery uses this bounded pipe; Git data and diagnostics
 // continue to use the encrypted Runner. The child tree is killed on all exits.
 fn bounded_public_output(mut command: Command, timeout: Duration) -> Result<Vec<u8>> {
-    command.env_clear();
-    for key in ["PATH", "SystemRoot", "WINDIR"] {
-        if let Some(value) = std::env::var_os(key) {
-            command.env(key, value);
-        }
-    }
+    crate::runner::runtime_environment(&mut command);
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
