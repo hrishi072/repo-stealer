@@ -1,8 +1,10 @@
 # Desktop application
 
+[Alpha.7 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.7) include SSH capture, guided encrypted setup, the repository library, encrypted migration history/read-only reconciliation and provider/LFS HTTP cancellation. The [signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/44468237276) passed the full native Linux/Windows release matrix; all downloaded package hashes matched SHA256SUMS. Choose `repo-stealer-desktop-*` for the GUI.
+
 Alpha.6 adds [encrypted LFS payload capture, offline restore and guarded migration](GIT-LFS.md). Capture remains Git-only unless explicitly enabled. LFS manifest v3 requires alpha.6; older snapshot and same-key backup formats remain readable.
 
-The Tauri 2/React desktop exposes encrypted vaults, local/HTTPS Git and optional LFS capture, offline restore, same-key portable backups, read-only destination plans and guarded new-private personal migration for GitHub/GitLab cloud/self-hosted instances. Existing destinations cannot be adopted. [Alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed native Linux/Windows LFS migration/recovery/privacy, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
+The Tauri 2/React desktop exposes encrypted vaults, local/HTTPS/SSH Git and optional HTTPS/local LFS capture, offline restore, same-key portable backups, read-only destination plans and guarded new-private personal migration for GitHub/GitLab cloud/self-hosted instances. Existing destinations cannot be adopted. [Alpha.6 installers](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6) were published after the [complete signed-tag workflow](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed native Linux/Windows LFS migration/recovery/privacy, DEB/NSIS install/launch and extracted AppImage checks. Desktop RPM packaging/identity/digest checks passed; RPM installation on Fedora/openSUSE remains untested.
 
 ![Updated desktop home preview](screenshots/desktop-home-alpha7.jpg)
 

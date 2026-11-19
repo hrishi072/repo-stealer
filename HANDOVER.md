@@ -2,6 +2,18 @@
 
 Sections are chronological milestone records, newest first; earlier pending statements describe their historical stage.
 
+## 2026-11-19 — published SSH and guided desktop alpha.7
+
+**Release:** Signed [v0.1.0-alpha.7](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.7) was published from `aa8ac055b6d9c53b0cc8305c5331760fa977bee5` at 2026-11-19T06:05:59Z. Four Linux/Windows desktop installers (DEB/RPM/AppImage and NSIS setup EXE), six CLI packages and SHA256SUMS are available. Source commits/tag are SSH-signed; installers are not OS code-signed.
+
+**Acceptance:** [Main run 44466633504](https://github.com/hrishi072/repo-stealer/actions/runs/44466633504) passed on `d494ba2`, then the [signed-tag run 44468237276](https://github.com/hrishi072/repo-stealer/actions/runs/44468237276) repeated and passed the full quality/minimum-Rust, native Linux/Windows CLI and WebKitGTK/WebView2 desktop, 23 browser tests per OS, guided LUKS/EFS setup, SSH/HTTPS/Git/LFS/provider/history suites, installed desktop/CLI package checks and reciprocal vault/Git/HTTPS/LFS recovery matrix. Signature/version verification, publication and staging cleanup passed. Both runs' temporary drafts are absent.
+
+**SSH fixes/scope:** Native Windows OpenSSH now receives its required `ProgramData` runtime environment for capture and public host discovery. Staged private keys have protected current-user ACLs and explicit EFS creation verified before key bytes. Host pinning, isolated configuration, no prompts/forwarding, no-overwrite and process-tree cancellation remain mandatory. Both OSes passed key-file capture/discovery/cancellation/offline restore; Linux also tests an isolated agent. Native Windows agent authentication and Fedora/openSUSE desktop RPM installation remain untested by this matrix.
+
+**Verification/compatibility:** All ten published packages were downloaded into ignored `dist/releases/v0.1.0-alpha.7/` and independently matched SHA256SUMS. An interrupted local network transfer was retried only for incomplete files before verification. SSH-origin snapshots require alpha.7 readers; existing local/HTTPS/LFS snapshots and same-key backup recovery remain supported. Release notes include guided storage/library/history/reconciliation, bounded LFS transfers and prompt HTTP cancellation. No existing-destination writes, automatic retry/resume/rollback or sync writes were added.
+
+**Next:** User testing of the published GUI and SSH onboarding; extend native Windows agent coverage before claiming that path is integration-tested. Broader namespaces/credentials and synchronization remain separate increments.
+
 ## 2026-11-19 — SSH alpha.7 accepted for release
 
 **Scope:** Finish native Linux/Windows SSH capture and publish signed alpha.7 only after the complete acceptance and tagged release matrices. Actions runner allocation is working again. Linux SSH and native desktop/installer checks passed in run 44464753915; Windows capture failed before authentication and host discovery returned no usable key, so publication remains gated.

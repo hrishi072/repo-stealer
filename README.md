@@ -2,9 +2,9 @@
 
 A local-first project for a desktop application for migrating, archiving, and eventually synchronizing repositories across GitHub and GitLab, including enterprise/self-hosted instances.
 
-**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. The development GUI also supports SSH clone URLs with explicit host-key verification and SSH key/agent authentication. Read-only GitHub/GitLab destination preflight and migration plans support cloud and self-hosted instances. Guarded new private personal-repository migrations are implemented for GitHub/GitLab; existing destinations remain protected. Alpha.6 adds explicit encrypted LFS payload capture, offline restore and guarded migration; submodule transfer remains future work. The storage format has not had an independent security review.
+**Status: experimental encrypted archive desktop and CLI.** Vaults and portable backups are encrypted with the same underlying key. Local full-history Git capture/restore uses verified encrypted working storage. The Tauri desktop exposes local vault, workspace, snapshot and backup operations, with native Linux/Windows workflow and installer checks. Read-only HTTPS acquisition supports explicit clone URLs, username/token credentials and custom CA trust. The GUI also supports SSH clone URLs with explicit host-key verification and SSH key/agent authentication. Read-only GitHub/GitLab destination preflight and migration plans support cloud and self-hosted instances. Guarded new private personal-repository migrations are implemented for GitHub/GitLab; existing destinations remain protected. Alpha.6 adds explicit encrypted LFS payload capture, offline restore and guarded migration; submodule transfer remains future work. The storage format has not had an independent security review.
 
-Download the [alpha.6 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6). Choose `repo-stealer-desktop-*` for the graphical application.
+Download the [alpha.7 desktop installers and CLI packages](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.7). Choose `repo-stealer-desktop-*` for the graphical application.
 
 ## Start here
 
@@ -89,10 +89,10 @@ LFS payload support is included in the alpha.6 installers. Use `--include-lfs` o
 
 [Alpha.6 signed-tag release checks](https://github.com/hrishi072/repo-stealer/actions/runs/43170426846) passed before [installer publication](https://github.com/hrishi072/repo-stealer/releases/tag/v0.1.0-alpha.6).
 
-## Alpha.7 release preparation
+## Alpha.7 release
 
 Alpha.7 adds SSH Git-history capture with explicit host-fingerprint review, guided Linux LUKS/Windows EFS workspace setup, repository cards and a searchable snapshot picker. It also adds encrypted migration history and read-only reconciliation, bounded four-worker LFS transfers (`--lfs-workers 1..4`) and cancellable provider/LFS HTTP waits. Existing destinations remain protected; no automatic resume, rollback or synchronization writes are included.
 
 See [desktop and SSH setup](docs/DESKTOP.md), [history/reconciliation](docs/MIGRATION-HISTORY.md), [LFS controls and measurement limits](docs/LFS-PERFORMANCE.md) and [cancellation scope](docs/GIT-LFS.md#cancellable-lfs-http-development). SSH captures Git history only; use HTTPS for LFS payloads. Windows uses native Windows OpenSSH and staged keys with protected owner-only ACLs and verified EFS encryption before writes.
 
-The [full Linux/Windows acceptance run](https://github.com/hrishi072/repo-stealer/actions/runs/44466633504) passed on signed commit `d494ba2`, including native SSH capture/discovery, encrypted storage, installed desktops, provider suites, reciprocal recovery and cleanup. Alpha.6 remains the installer release until the complete acceptance and signed-tag release matrices pass.
+The [full Linux/Windows acceptance run](https://github.com/hrishi072/repo-stealer/actions/runs/44466633504) passed on signed commit `d494ba2`, including native SSH capture/discovery, encrypted storage, installed desktops, provider suites, reciprocal recovery and cleanup. The [signed-tag release workflow](https://github.com/hrishi072/repo-stealer/actions/runs/44468237276) also passed, publishing four desktop installers (Linux DEB/RPM/AppImage and Windows NSIS setup), six CLI packages and SHA256SUMS. All ten downloaded package hashes were independently verified. Source commits/tag are SSH-signed; installers are not OS code-signed.
